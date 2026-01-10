@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo | default("Pilotis") }} - Docomomo Brasil</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        :root {
+            --pico-font-size: 100%;
+        }
+        body {
+            padding: 1rem;
+        }
+        header {
+            margin-bottom: 2rem;
+        }
+        .logo {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <header>
+            <nav>
+                <ul>
+                    <li><a href="/" class="logo">Pilotis</a></li>
+                </ul>
+                <ul>
+                    <li><small>Docomomo Brasil</small></li>
+                </ul>
+            </nav>
+        </header>
+
+        {% block content %}
+        {{ conteudo | safe }}
+        {% endblock %}
+
+        <footer>
+            <hr>
+            <small>Pilotis v0.1.0</small>
+        </footer>
+    </main>
+</body>
+</html>
