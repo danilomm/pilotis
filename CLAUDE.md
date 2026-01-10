@@ -21,9 +21,11 @@ pilotis/
 │   └── templates/        # Jinja2
 ├── scripts/              # CLI scripts
 │   ├── importar_csv.py   # Importa cadastrados
-│   └── gerar_tokens.py   # Gera tokens únicos
+│   ├── gerar_tokens.py   # Gera tokens únicos
+│   └── backup_db.sh      # Dump SQL para versionamento
 ├── data/
-│   └── pilotis.db        # Banco SQLite (727 cadastrados)
+│   ├── pilotis.db        # Banco SQLite (727 cadastrados) — NÃO versionado
+│   └── backup.sql        # Dump SQL — versionado
 ├── desenvolvimento/
 │   ├── pilotis-briefing.md                      # Briefing completo
 │   └── cadastrados_docomomo_2025_consolidado.csv # Base inicial
@@ -39,11 +41,24 @@ source venv/bin/activate
 # Rodar servidor
 uvicorn pilotis.main:app --reload
 
+# Backup do banco (antes de commits)
+./scripts/backup_db.sh
+
 # Reimportar dados (limpa banco antes)
 rm data/pilotis.db
 python scripts/importar_csv.py desenvolvimento/cadastrados_docomomo_2025_consolidado.csv
 python scripts/gerar_tokens.py
+
+# Restaurar do backup SQL
+sqlite3 data/pilotis.db < data/backup.sql
 ```
+
+## Git
+
+- Primeiro commit: `2c2d942`
+- Branch: `master`
+- **Ignorados:** `venv/`, `.env`, `data/*.db`
+- **Versionado:** `data/backup.sql` (dump do banco)
 
 ## Banco de Dados
 

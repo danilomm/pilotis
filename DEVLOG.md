@@ -57,6 +57,20 @@ Todos os cadastrados possuem tokens únicos gerados.
 
 ---
 
+### Git e Backup ✓
+
+- Inicializado repositório git
+- Criado `.gitignore` (ignora `venv/`, `.env`, `data/*.db`)
+- Criado `scripts/backup_db.sh` — dump SQL versionável do banco
+- Primeiro commit: `2c2d942`
+
+**Estratégia de backup:**
+- Banco SQLite (`data/pilotis.db`) fica fora do git
+- Dump SQL (`data/backup.sql`) é versionado
+- Antes de commits, rodar `./scripts/backup_db.sh`
+
+---
+
 ## Próximas Fases
 
 ### Fase 3: Formulário de Filiação (pendente)
