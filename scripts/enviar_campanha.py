@@ -68,22 +68,63 @@ async def enviar_campanha(ano: int, dry_run: bool, tipo: str, limite: int | None
                 except Exception as e:
                     print(f" [ERRO: {e}]")
 
-    # Busca cadastrados para campanha de convite (nunca foram filiados)
-    if tipo in ("convite", "todos"):
-        nunca_filiados = fetchall(
+    # Busca participantes do seminário que nunca foram filiados
+    if tipo in ("seminario", "todos"):
+        participantes_seminario = fetchall(
             """
             SELECT c.* FROM cadastrados c
             WHERE c.id NOT IN (
                 SELECT DISTINCT cadastrado_id FROM pagamentos WHERE status = 'pago'
             )
-            AND c.categoria IN ('participante_seminario', 'cadastrado')
+            AND c.seminario_2025 = 1
             """,
             ()
         )
-        print(f"\n=== Campanha de Convite ===")
-        print(f"Cadastrados que nunca foram filiados: {len(nunca_filiados)}")
+        print(f"\n=== Campanha Participantes do Seminário ===")
+        print(f"Participantes do seminário que nunca foram filiados: {len(participantes_seminario)}")
 
-        for i, cadastrado in enumerate(nunca_filiados):
+        for i, cadastrado in enumerate(participantes_seminario):
+            if limite and i >= limite:
+                print(f"Limite de {limite} atingido.")
+                break
+
+            print(f"  [{i+1}] {cadastrado['nome']} <{cadastrado['email']}>", end="")
+
+            if dry_run:
+                print(" [DRY-RUN]")
+            else:
+                try:
+                    ok = await email.enviar_campanha_seminario(
+                        email=cadastrado["email"],
+                        nome=cadastrado["nome"],
+                        ano=ano,
+                        token=cadastrado["token"],
+                    )
+                    if ok:
+                        print(" [OK]")
+                        registrar_log("campanha_seminario", cadastrado["id"], f"Email seminário enviado para {ano}")
+                    else:
+                        print(" [ERRO]")
+                except Exception as e:
+                    print(f" [ERRO: {e}]")
+
+    # Busca outros cadastrados que nunca foram filiados (não participaram do seminário)
+    if tipo in ("convite", "todos"):
+        outros_cadastrados = fetchall(
+            """
+            SELECT c.* FROM cadastrados c
+            WHERE c.id NOT IN (
+                SELECT DISTINCT cadastrado_id FROM pagamentos WHERE status = 'pago'
+            )
+            AND c.categoria = 'cadastrado'
+            AND (c.seminario_2025 = 0 OR c.seminario_2025 IS NULL)
+            """,
+            ()
+        )
+        print(f"\n=== Campanha de Convite (outros cadastrados) ===")
+        print(f"Cadastrados que nunca foram filiados: {len(outros_cadastrados)}")
+
+        for i, cadastrado in enumerate(outros_cadastrados):
             if limite and i >= limite:
                 print(f"Limite de {limite} atingido.")
                 break
@@ -113,7 +154,7 @@ def main():
     parser = argparse.ArgumentParser(description="Envia campanha de filiação")
     parser.add_argument("--ano", type=int, required=True, help="Ano da campanha")
     parser.add_argument("--dry-run", action="store_true", help="Simula envio sem enviar")
-    parser.add_argument("--tipo", choices=["renovacao", "convite", "todos"], default="todos", help="Tipo de campanha")
+    parser.add_argument("--tipo", choices=["renovacao", "seminario", "convite", "todos"], default="todos", help="Tipo de campanha")
     parser.add_argument("--limite", type=int, help="Limite de emails por execução")
 
     args = parser.parse_args()

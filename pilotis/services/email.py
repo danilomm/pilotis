@@ -277,3 +277,40 @@ async def enviar_campanha_convite(
         assunto=f"Convite para Filiação - Docomomo Brasil {ano}",
         html=html,
     )
+
+
+async def enviar_campanha_seminario(
+    email: str,
+    nome: str,
+    ano: int,
+    token: str,
+) -> bool:
+    """
+    Envia email de campanha para participantes do seminário (convite especial).
+    """
+    link = f"{settings.BASE_URL}/filiacao/{ano}/{token}"
+
+    try:
+        template = jinja_env.get_template("campanha_seminario.html")
+        html = template.render(
+            nome=nome,
+            ano=ano,
+            link=link,
+        )
+    except Exception:
+        # Fallback
+        html = f"""
+        <h1>Filiação Docomomo Brasil {ano}</h1>
+        <p>Olá {nome},</p>
+        <p>Obrigado por sua participação no <strong>16º Seminário Docomomo Brasil</strong>!</p>
+        <p>Convidamos você a se filiar ao Docomomo Brasil e fortalecer nossa rede de documentação e conservação da arquitetura, urbanismo e paisagismo modernos.</p>
+        <p><a href="{link}">Clique aqui para se filiar</a></p>
+        <hr>
+        <p><small>Associação de Colaboradores do Docomomo Brasil<br>@docomomobrasil</small></p>
+        """
+
+    return await enviar_email(
+        para=email,
+        assunto=f"Filiação Docomomo Brasil {ano} - Participante do 16º Seminário",
+        html=html,
+    )
