@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article>
+    <header>
+        <h1>Filiacao Confirmada!</h1>
+    </header>
+
+    <section>
+        <p>{{ mensagem }}</p>
+
+        <table>
+            <tr>
+                <th>Nome</th>
+                <td>{{ cadastrado.nome }}</td>
+            </tr>
+            <tr>
+                <th>Email</th>
+                <td>{{ cadastrado.email }}</td>
+            </tr>
+            <tr>
+                <th>Categoria</th>
+                <td>{{ cadastrado.categoria }}</td>
+            </tr>
+            <tr>
+                <th>Ano</th>
+                <td>{{ ano }}</td>
+            </tr>
+        </table>
+    </section>
+
+    <footer>
+        <p>Obrigado por fazer parte do Docomomo Brasil!</p>
+    </footer>
+</article>
+{% endblock %}

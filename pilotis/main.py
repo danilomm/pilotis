@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import settings
 from .db import fetchone
+from .routers import filiacao
 
 app = FastAPI(
     title="Pilotis",
@@ -14,6 +15,9 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+# Registra routers
+app.include_router(filiacao.router)
 
 
 @app.get("/", response_class=HTMLResponse)

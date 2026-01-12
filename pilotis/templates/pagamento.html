@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article>
+    <header>
+        <h1>Pagamento - Filiacao {{ ano }}</h1>
+    </header>
+
+    <section>
+        <h2>Resumo</h2>
+        <table>
+            <tr>
+                <th>Nome</th>
+                <td>{{ cadastrado.nome }}</td>
+            </tr>
+            <tr>
+                <th>Email</th>
+                <td>{{ cadastrado.email }}</td>
+            </tr>
+            <tr>
+                <th>Categoria</th>
+                <td>{{ cadastrado.categoria }}</td>
+            </tr>
+            <tr>
+                <th>Valor</th>
+                <td><strong>{{ valor_formatado }}</strong></td>
+            </tr>
+        </table>
+    </section>
+
+    <section>
+        <h2>Pagamento via PIX</h2>
+
+        <aside>
+            <p><strong>Integracao PagBank pendente (Fase 4)</strong></p>
+            <p>O QR Code PIX sera exibido aqui apos a integracao com o PagBank.</p>
+        </aside>
+
+        <p>Status atual: <mark>{{ pagamento.status }}</mark></p>
+
+        <details>
+            <summary>Dados para pagamento manual (temporario)</summary>
+            <p>Enquanto a integracao nao esta pronta, entre em contato com a tesouraria:</p>
+            <ul>
+                <li>Email: tesouraria@docomomobrasil.com</li>
+                <li>Valor: {{ valor_formatado }}</li>
+                <li>Referencia: PILOTIS-{{ cadastrado.id }}-{{ ano }}</li>
+            </ul>
+        </details>
+    </section>
+
+    <footer>
+        <a href="/filiacao/{{ ano }}/{{ token }}" role="button" class="secondary">Voltar e editar dados</a>
+    </footer>
+</article>
+{% endblock %}

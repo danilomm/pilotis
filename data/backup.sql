@@ -21,6 +21,8 @@ CREATE TABLE log (
     cadastrado_id INTEGER,
     mensagem TEXT
 );
+INSERT INTO log VALUES(1,'2026-01-12 02:04:32','acesso_formulario',1,'Acesso ao formulário 2026');
+INSERT INTO log VALUES(2,'2026-01-12 02:04:39','acesso_formulario',1,'Acesso ao formulário 2026');
 CREATE TABLE IF NOT EXISTS "cadastrados" (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nome TEXT NOT NULL,
@@ -769,6 +771,7 @@ INSERT INTO cadastrados VALUES(723,'Ítalo Monteiro de Oliveira Mariano Gomes','
 INSERT INTO cadastrados VALUES(724,'Ítalo Tavares de Araújo Farias','italocorage@gmail.com',NULL,'(83) 99980-6192',NULL,NULL,NULL,NULL,'Brasil',NULL,NULL,'Universidade Federal do Rio Grande do Norte','participante_seminario',1,'2026-01-12 01:18:59',NULL,'QKOWi0P1l119yhtnDjjhjw',NULL,'fonte: seminario_2025; seminario_2025: sim');
 DELETE FROM sqlite_sequence;
 INSERT INTO sqlite_sequence VALUES('cadastrados',724);
+INSERT INTO sqlite_sequence VALUES('log',2);
 CREATE INDEX idx_pagamentos_status ON pagamentos(status);
 CREATE INDEX idx_pagamentos_ano ON pagamentos(ano);
 CREATE INDEX idx_cadastrados_email ON cadastrados(email);
