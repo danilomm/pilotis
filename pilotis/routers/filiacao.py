@@ -325,6 +325,21 @@ async def tela_pagamento(request: Request, ano: int, token: str):
         except Exception as e:
             erro_pagbank = str(e)
 
+    # Converte pagamento para dict para usar .get()
+    pagamento_dict = dict(pagamento)
+
+    # Busca dados de boleto se existir
+    boleto_data = None
+    if pagamento_dict.get("pagbank_boleto_link"):
+        boleto_data = {
+            "boleto_link": pagamento_dict["pagbank_boleto_link"],
+            "barcode": pagamento_dict.get("pagbank_boleto_barcode", ""),
+            "due_date": pagamento_dict.get("data_vencimento", ""),
+        }
+
+    # Chave publica para criptografia de cartao
+    pagbank_public_key = await pagbank.obter_chave_publica()
+
     return templates.TemplateResponse(
         "pagamento.html",
         {
@@ -332,9 +347,208 @@ async def tela_pagamento(request: Request, ano: int, token: str):
             "ano": ano,
             "token": token,
             "cadastrado": dict(cadastrado),
-            "pagamento": dict(pagamento),
+            "pagamento": pagamento_dict,
             "valor_formatado": formatar_valor(valor_centavos),
             "pix": pix_data,
+            "boleto": boleto_data,
+            "pagbank_public_key": pagbank_public_key,
             "erro_pagbank": erro_pagbank,
         },
     )
+
+
+@router.post("/{ano}/{token}/gerar-pix", response_class=HTMLResponse)
+async def gerar_pix(request: Request, ano: int, token: str):
+    """Gera cobranca PIX."""
+    from ..services import pagbank
+
+    cadastrado = buscar_cadastrado_por_token(token)
+    if not cadastrado:
+        raise HTTPException(status_code=404, detail="Token invalido")
+
+    pagamento = fetchone(
+        "SELECT * FROM pagamentos WHERE cadastrado_id = ? AND ano = ?",
+        (cadastrado["id"], ano)
+    )
+    if not pagamento:
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}")
+
+    if pagamento["status"] == "pago":
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
+
+    valor_centavos = int(pagamento["valor"] * 100)
+
+    try:
+        pix_data = await pagbank.criar_cobranca_pix(
+            cadastrado_id=cadastrado["id"],
+            ano=ano,
+            nome=cadastrado["nome"],
+            email=cadastrado["email"],
+            cpf=cadastrado["cpf"],
+            valor_centavos=valor_centavos,
+            dias_expiracao=3,
+        )
+
+        execute(
+            """
+            UPDATE pagamentos SET
+                pagbank_order_id = ?,
+                data_vencimento = ?,
+                metodo = 'pix'
+            WHERE id = ?
+            """,
+            (pix_data["order_id"], pix_data["expiration_date"], pagamento["id"])
+        )
+        registrar_log("pix_gerado", cadastrado["id"], f"PIX gerado: {pix_data['order_id']}")
+
+    except Exception as e:
+        registrar_log("erro_pagbank", cadastrado["id"], f"Erro ao criar PIX: {e}")
+
+    return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento", status_code=303)
+
+
+@router.post("/{ano}/{token}/gerar-boleto", response_class=HTMLResponse)
+async def gerar_boleto(request: Request, ano: int, token: str):
+    """Gera cobranca por boleto."""
+    from ..services import pagbank
+
+    cadastrado = buscar_cadastrado_por_token(token)
+    if not cadastrado:
+        raise HTTPException(status_code=404, detail="Token invalido")
+
+    pagamento = fetchone(
+        "SELECT * FROM pagamentos WHERE cadastrado_id = ? AND ano = ?",
+        (cadastrado["id"], ano)
+    )
+    if not pagamento:
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}")
+
+    if pagamento["status"] == "pago":
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
+
+    valor_centavos = int(pagamento["valor"] * 100)
+
+    # Monta endereco
+    endereco = {
+        "street": cadastrado.get("endereco") or "Nao informado",
+        "number": "S/N",
+        "locality": cadastrado.get("cidade") or "Nao informado",
+        "city": cadastrado.get("cidade") or "Nao informado",
+        "region_code": cadastrado.get("estado") or "DF",
+        "postal_code": (cadastrado.get("cep") or "70000000").replace("-", ""),
+    }
+
+    try:
+        boleto_data = await pagbank.criar_cobranca_boleto(
+            cadastrado_id=cadastrado["id"],
+            ano=ano,
+            nome=cadastrado["nome"],
+            email=cadastrado["email"],
+            cpf=cadastrado["cpf"],
+            valor_centavos=valor_centavos,
+            endereco=endereco,
+            dias_vencimento=3,
+        )
+
+        execute(
+            """
+            UPDATE pagamentos SET
+                pagbank_order_id = ?,
+                pagbank_charge_id = ?,
+                pagbank_boleto_link = ?,
+                pagbank_boleto_barcode = ?,
+                data_vencimento = ?,
+                metodo = 'boleto'
+            WHERE id = ?
+            """,
+            (
+                boleto_data["order_id"],
+                boleto_data["charge_id"],
+                boleto_data["boleto_link"],
+                boleto_data["barcode"],
+                boleto_data["due_date"],
+                pagamento["id"],
+            )
+        )
+        registrar_log("boleto_gerado", cadastrado["id"], f"Boleto gerado: {boleto_data['order_id']}")
+
+    except Exception as e:
+        registrar_log("erro_pagbank", cadastrado["id"], f"Erro ao criar boleto: {e}")
+
+    return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento", status_code=303)
+
+
+@router.post("/{ano}/{token}/pagar-cartao", response_class=HTMLResponse)
+async def pagar_cartao(
+    request: Request,
+    ano: int,
+    token: str,
+    card_encrypted: str = Form(...),
+    holder_name: str = Form(...),
+):
+    """Processa pagamento com cartao de credito."""
+    from ..services import pagbank
+
+    cadastrado = buscar_cadastrado_por_token(token)
+    if not cadastrado:
+        raise HTTPException(status_code=404, detail="Token invalido")
+
+    pagamento = fetchone(
+        "SELECT * FROM pagamentos WHERE cadastrado_id = ? AND ano = ?",
+        (cadastrado["id"], ano)
+    )
+    if not pagamento:
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}")
+
+    if pagamento["status"] == "pago":
+        return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
+
+    valor_centavos = int(pagamento["valor"] * 100)
+
+    try:
+        cartao_data = await pagbank.criar_cobranca_cartao(
+            cadastrado_id=cadastrado["id"],
+            ano=ano,
+            nome=cadastrado["nome"],
+            email=cadastrado["email"],
+            cpf=cadastrado["cpf"],
+            valor_centavos=valor_centavos,
+            card_encrypted=card_encrypted,
+            holder_name=holder_name,
+        )
+
+        execute(
+            """
+            UPDATE pagamentos SET
+                pagbank_order_id = ?,
+                pagbank_charge_id = ?,
+                metodo = 'cartao'
+            WHERE id = ?
+            """,
+            (cartao_data["order_id"], cartao_data["charge_id"], pagamento["id"])
+        )
+
+        # Se pagamento aprovado imediatamente
+        if cartao_data["status"] == "PAID":
+            execute(
+                "UPDATE pagamentos SET status = 'pago', data_pagamento = ? WHERE id = ?",
+                (datetime.now().isoformat(), pagamento["id"])
+            )
+            registrar_log("pagamento_cartao", cadastrado["id"], f"Pagamento com cartao aprovado: {cartao_data['order_id']}")
+
+            return templates.TemplateResponse(
+                "confirmacao.html",
+                {
+                    "request": request,
+                    "cadastrado": dict(cadastrado),
+                    "ano": ano,
+                    "mensagem": "Pagamento aprovado! Sua filiacao esta confirmada.",
+                },
+            )
+        else:
+            registrar_log("cartao_pendente", cadastrado["id"], f"Cartao pendente/recusado: {cartao_data['status']}")
+
+    except Exception as e:
+        registrar_log("erro_pagbank", cadastrado["id"], f"Erro ao processar cartao: {e}")
+
+    return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento", status_code=303)

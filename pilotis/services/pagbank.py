@@ -63,8 +63,11 @@ async def criar_cobranca_pix(
             "amount": {"value": valor_centavos},
             "expiration_date": expiration,
         }],
-        "notification_urls": [f"{settings.BASE_URL}/webhook/pagbank"],
     }
+
+    # Só adiciona webhook se não for localhost (PagBank não aceita)
+    if not settings.BASE_URL.startswith("http://localhost"):
+        payload["notification_urls"] = [f"{settings.BASE_URL}/webhook/pagbank"]
 
     # Remove tax_id se não tiver CPF
     if not payload["customer"]["tax_id"]:
@@ -282,6 +285,35 @@ async def criar_cobranca_cartao(
             "reference_id": reference_id,
             "status": charge_data.get("status", ""),
         }
+
+
+async def obter_chave_publica() -> str:
+    """
+    Obtem chave publica para criptografia de cartao.
+
+    No sandbox, retorna a chave padrao de teste.
+    Em producao, busca da API.
+    """
+    if settings.PAGBANK_SANDBOX:
+        # Chave publica padrao do sandbox
+        return "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr+ZqgD892U9/HXsa7XqBZUayPquAfh9xx4iwUbTSUAvTlmiXFQNTp0Bvt/5vK2FhMj39qSv1zi2OuBjvW38q1E374nzx6NNBL5JosV0+SDINTlCG0cmigHuBOyWzYmjgca+mtQu4WczCaApNaSuVqgb8u7Bd9GCOL4YJotvV5+81frlSwQXralhwRzGhj/A57CGPgGKiuPT+AOGmykIGEZsSD9RKkyoKIoc0OS8CPIzdBOtTQCIwrLn2FxI83Clcg55W8gkFSOS6rWNbG5qFZWMll6yl02HtunalHmUlRUL66YeGXdMDC2PuRcmZbGO5a/2tbVppW6mfSWG3NPRpgwIDAQAB"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{get_api_url()}/public-keys",
+                headers=get_headers(),
+                json={"type": "card"},
+                timeout=30.0,
+            )
+
+            if response.status_code in (200, 201):
+                data = response.json()
+                return data.get("public_key", "")
+    except Exception:
+        pass
+
+    return ""
 
 
 async def consultar_pedido(order_id: str) -> dict:
