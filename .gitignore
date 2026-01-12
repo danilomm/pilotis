@@ -15,3 +15,4 @@ data/*.db-journal
 # IDE
 .vscode/
 .idea/
+data/.~lock.*
