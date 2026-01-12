@@ -24,8 +24,9 @@ pilotis/
 │   ├── gerar_tokens.py   # Gera tokens únicos
 │   └── backup_db.sh      # Dump SQL para versionamento
 ├── data/
-│   ├── pilotis.db        # Banco SQLite (724 cadastrados) — NÃO versionado
-│   └── backup.sql        # Dump SQL — versionado
+│   ├── pilotis.db              # Banco SQLite (724 cadastrados) — NÃO versionado
+│   ├── backup.sql              # Dump SQL — versionado
+│   └── cadastrados_revisados.ods  # Planilha para revisão manual
 ├── desenvolvimento/
 │   ├── pilotis-briefing.md                      # Briefing completo
 │   └── cadastrados_docomomo_2025_consolidado.csv # Base inicial
@@ -81,6 +82,13 @@ sqlite3 data/pilotis.db < data/backup.sql
 - Unifica registros mantendo dados mais completos
 - Agrega múltiplos emails no formato `email1; email2`
 - Lista de exceções em `EXCECOES` para nomes similares que são pessoas diferentes
+
+**Dados limpos e normalizados:**
+- CEP: formato `00000-000`
+- Telefone: formato `(XX) XXXXX-XXXX`
+- Estado: UF de 2 letras
+- Endereços: sem duplicação de cidade/estado
+- Planilha ODS disponível em `data/cadastrados_revisados.ods`
 
 ## Briefing Completo
 

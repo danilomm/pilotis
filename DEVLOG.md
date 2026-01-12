@@ -72,6 +72,22 @@ Todos os cadastrados possuem tokens únicos gerados.
 
 ---
 
+### Limpeza e Normalização de Dados ✓
+
+Revisão geral da tabela com 81 correções:
+
+**Normalizações aplicadas:**
+- CEP: formato `00000-000`, extraído do endereço quando duplicado
+- Telefone: formato `(XX) XXXXX-XXXX`
+- Estado: UF de 2 letras
+- País: `Brazil` → `Brasil`, `Italia` → `Itália`
+- Endereço: remoção de cidade/estado duplicados, padronização de abreviações
+
+**Exportação:**
+- Arquivo `data/cadastrados_revisados.ods` para revisão manual
+
+---
+
 ### Git e Backup ✓
 
 - Inicializado repositório git
