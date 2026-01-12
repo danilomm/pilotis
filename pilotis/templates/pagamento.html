@@ -117,22 +117,22 @@
         <div class="payment-tabs">
             <!-- Labels das abas -->
             <div class="tab-labels">
-                <label class="active" onclick="showTab('pix')">
+                <label class="{% if pagamento.metodo == 'pix' or not pagamento.metodo %}active{% endif %}" onclick="showTab('pix')">
                     <span class="metodo-icone">⚡</span>
                     PIX
                 </label>
-                <label onclick="showTab('boleto')">
+                <label class="{% if pagamento.metodo == 'boleto' %}active{% endif %}" onclick="showTab('boleto')">
                     <span class="metodo-icone">📄</span>
                     Boleto
                 </label>
-                <label onclick="showTab('cartao')">
+                <label class="{% if pagamento.metodo == 'cartao' %}active{% endif %}" onclick="showTab('cartao')">
                     <span class="metodo-icone">💳</span>
                     Cartao
                 </label>
             </div>
 
             <!-- Conteudo PIX -->
-            <div id="tab-pix" class="tab-content active">
+            <div id="tab-pix" class="tab-content {% if pagamento.metodo == 'pix' or not pagamento.metodo %}active{% endif %}">
                 {% if pix %}
                 <p>Escaneie o QR Code abaixo ou copie o codigo PIX:</p>
 
@@ -167,7 +167,7 @@
             </div>
 
             <!-- Conteudo Boleto -->
-            <div id="tab-boleto" class="tab-content">
+            <div id="tab-boleto" class="tab-content {% if pagamento.metodo == 'boleto' %}active{% endif %}">
                 {% if boleto %}
                 <p>Seu boleto foi gerado com sucesso!</p>
 
@@ -202,7 +202,7 @@
             </div>
 
             <!-- Conteudo Cartao -->
-            <div id="tab-cartao" class="tab-content">
+            <div id="tab-cartao" class="tab-content {% if pagamento.metodo == 'cartao' %}active{% endif %}">
                 <p>Pague com cartao de credito (parcela unica).</p>
 
                 <form id="form-cartao" action="/filiacao/{{ ano }}/{{ token }}/pagar-cartao" method="post">

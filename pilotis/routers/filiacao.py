@@ -428,14 +428,17 @@ async def gerar_boleto(request: Request, ano: int, token: str):
 
     valor_centavos = int(pagamento["valor"] * 100)
 
+    # Converte para dict para usar .get()
+    cad = dict(cadastrado)
+
     # Monta endereco
     endereco = {
-        "street": cadastrado.get("endereco") or "Nao informado",
+        "street": cad.get("endereco") or "Nao informado",
         "number": "S/N",
-        "locality": cadastrado.get("cidade") or "Nao informado",
-        "city": cadastrado.get("cidade") or "Nao informado",
-        "region_code": cadastrado.get("estado") or "DF",
-        "postal_code": (cadastrado.get("cep") or "70000000").replace("-", ""),
+        "locality": cad.get("cidade") or "Nao informado",
+        "city": cad.get("cidade") or "Nao informado",
+        "region_code": cad.get("estado") or "DF",
+        "postal_code": (cad.get("cep") or "70000000").replace("-", ""),
     }
 
     try:

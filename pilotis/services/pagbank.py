@@ -156,20 +156,24 @@ async def criar_cobranca_boleto(
                         "tax_id": cpf.replace(".", "").replace("-", "") if cpf else "",
                         "email": email,
                         "address": {
-                            "street": endereco.get("street", ""),
-                            "number": endereco.get("number", "S/N"),
-                            "locality": endereco.get("locality", ""),
-                            "city": endereco.get("city", ""),
-                            "region_code": endereco.get("region_code", ""),
+                            "street": endereco.get("street", "")[:60],
+                            "number": endereco.get("number", "S/N")[:8],
+                            "locality": endereco.get("locality", "")[:60],
+                            "city": endereco.get("city", "")[:60],
+                            "region": endereco.get("region_code", "DF")[:2],
+                            "region_code": endereco.get("region_code", "DF")[:2],
                             "country": "BRA",
-                            "postal_code": endereco.get("postal_code", "").replace("-", ""),
+                            "postal_code": endereco.get("postal_code", "").replace("-", "")[:8],
                         },
                     },
                 },
             },
         }],
-        "notification_urls": [f"{settings.BASE_URL}/webhook/pagbank"],
     }
+
+    # Só adiciona webhook se não for localhost
+    if not settings.BASE_URL.startswith("http://localhost"):
+        payload["notification_urls"] = [f"{settings.BASE_URL}/webhook/pagbank"]
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -260,8 +264,11 @@ async def criar_cobranca_cartao(
                 },
             },
         }],
-        "notification_urls": [f"{settings.BASE_URL}/webhook/pagbank"],
     }
+
+    # Só adiciona webhook se não for localhost
+    if not settings.BASE_URL.startswith("http://localhost"):
+        payload["notification_urls"] = [f"{settings.BASE_URL}/webhook/pagbank"]
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
