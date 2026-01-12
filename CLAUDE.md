@@ -4,106 +4,122 @@ Sistema de gestão de filiados do Docomomo Brasil.
 
 ## Status Atual
 
-**Fases concluídas:** 1, 2 e 3 de 5
-**Próxima fase:** 4 (Integração PagBank)
+**Fases concluídas:** 1, 2, 3, 4 e 5 ✓
+**Pendente:** Configurar credenciais e testar em produção
 
 ## Estrutura do Projeto
 
 ```
 pilotis/
-├── pilotis/              # Módulo Python principal
-│   ├── main.py           # FastAPI app
-│   ├── config.py         # Settings do .env
-│   ├── db.py             # SQLite + schema
-│   ├── models.py         # Dataclasses
+├── pilotis/
+│   ├── main.py
+│   ├── config.py
+│   ├── db.py
+│   ├── models.py
 │   ├── routers/
-│   │   └── filiacao.py   # Formulário de filiação
-│   ├── services/         # PagBank, Email (a implementar)
+│   │   ├── filiacao.py      # Formulário e pagamento
+│   │   ├── filiados.py      # Lista pública
+│   │   └── webhook.py       # PagBank callbacks
+│   ├── services/
+│   │   ├── pagbank.py       # API PagBank (PIX)
+│   │   ├── email.py         # API Brevo
+│   │   └── pdf.py           # Declaração de filiação
 │   ├── static/
-│   │   └── logo-docomomo.png
+│   │   ├── logo-docomomo.png
+│   │   └── logo-docomomo.jpg
 │   └── templates/
 │       ├── base.html
+│       ├── entrada.html
 │       ├── filiacao.html
 │       ├── pagamento.html
-│       └── confirmacao.html
+│       ├── confirmacao.html
+│       ├── filiados.html
+│       └── emails/
+│           ├── confirmacao.html
+│           ├── lembrete.html
+│           ├── campanha_renovacao.html
+│           ├── campanha_convite.html
+│           └── campanha_seminario.html
 ├── scripts/
 │   ├── importar_csv.py
 │   ├── gerar_tokens.py
-│   └── backup_db.sh
-├── data/
-│   ├── pilotis.db
-│   ├── backup.sql
-│   └── cadastrados_revisados.ods
-└── desenvolvimento/
-    ├── pilotis-briefing.md
-    ├── Logo-Docomomo-Br-768x184.png
-    └── seminario-docomomo-2025-inscritos.xlsx
+│   ├── backup_db.sh
+│   ├── enviar_campanha.py
+│   └── enviar_lembretes.py
+└── data/
+    └── pilotis.db
 ```
 
-## Categorias de Filiação
+## Rotas
 
-| Categoria (interno) | Nome no formulário | Valor |
-|---------------------|-------------------|-------|
-| profissional_internacional | Docomomo. Filiado Pleno Internacional + Brasil | R$ 460,00 |
-| profissional_nacional | Docomomo. Filiado Pleno Brasil | R$ 230,00 |
-| estudante | Docomomo. Filiado Estudante (Graduação/Pós) Brasil | R$ 115,00 |
-| participante_seminario | (não aparece no formulário) | — |
-| cadastrado | (não aparece no formulário) | — |
+| Rota | Função |
+|------|--------|
+| `GET /filiacao/{ano}` | Entrada por email |
+| `GET /filiacao/{ano}/{token}` | Formulário pré-preenchido |
+| `POST /filiacao/{ano}/{token}` | Salvar e criar pagamento |
+| `GET /filiacao/{ano}/{token}/pagamento` | QR Code PIX |
+| `GET /filiados/{ano}` | Lista pública de filiados |
+| `POST /webhook/pagbank` | Confirmação de pagamento |
 
-## Banco de Dados
+## Categorias
 
-**Tabelas:**
-- `cadastrados` — dados pessoais + token + seminario_2025 + observacoes_filiado
-- `pagamentos` — histórico de pagamentos por ano
-- `log` — registro de eventos
+| Interno | Display | Valor |
+|---------|---------|-------|
+| profissional_internacional | Filiado Pleno Internacional+Brasil | R$ 460 |
+| profissional_nacional | Filiado Pleno Brasil | R$ 230 |
+| estudante | Filiado Estudante Brasil | R$ 115 |
 
-**Campos obrigatórios no formulário:**
-- nome, email, cpf, telefone, endereco, cep, cidade, estado, pais, categoria
+## Scripts
 
-**Campos opcionais:**
-- profissao, formacao, instituicao, observacoes_filiado
+```bash
+# Campanha
+python scripts/enviar_campanha.py --ano 2026 --dry-run
+python scripts/enviar_campanha.py --ano 2026 --tipo seminario
 
-## Referência para Emails (Fase 5)
+# Lembretes (rodar via cron)
+python scripts/enviar_lembretes.py
 
-### Tom e estrutura sugerida:
+# Backup
+./scripts/backup_db.sh
+```
 
-**Email para filiados existentes (renovação):**
-- Saudação e votos para o ano
-- Resumo de eventos/atividades do ano
-- Benefícios da filiação
-- Link personalizado para renovação
-- Valores e categorias
-- Assinatura da diretoria
+## Fluxos
 
-**Email para novos (participantes do seminário):**
-- Convite para se filiar
-- Benefícios da filiação
-- Link personalizado para filiação
-- Valores e categorias
+**Filiação:**
+1. Pessoa acessa `/filiacao/2026` ou clica link do email
+2. Informa email → sistema busca/cria cadastro
+3. Preenche formulário → cria pagamento pendente
+4. Gera PIX (3 dias validade) → mostra QR Code
+5. Pagamento confirmado via webhook → email + PDF
 
-**Benefícios a destacar (do email antigo):**
-- Descontos em eventos do Docomomo Brasil e núcleos regionais
-- Para internacional: Docomomo Journal, Docomomo Member Card, descontos em museus
+**Campanhas:**
+- `renovacao`: filiados do ano anterior
+- `seminario`: participantes do 16º Seminário não filiados
+- `convite`: outros cadastrados
 
-### Lembretes:
-- 3 dias após preenchimento sem pagamento
-- 7 dias
-- 15 dias (último aviso)
+**Lembretes:**
+- No dia do vencimento
+- Semanalmente após vencer
 
-### Prazos da campanha 2026:
-- A definir
+## Declaração PDF
 
-## Comandos Úteis
+Gerada com ReportLab, texto justificado:
+- Logo JPG (sem transparência)
+- Nome, categoria, valor, ano
+- Assinatura: Marta Peixoto, Coordenadora, Gestão 2026-2027
+
+## Comandos
 
 ```bash
 source venv/bin/activate
 uvicorn pilotis.main:app --reload
-./scripts/backup_db.sh
 ```
 
-## Próximos Passos (Fase 4)
+## Credenciais (.env)
 
-1. Criar `pilotis/services/pagbank.py`
-2. Integrar criação de cobrança PIX após submit do formulário
-3. Exibir QR Code real na tela de pagamento
-4. Implementar webhook para confirmação de pagamento
+```
+PAGBANK_TOKEN=...
+PAGBANK_SANDBOX=true
+BREVO_API_KEY=...
+BASE_URL=https://pilotis.docomomobrasil.com
+```
