@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { color: #4a8c4a; }
+        .destaque { background: #f0f7f0; padding: 15px; border-left: 4px solid #4a8c4a; margin: 20px 0; }
+        .valores { margin: 20px 0; }
+        .valores li { margin: 8px 0; }
+        .botao { display: inline-block; background: #4a8c4a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 15px 0; }
+        .rodape { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Convite para Filiação {{ ano }}</h1>
+
+    <p>Olá {{ nome }},</p>
+
+    <p>Gostaríamos de convidar você a se filiar ao <strong>Docomomo Brasil</strong>!</p>
+
+    <p>O <strong>Docomomo</strong> (Documentation and Conservation of buildings, sites and neighbourhoods of the Modern Movement) é uma organização internacional dedicada à documentação e conservação do patrimônio moderno. No Brasil, reunimos arquitetos, urbanistas, historiadores, pesquisadores e entusiastas do modernismo.</p>
+
+    <div class="destaque">
+        <p><strong>Benefícios da filiação:</strong></p>
+        <ul>
+            <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
+            <li>Acesso à rede de profissionais e pesquisadores</li>
+            <li>Participação nas atividades e publicações</li>
+            <li><em>Para filiação internacional:</em> Docomomo Journal, Member Card, descontos em museus</li>
+        </ul>
+    </div>
+
+    <p><strong>Valores {{ ano }}:</strong></p>
+    <ul class="valores">
+        <li><strong>Filiação Plena Internacional+Brasil:</strong> R$ 460,00</li>
+        <li><strong>Filiação Plena Brasil:</strong> R$ 230,00</li>
+        <li><strong>Filiação Estudante Brasil:</strong> R$ 115,00</li>
+    </ul>
+
+    <p><a href="{{ link }}" class="botao">Filiar-se ao Docomomo Brasil</a></p>
+
+    <p><small>Se você não deseja mais receber nossos emails, basta responder a esta mensagem.</small></p>
+
+    <div class="rodape">
+        <p>
+            <strong>Associação de Colaboradores do Docomomo Brasil</strong><br>
+            <a href="https://instagram.com/docomomobrasil">@docomomobrasil</a><br>
+            <a href="https://docomomobrasil.com">docomomobrasil.com</a>
+        </p>
+    </div>
+</body>
+</html>

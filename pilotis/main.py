@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from .config import settings
 from .db import fetchone
-from .routers import filiacao
+from .routers import filiacao, filiados, webhook
 
 app = FastAPI(
     title="Pilotis",
@@ -22,6 +22,8 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 
 # Registra routers
 app.include_router(filiacao.router)
+app.include_router(filiados.router)
+app.include_router(webhook.router)
 
 
 @app.get("/", response_class=HTMLResponse)

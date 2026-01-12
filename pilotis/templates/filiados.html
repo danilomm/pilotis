@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article>
+    <header>
+        <h1>Filiados {{ ano }}</h1>
+        <p>{{ total }} filiados adimplentes</p>
+    </header>
+
+    {% for categoria in categorias %}
+    <section>
+        <h2>{{ categoria.nome }}</h2>
+        <p><small>{{ categoria.total }} filiados</small></p>
+
+        <ul>
+        {% for filiado in categoria.filiados %}
+            <li>
+                <strong>{{ filiado.nome }}</strong>
+                {% if filiado.instituicao %}({{ filiado.instituicao }}){% endif %}
+            </li>
+        {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
+
+    {% if not categorias %}
+    <p>Nenhum filiado adimplente para {{ ano }} ainda.</p>
+    {% endif %}
+
+    <footer>
+        <hr>
+        <p>
+            Associação de Colaboradores do Docomomo Brasil<br>
+            <a href="https://instagram.com/docomomobrasil" target="_blank">@docomomobrasil</a>
+        </p>
+    </footer>
+</article>
+{% endblock %}

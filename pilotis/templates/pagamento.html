@@ -31,26 +31,66 @@
     <section>
         <h2>Pagamento via PIX</h2>
 
+        {% if erro_pagbank %}
+        <aside style="background-color: #fee; border-left-color: #c00;">
+            <p><strong>Erro ao gerar cobrança</strong></p>
+            <p>{{ erro_pagbank }}</p>
+            <p>Entre em contato com a tesouraria: <a href="mailto:tesouraria@docomomobrasil.com">tesouraria@docomomobrasil.com</a></p>
+        </aside>
+        {% elif pix %}
+
+        <p>Escaneie o QR Code abaixo ou copie o código PIX:</p>
+
+        {% if pix.qr_code_link %}
+        <div style="text-align: center; margin: 2rem 0;">
+            <img src="{{ pix.qr_code_link }}" alt="QR Code PIX" style="max-width: 250px;">
+        </div>
+        {% endif %}
+
+        {% if pix.qr_code %}
+        <div>
+            <label for="pix-code">Código PIX (Copia e Cola):</label>
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" id="pix-code" value="{{ pix.qr_code }}" readonly style="flex: 1; font-size: 0.85rem;">
+                <button type="button" onclick="copiarPix()" class="secondary" style="width: auto;">Copiar</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <p><small>Validade: {{ pix.expiration_date[:10] if pix.expiration_date else '3 dias' }}</small></p>
+
         <aside>
-            <p><strong>Integração PagBank pendente (Fase 4)</strong></p>
-            <p>O QR Code PIX será exibido aqui após a integração com o PagBank.</p>
+            <p><strong>Após o pagamento</strong></p>
+            <p>O sistema será notificado automaticamente. Você receberá um email de confirmação em até 5 minutos após a compensação do PIX.</p>
         </aside>
 
-        <p>Status atual: <mark>{{ pagamento.status }}</mark></p>
-
-        <details>
-            <summary>Dados para pagamento manual (temporário)</summary>
-            <p>Enquanto a integração não está pronta, entre em contato com a tesouraria:</p>
+        {% else %}
+        <aside>
+            <p><strong>Integração PagBank não configurada</strong></p>
+            <p>Entre em contato com a tesouraria para realizar o pagamento:</p>
             <ul>
-                <li>Email: tesouraria@docomomobrasil.com</li>
+                <li>Email: <a href="mailto:tesouraria@docomomobrasil.com">tesouraria@docomomobrasil.com</a></li>
                 <li>Valor: {{ valor_formatado }}</li>
                 <li>Referência: PILOTIS-{{ cadastrado.id }}-{{ ano }}</li>
             </ul>
-        </details>
+        </aside>
+        {% endif %}
+
+        <p>Status atual: <mark>{{ pagamento.status }}</mark></p>
     </section>
 
     <footer>
         <a href="/filiacao/{{ ano }}/{{ token }}" role="button" class="secondary">Voltar e editar dados</a>
     </footer>
 </article>
+
+<script>
+function copiarPix() {
+    const input = document.getElementById('pix-code');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value);
+    alert('Código PIX copiado!');
+}
+</script>
 {% endblock %}
