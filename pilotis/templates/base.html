@@ -8,6 +8,11 @@
     <style>
         :root {
             --pico-font-size: 100%;
+            --pico-primary: #4a8c4a;
+            --pico-primary-hover: #3d733d;
+            --pico-primary-focus: rgba(74, 140, 74, 0.25);
+            --docomomo-verde-claro: #7ab648;
+            --docomomo-verde-escuro: #4a8c4a;
         }
         body {
             padding: 1rem;
@@ -15,23 +20,66 @@
         header {
             margin-bottom: 2rem;
         }
-        .logo {
+        .logo-container {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .logo-container img {
+            max-width: 300px;
+            height: auto;
+        }
+        .logo-text {
             font-weight: bold;
-            font-size: 1.5rem;
+            font-size: 1.2rem;
+            color: var(--docomomo-verde-escuro);
+        }
+        h1, h2, h3 {
+            color: var(--docomomo-verde-escuro);
+        }
+        article {
+            border-top: 4px solid var(--docomomo-verde-claro);
+        }
+        button[type="submit"],
+        input[type="submit"],
+        [role="button"].primary {
+            background-color: var(--docomomo-verde-escuro);
+            border-color: var(--docomomo-verde-escuro);
+        }
+        button[type="submit"]:hover,
+        input[type="submit"]:hover,
+        [role="button"].primary:hover {
+            background-color: var(--docomomo-verde-claro);
+            border-color: var(--docomomo-verde-claro);
+        }
+        mark {
+            background-color: var(--docomomo-verde-claro);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+        }
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #666;
+        }
+        fieldset {
+            border-left: 3px solid var(--docomomo-verde-claro);
+            padding-left: 1rem;
+        }
+        legend {
+            color: var(--docomomo-verde-escuro);
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <main class="container">
         <header>
-            <nav>
-                <ul>
-                    <li><a href="/" class="logo">Pilotis</a></li>
-                </ul>
-                <ul>
-                    <li><small>Docomomo Brasil</small></li>
-                </ul>
-            </nav>
+            <div class="logo-container">
+                <a href="/">
+                    <img src="/static/logo-docomomo.png" alt="Docomomo Brasil">
+                </a>
+            </div>
         </header>
 
         {% block content %}
@@ -40,7 +88,10 @@
 
         <footer>
             <hr>
-            <small>Pilotis v0.1.0</small>
+            <small>
+                Docomomo Brasil - Pilotis v0.1.0<br>
+                Desenvolvido por Danilo Matoso (Tesoureiro) com assistência de Claude Code
+            </small>
         </footer>
     </main>
 </body>

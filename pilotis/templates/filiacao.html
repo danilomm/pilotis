@@ -3,13 +3,13 @@
 {% block content %}
 <article>
     <header>
-        <h1>Filiacao Docomomo Brasil {{ ano }}</h1>
-        <p>Preencha ou atualize seus dados para prosseguir com a filiacao.</p>
+        <h1>Filiação Docomomo Brasil {{ ano }}</h1>
+        <p>Preencha ou atualize seus dados para prosseguir com a filiação.</p>
     </header>
 
     {% if pagamento_existente and pagamento_existente.status == 'pago' %}
     <aside>
-        <p><strong>Sua filiacao {{ ano }} ja esta confirmada!</strong></p>
+        <p><strong>Sua filiação {{ ano }} já está confirmada!</strong></p>
     </aside>
     {% endif %}
 
@@ -30,50 +30,50 @@
 
             <div class="grid">
                 <label for="cpf">
-                    CPF
+                    CPF *
                     <input type="text" id="cpf" name="cpf" value="{{ cadastrado.cpf or '' }}"
-                           placeholder="000.000.000-00">
+                           placeholder="000.000.000-00" required>
                 </label>
 
                 <label for="telefone">
-                    Telefone
+                    Telefone *
                     <input type="tel" id="telefone" name="telefone" value="{{ cadastrado.telefone or '' }}"
-                           placeholder="(00) 00000-0000">
+                           placeholder="(00) 00000-0000" required>
                 </label>
             </div>
         </fieldset>
 
         <fieldset>
-            <legend>Endereco</legend>
+            <legend>Endereço</legend>
 
             <label for="endereco">
-                Endereco
+                Endereço *
                 <input type="text" id="endereco" name="endereco" value="{{ cadastrado.endereco or '' }}"
-                       placeholder="Rua, numero, complemento">
+                       placeholder="Rua, número, complemento" required>
             </label>
 
             <div class="grid">
                 <label for="cep">
-                    CEP
+                    CEP *
                     <input type="text" id="cep" name="cep" value="{{ cadastrado.cep or '' }}"
-                           placeholder="00000-000">
+                           placeholder="00000-000" required>
                 </label>
 
                 <label for="cidade">
-                    Cidade
-                    <input type="text" id="cidade" name="cidade" value="{{ cadastrado.cidade or '' }}">
+                    Cidade *
+                    <input type="text" id="cidade" name="cidade" value="{{ cadastrado.cidade or '' }}" required>
                 </label>
 
                 <label for="estado">
-                    Estado
+                    Estado *
                     <input type="text" id="estado" name="estado" value="{{ cadastrado.estado or '' }}"
-                           placeholder="UF" maxlength="2">
+                           placeholder="UF" maxlength="2" required>
                 </label>
             </div>
 
             <label for="pais">
-                Pais
-                <input type="text" id="pais" name="pais" value="{{ cadastrado.pais or 'Brasil' }}">
+                País *
+                <input type="text" id="pais" name="pais" value="{{ cadastrado.pais or 'Brasil' }}" required>
             </label>
         </fieldset>
 
@@ -81,24 +81,24 @@
             <legend>Dados Profissionais</legend>
 
             <label for="profissao">
-                Profissao
+                Profissão
                 <input type="text" id="profissao" name="profissao" value="{{ cadastrado.profissao or '' }}">
             </label>
 
             <label for="formacao">
-                Formacao
+                Formação
                 <input type="text" id="formacao" name="formacao" value="{{ cadastrado.formacao or '' }}"
-                       placeholder="Ex: Graduacao, Mestrado, Doutorado">
+                       placeholder="Ex: Graduação, Mestrado, Doutorado">
             </label>
 
             <label for="instituicao">
-                Instituicao
+                Instituição
                 <input type="text" id="instituicao" name="instituicao" value="{{ cadastrado.instituicao or '' }}">
             </label>
         </fieldset>
 
         <fieldset>
-            <legend>Categoria de Filiacao *</legend>
+            <legend>Categoria de Filiação *</legend>
 
             {% for cat in categorias %}
             <label>
@@ -107,6 +107,15 @@
                 {{ cat.label }}
             </label>
             {% endfor %}
+        </fieldset>
+
+        <fieldset>
+            <legend>Observações</legend>
+            <label for="observacoes_filiado">
+                Deixe uma mensagem para a Diretoria (opcional)
+                <textarea id="observacoes_filiado" name="observacoes_filiado" rows="3"
+                          placeholder="Escreva aqui se quiser enviar alguma mensagem...">{{ cadastrado.observacoes_filiado or '' }}</textarea>
+            </label>
         </fieldset>
 
         <button type="submit">Prosseguir para Pagamento</button>

@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS cadastrados (
     data_atualizacao DATETIME,
     token TEXT UNIQUE,
     token_expira DATETIME,
-    observacoes TEXT
+    observacoes TEXT,
+    observacoes_filiado TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pagamentos (

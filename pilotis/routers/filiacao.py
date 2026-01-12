@@ -13,9 +13,9 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 
 # Categorias válidas para filiação (exclui cadastrado e participante_seminario)
 CATEGORIAS_FILIACAO = [
-    ("estudante", "Estudante", settings.VALOR_ESTUDANTE),
-    ("profissional_nacional", "Profissional Nacional", settings.VALOR_PROFISSIONAL),
-    ("profissional_internacional", "Profissional Internacional", settings.VALOR_INTERNACIONAL),
+    ("profissional_internacional", "Docomomo. Filiado Pleno Internacional + Brasil", settings.VALOR_INTERNACIONAL),
+    ("profissional_nacional", "Docomomo. Filiado Pleno Brasil", settings.VALOR_PROFISSIONAL),
+    ("estudante", "Docomomo. Filiado Estudante (Graduacao/Pos) Brasil", settings.VALOR_ESTUDANTE),
 ]
 
 
@@ -89,6 +89,7 @@ async def salvar_filiacao(
     formacao: str = Form(None),
     instituicao: str = Form(None),
     categoria: str = Form(...),
+    observacoes_filiado: str = Form(None),
 ):
     """Salva dados atualizados e redireciona para pagamento."""
     cadastrado = buscar_cadastrado_por_token(token)
@@ -107,13 +108,15 @@ async def salvar_filiacao(
         UPDATE cadastrados SET
             nome = ?, email = ?, cpf = ?, telefone = ?, endereco = ?,
             cep = ?, cidade = ?, estado = ?, pais = ?, profissao = ?,
-            formacao = ?, instituicao = ?, categoria = ?, data_atualizacao = ?
+            formacao = ?, instituicao = ?, categoria = ?,
+            observacoes_filiado = ?, data_atualizacao = ?
         WHERE id = ?
         """,
         (
             nome.strip(), email.strip(), cpf, telefone, endereco,
             cep, cidade, estado, pais, profissao,
-            formacao, instituicao, categoria, datetime.now().isoformat(),
+            formacao, instituicao, categoria,
+            observacoes_filiado, datetime.now().isoformat(),
             cadastrado["id"],
         ),
     )

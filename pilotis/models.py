@@ -29,6 +29,7 @@ class Cadastrado:
     token: str | None = None
     token_expira: datetime | None = None
     observacoes: str | None = None
+    observacoes_filiado: str | None = None
 
     @classmethod
     def from_row(cls, row) -> "Cadastrado":
@@ -56,6 +57,7 @@ class Cadastrado:
             token=row["token"],
             token_expira=row["token_expira"],
             observacoes=row["observacoes"],
+            observacoes_filiado=row["observacoes_filiado"] if "observacoes_filiado" in row.keys() else None,
         )
 
     def emails_lista(self) -> list[str]:

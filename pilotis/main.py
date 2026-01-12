@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .config import settings
@@ -15,6 +16,9 @@ app = FastAPI(
 )
 
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
+
+# Arquivos estáticos (logo, css, etc)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 # Registra routers
 app.include_router(filiacao.router)

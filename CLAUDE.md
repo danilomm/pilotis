@@ -4,8 +4,8 @@ Sistema de gestão de filiados do Docomomo Brasil.
 
 ## Status Atual
 
-**Fases concluídas:** 1 e 2 de 5
-**Próxima fase:** 3 (Formulário de Filiação)
+**Fases concluídas:** 1, 2 e 3 de 5
+**Próxima fase:** 4 (Integração PagBank)
 
 ## Estrutura do Projeto
 
@@ -16,97 +16,94 @@ pilotis/
 │   ├── config.py         # Settings do .env
 │   ├── db.py             # SQLite + schema
 │   ├── models.py         # Dataclasses
-│   ├── routers/          # Rotas (a implementar)
+│   ├── routers/
+│   │   └── filiacao.py   # Formulário de filiação
 │   ├── services/         # PagBank, Email (a implementar)
-│   └── templates/        # Jinja2
-├── scripts/              # CLI scripts
-│   ├── importar_csv.py   # Importa cadastrados (com detecção de duplicatas)
-│   ├── gerar_tokens.py   # Gera tokens únicos
-│   └── backup_db.sh      # Dump SQL para versionamento
+│   ├── static/
+│   │   └── logo-docomomo.png
+│   └── templates/
+│       ├── base.html
+│       ├── filiacao.html
+│       ├── pagamento.html
+│       └── confirmacao.html
+├── scripts/
+│   ├── importar_csv.py
+│   ├── gerar_tokens.py
+│   └── backup_db.sh
 ├── data/
-│   ├── pilotis.db              # Banco SQLite (724 cadastrados) — NÃO versionado
-│   ├── backup.sql              # Dump SQL — versionado
-│   └── cadastrados_revisados.ods  # Planilha para revisão manual
-├── desenvolvimento/
-│   ├── pilotis-briefing.md                      # Briefing completo
-│   └── cadastrados_docomomo_2025_consolidado.csv # Base inicial
-└── .env                  # Configurações (não commitado)
+│   ├── pilotis.db
+│   ├── backup.sql
+│   └── cadastrados_revisados.ods
+└── desenvolvimento/
+    ├── pilotis-briefing.md
+    ├── Logo-Docomomo-Br-768x184.png
+    └── seminario-docomomo-2025-inscritos.xlsx
 ```
 
-## Comandos Úteis
+## Categorias de Filiação
 
-```bash
-# Ativar ambiente
-source venv/bin/activate
-
-# Rodar servidor
-uvicorn pilotis.main:app --reload
-
-# Backup do banco (antes de commits)
-./scripts/backup_db.sh
-
-# Reimportar dados (limpa banco antes)
-rm data/pilotis.db
-python scripts/importar_csv.py desenvolvimento/cadastrados_docomomo_2025_consolidado.csv
-python scripts/gerar_tokens.py
-
-# Restaurar do backup SQL
-sqlite3 data/pilotis.db < data/backup.sql
-```
-
-## Git
-
-- Primeiro commit: `2c2d942`
-- Branch: `master`
-- **Ignorados:** `venv/`, `.env`, `data/*.db`
-- **Versionado:** `data/backup.sql` (dump do banco)
+| Categoria (interno) | Nome no formulário | Valor |
+|---------------------|-------------------|-------|
+| profissional_internacional | Docomomo. Filiado Pleno Internacional + Brasil | R$ 460,00 |
+| profissional_nacional | Docomomo. Filiado Pleno Brasil | R$ 230,00 |
+| estudante | Docomomo. Filiado Estudante (Graduação/Pós) Brasil | R$ 115,00 |
+| participante_seminario | (não aparece no formulário) | — |
+| cadastrado | (não aparece no formulário) | — |
 
 ## Banco de Dados
 
 **Tabelas:**
-- `cadastrados` — dados pessoais + token + seminario_2025 (BOOLEAN)
+- `cadastrados` — dados pessoais + token + seminario_2025 + observacoes_filiado
 - `pagamentos` — histórico de pagamentos por ano
 - `log` — registro de eventos
 
-**View:**
-- `filiados` — cadastrados com pagamento do ano corrente
+**Campos obrigatórios no formulário:**
+- nome, email, cpf, telefone, endereco, cep, cidade, estado, pais, categoria
 
-**Estatísticas atuais:**
-- 724 cadastrados (727 no CSV - 3 unificados por nome similar)
-- Todos com tokens gerados
-- 3 registros com múltiplos emails agregados
-- 0 pagamentos (ainda não implementado)
+**Campos opcionais:**
+- profissao, formacao, instituicao, observacoes_filiado
 
-**Importação com detecção de duplicatas:**
-- O script `importar_csv.py` detecta duplicatas por email ou nome similar (>85%)
-- Unifica registros mantendo dados mais completos
-- Agrega múltiplos emails no formato `email1; email2`
-- Lista de exceções em `EXCECOES` para nomes similares que são pessoas diferentes
+## Referência para Emails (Fase 5)
 
-**Dados limpos e normalizados:**
-- CEP: formato `00000-000`
-- Telefone: formato `(XX) XXXXX-XXXX`
-- Estado: UF de 2 letras
-- Endereços: sem duplicação de cidade/estado
-- Planilha ODS disponível em `data/cadastrados_revisados.ods`
+### Tom e estrutura sugerida:
 
-## Briefing Completo
+**Email para filiados existentes (renovação):**
+- Saudação e votos para o ano
+- Resumo de eventos/atividades do ano
+- Benefícios da filiação
+- Link personalizado para renovação
+- Valores e categorias
+- Assinatura da diretoria
 
-Ver `desenvolvimento/pilotis-briefing.md` para:
-- Modelo de dados detalhado
-- Fluxo de filiação
-- Integração PagBank (endpoints, payloads)
-- Integração Brevo (emails)
-- Valores de filiação por categoria
+**Email para novos (participantes do seminário):**
+- Convite para se filiar
+- Benefícios da filiação
+- Link personalizado para filiação
+- Valores e categorias
 
-## Próximos Passos (Fase 3)
+**Benefícios a destacar (do email antigo):**
+- Descontos em eventos do Docomomo Brasil e núcleos regionais
+- Para internacional: Docomomo Journal, Docomomo Member Card, descontos em museus
 
-1. Criar `pilotis/routers/filiacao.py`:
-   - GET /filiacao/{ano}/{token} — formulário pré-preenchido
-   - POST /filiacao/{ano}/{token} — salva e redireciona para pagamento
+### Lembretes:
+- 3 dias após preenchimento sem pagamento
+- 7 dias
+- 15 dias (último aviso)
 
-2. Criar templates:
-   - `templates/filiacao.html` — formulário
-   - `templates/pagamento.html` — tela com QR Code (fase 4)
+### Prazos da campanha 2026:
+- A definir
 
-3. Testar fluxo completo com token real do banco
+## Comandos Úteis
+
+```bash
+source venv/bin/activate
+uvicorn pilotis.main:app --reload
+./scripts/backup_db.sh
+```
+
+## Próximos Passos (Fase 4)
+
+1. Criar `pilotis/services/pagbank.py`
+2. Integrar criação de cobrança PIX após submit do formulário
+3. Exibir QR Code real na tela de pagamento
+4. Implementar webhook para confirmação de pagamento

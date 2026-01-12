@@ -3,7 +3,7 @@
 {% block content %}
 <article>
     <header>
-        <h1>Pagamento - Filiacao {{ ano }}</h1>
+        <h1>Pagamento - Filiação {{ ano }}</h1>
     </header>
 
     <section>
@@ -32,19 +32,19 @@
         <h2>Pagamento via PIX</h2>
 
         <aside>
-            <p><strong>Integracao PagBank pendente (Fase 4)</strong></p>
-            <p>O QR Code PIX sera exibido aqui apos a integracao com o PagBank.</p>
+            <p><strong>Integração PagBank pendente (Fase 4)</strong></p>
+            <p>O QR Code PIX será exibido aqui após a integração com o PagBank.</p>
         </aside>
 
         <p>Status atual: <mark>{{ pagamento.status }}</mark></p>
 
         <details>
-            <summary>Dados para pagamento manual (temporario)</summary>
-            <p>Enquanto a integracao nao esta pronta, entre em contato com a tesouraria:</p>
+            <summary>Dados para pagamento manual (temporário)</summary>
+            <p>Enquanto a integração não está pronta, entre em contato com a tesouraria:</p>
             <ul>
                 <li>Email: tesouraria@docomomobrasil.com</li>
                 <li>Valor: {{ valor_formatado }}</li>
-                <li>Referencia: PILOTIS-{{ cadastrado.id }}-{{ ano }}</li>
+                <li>Referência: PILOTIS-{{ cadastrado.id }}-{{ ano }}</li>
             </ul>
         </details>
     </section>
