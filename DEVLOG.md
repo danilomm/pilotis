@@ -88,6 +88,14 @@ Revisão geral da tabela com 81 correções:
 
 ---
 
+### Coluna seminario_2025 ✓
+
+Adicionada coluna `seminario_2025 BOOLEAN` ao banco para identificar quem participou do seminário:
+- 663 participaram (incluindo 106 filiados)
+- 61 não participaram (filiados que não foram ao seminário)
+
+---
+
 ### Git e Backup ✓
 
 - Inicializado repositório git

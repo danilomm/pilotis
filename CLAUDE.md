@@ -64,7 +64,7 @@ sqlite3 data/pilotis.db < data/backup.sql
 ## Banco de Dados
 
 **Tabelas:**
-- `cadastrados` — dados pessoais + token
+- `cadastrados` — dados pessoais + token + seminario_2025 (BOOLEAN)
 - `pagamentos` — histórico de pagamentos por ano
 - `log` — registro de eventos
 
