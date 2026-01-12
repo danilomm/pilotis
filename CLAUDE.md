@@ -20,11 +20,11 @@ pilotis/
 │   ├── services/         # PagBank, Email (a implementar)
 │   └── templates/        # Jinja2
 ├── scripts/              # CLI scripts
-│   ├── importar_csv.py   # Importa cadastrados
+│   ├── importar_csv.py   # Importa cadastrados (com detecção de duplicatas)
 │   ├── gerar_tokens.py   # Gera tokens únicos
 │   └── backup_db.sh      # Dump SQL para versionamento
 ├── data/
-│   ├── pilotis.db        # Banco SQLite (727 cadastrados) — NÃO versionado
+│   ├── pilotis.db        # Banco SQLite (724 cadastrados) — NÃO versionado
 │   └── backup.sql        # Dump SQL — versionado
 ├── desenvolvimento/
 │   ├── pilotis-briefing.md                      # Briefing completo
@@ -71,9 +71,16 @@ sqlite3 data/pilotis.db < data/backup.sql
 - `filiados` — cadastrados com pagamento do ano corrente
 
 **Estatísticas atuais:**
-- 727 cadastrados importados
+- 724 cadastrados (727 no CSV - 3 unificados por nome similar)
 - Todos com tokens gerados
+- 3 registros com múltiplos emails agregados
 - 0 pagamentos (ainda não implementado)
+
+**Importação com detecção de duplicatas:**
+- O script `importar_csv.py` detecta duplicatas por email ou nome similar (>85%)
+- Unifica registros mantendo dados mais completos
+- Agrega múltiplos emails no formato `email1; email2`
+- Lista de exceções em `EXCECOES` para nomes similares que são pessoas diferentes
 
 ## Briefing Completo
 

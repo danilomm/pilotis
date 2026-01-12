@@ -40,18 +40,33 @@ pilotis/
 ### Fase 2: Importação de Dados ✓
 
 Criados scripts CLI:
-- `scripts/importar_csv.py` — importa cadastrados de CSV
+- `scripts/importar_csv.py` — importa cadastrados de CSV com detecção de duplicatas
 - `scripts/gerar_tokens.py` — gera tokens únicos (secrets.token_urlsafe)
 
-**Dados importados de `desenvolvimento/cadastrados_docomomo_2025_consolidado.csv`:**
+**Lógica de unificação implementada:**
+- Detecta duplicatas por email (individual, quando há múltiplos separados por "; ")
+- Detecta duplicatas por similaridade de nome (>85%)
+- Mantém dados mais completos ao unificar
+- Agrega todos os emails em um único campo
+- Prioriza categoria de filiado sobre participante
+
+**Registros unificados (3):**
+- Ana Carolina Pellegrini + Ana Carolina Santos Pellegrini → profissional_internacional
+- Hermógenes Moussallem Vasconcelos + Hermógenes Moussallem-vasconcelos
+- Rafael D'andrea + Rafael M Dandrea
+
+**Exceções (não unificados):**
+- Adriana Monzillo de Oliveira ≠ Luciana Monzillo de Oliveira (pessoas diferentes)
+
+**Dados finais de `desenvolvimento/cadastrados_docomomo_2025_consolidado.csv`:**
 
 | Categoria | Quantidade |
 |-----------|------------|
-| participante_seminario | 560 |
+| participante_seminario | 557 |
 | profissional | 72 |
 | profissional_internacional | 56 |
 | estudante | 39 |
-| **Total** | **727** |
+| **Total** | **724** (727 no CSV - 3 unificados) |
 
 Todos os cadastrados possuem tokens únicos gerados.
 
