@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
 
-CategoriaType = Literal["estudante", "profissional", "profissional_internacional", "participante_seminario"]
+CategoriaType = Literal["estudante", "profissional", "profissional_internacional", "participante_seminario", "cadastrado"]
 StatusPagamentoType = Literal["pendente", "pago", "cancelado", "expirado"]
 MetodoPagamentoType = Literal["pix", "boleto", "cartao"]
 
