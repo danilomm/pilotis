@@ -96,9 +96,10 @@ def unificar_registros(r1: dict, r2: dict) -> dict:
     # Categoria: prioridade (filiado > participante)
     prioridade = {
         "profissional_internacional": 1,
-        "profissional": 2,
+        "profissional_nacional": 2,
         "estudante": 3,
         "participante_seminario": 4,
+        "cadastrado": 5,
     }
     cat1 = r1.get("categoria", "participante_seminario")
     cat2 = r2.get("categoria", "participante_seminario")
