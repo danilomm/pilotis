@@ -104,13 +104,15 @@ def unificar_registros(r1: dict, r2: dict) -> dict:
     cat2 = r2.get("categoria", "participante_seminario")
     unificado["categoria"] = cat1 if prioridade.get(cat1, 5) <= prioridade.get(cat2, 5) else cat2
 
+    # Seminário 2025: sim se qualquer um participou
+    unificado["seminario_2025"] = "sim" if any(r.get("seminario_2025") == "sim" for r in [r1, r2]) else "não"
+
     # Observações: combina fontes
     fontes = set()
     for r in [r1, r2]:
         if r.get("fonte"):
             fontes.add(r["fonte"])
-    seminario = "sim" if any(r.get("seminario_2025") == "sim" for r in [r1, r2]) else "não"
-    unificado["observacoes"] = f"fontes: {', '.join(sorted(fontes))}; seminario_2025: {seminario}; UNIFICADO"
+    unificado["observacoes"] = f"fontes: {', '.join(sorted(fontes))}; UNIFICADO"
 
     return unificado
 
@@ -224,13 +226,17 @@ def importar_csv(caminho: str, dry_run: bool = False) -> dict:
                 estado = estado[:2].upper()
 
             try:
+                # Determina se participou do seminário 2025
+                seminario_raw = registro.get("seminario_2025", "").lower().strip()
+                seminario_2025 = 1 if seminario_raw == "sim" else 0
+
                 conn.execute(
                     """
                     INSERT INTO cadastrados (
                         nome, email, cpf, telefone, endereco, cep,
                         cidade, estado, pais, profissao, formacao,
-                        instituicao, categoria, observacoes
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        instituicao, categoria, seminario_2025, observacoes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         nome,
@@ -246,7 +252,8 @@ def importar_csv(caminho: str, dry_run: bool = False) -> dict:
                         normalizar(registro.get("formacao")),
                         normalizar(registro.get("instituicao")),
                         normalizar(registro.get("categoria")),
-                        registro.get("observacoes") or f"fonte: {registro.get('fonte', '')}; seminario_2025: {registro.get('seminario_2025', '')}",
+                        seminario_2025,
+                        registro.get("observacoes") or f"fonte: {registro.get('fonte', '')}",
                     ),
                 )
                 stats["inseridos"] += 1

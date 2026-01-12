@@ -23,6 +23,7 @@ class Cadastrado:
     formacao: str | None = None
     instituicao: str | None = None
     categoria: CategoriaType | None = None
+    seminario_2025: bool = False
     data_cadastro: datetime | None = None
     data_atualizacao: datetime | None = None
     token: str | None = None
@@ -49,6 +50,7 @@ class Cadastrado:
             formacao=row["formacao"],
             instituicao=row["instituicao"],
             categoria=row["categoria"],
+            seminario_2025=bool(row["seminario_2025"]),
             data_cadastro=row["data_cadastro"],
             data_atualizacao=row["data_atualizacao"],
             token=row["token"],

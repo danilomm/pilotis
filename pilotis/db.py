@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS cadastrados (
     formacao TEXT,
     instituicao TEXT,
     categoria TEXT CHECK(categoria IN ('estudante', 'profissional', 'profissional_internacional', 'participante_seminario')),
+    seminario_2025 BOOLEAN DEFAULT 0,
     data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao DATETIME,
     token TEXT UNIQUE,
