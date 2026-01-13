@@ -12,6 +12,10 @@ __pycache__/
 data/*.db
 data/*.db-journal
 
+# Backups e arquivos de desenvolvimento (dados sensíveis)
+backups/
+desenvolvimento/*.csv
+
 # IDE
 .vscode/
 .idea/
