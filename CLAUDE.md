@@ -4,8 +4,9 @@ Sistema de gestão de filiados do Docomomo Brasil.
 
 ## Status Atual
 
-**Fases concluídas:** 1, 2, 3, 4 e 5 ✓
-**Pendente:** Configurar credenciais e testar em produção
+**Fases concluídas:** 1, 2, 3, 4, 5 + Painel Admin ✓
+**Testado:** PIX, Boleto, Cartão, Emails com PDF
+**Pendente:** Definir hospedagem e deploy em produção
 
 ## Estrutura do Projeto
 
@@ -19,7 +20,8 @@ pilotis/
 │   ├── routers/
 │   │   ├── filiacao.py      # Formulário e pagamento
 │   │   ├── filiados.py      # Lista pública
-│   │   └── webhook.py       # PagBank callbacks
+│   │   ├── webhook.py       # PagBank callbacks
+│   │   └── admin.py         # Painel administrativo
 │   ├── services/
 │   │   ├── pagbank.py       # API PagBank (PIX)
 │   │   ├── email.py         # API Brevo
@@ -34,18 +36,25 @@ pilotis/
 │       ├── pagamento.html
 │       ├── confirmacao.html
 │       ├── filiados.html
-│       └── emails/
-│           ├── confirmacao.html
-│           ├── lembrete.html
-│           ├── campanha_renovacao.html
-│           ├── campanha_convite.html
-│           └── campanha_seminario.html
+│       ├── emails/
+│       │   ├── confirmacao.html
+│       │   ├── lembrete.html
+│       │   ├── campanha_renovacao.html
+│       │   ├── campanha_convite.html
+│       │   └── campanha_seminario.html
+│       └── admin/
+│           ├── login.html
+│           ├── painel.html
+│           ├── buscar.html
+│           ├── pessoa.html
+│           └── novo.html
 ├── scripts/
 │   ├── importar_csv.py
 │   ├── gerar_tokens.py
 │   ├── backup_db.sh
 │   ├── enviar_campanha.py
-│   └── enviar_lembretes.py
+│   ├── enviar_lembretes.py
+│   └── admin.py             # CLI para administração
 └── data/
     └── pilotis.db
 ```
@@ -140,6 +149,7 @@ Acesso em `/admin` com senha configurada no `.env`.
 **Funcoes:**
 - Estatisticas (pagos, pendentes, arrecadado)
 - Buscar pessoa por nome/email
+- Editar todos os dados do cadastro
 - Marcar pagamento como pago (manual)
 - Cadastrar nova pessoa + pagamento
 - Excluir pagamento ou pessoa

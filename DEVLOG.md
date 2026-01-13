@@ -1,5 +1,39 @@
 # Pilotis — Development Log
 
+## 2026-01-13
+
+### Painel Administrativo ✓
+
+- Login com senha (configurável via `.env`)
+- Rota `/admin` com estatísticas (pagos, pendentes, arrecadado)
+- Busca de pessoa por nome/email
+- Edição de cadastros (todos os campos)
+- Marcar pagamento como pago manualmente
+- Cadastrar nova pessoa + pagamento
+- Excluir pagamento ou pessoa
+- Download do banco (.db) para backup
+- Download de tabela CSV para compartilhar com diretoria
+
+### Correção de Bugs ✓
+
+- Bug de valores: código multiplicava por 100 quando valor já estava em centavos
+- Afetava PIX, boleto e cartão (gerava R$ 46.000 em vez de R$ 460)
+- Corrigido em `filiacao.py` e `webhook.py`
+
+### Melhorias ✓
+
+- Email de confirmação com PDF enviado no pagamento por cartão
+- Script de backup lê caminho do banco do `.env`
+- Documentação de segurança (banco fora do diretório web)
+- Formulário de edição no admin (em vez de visualização somente)
+
+### Atualização de Dados 2025 ✓
+
+- Importados data e método de pagamento das planilhas PagBank
+- 151 pagamentos atualizados (PIX: 100, Cartão: 58, Boleto: 9)
+
+---
+
 ## 2026-01-12
 
 ### Fase 3: Formulário de Filiação ✓
@@ -60,7 +94,11 @@
 
 ## Próximos Passos
 
-1. Configurar `.env` com credenciais (PagBank, Brevo)
-2. Testar no sandbox do PagBank
-3. Definir período da campanha 2026
+1. Definir hospedagem (aguardando retorno do provedor)
+   - Se tiver Python: deploy direto
+   - Se tiver Node.js: migração ~1-2 dias
+   - Se não: VPS ou PaaS
+2. Configurar `.env` de produção (PagBank produção, Brevo)
+3. Definir valores e período da campanha 2026
 4. Configurar cron para `enviar_lembretes.py`
+5. Configurar webhook PagBank (URL de produção)
