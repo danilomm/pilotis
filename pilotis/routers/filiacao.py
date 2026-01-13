@@ -225,7 +225,7 @@ async def salvar_filiacao(
             # Atualiza valor se categoria mudou
             execute(
                 "UPDATE pagamentos SET valor = ? WHERE id = ?",
-                (valor / 100, pagamento["id"]),
+                (valor, pagamento["id"]),
             )
     else:
         # Cria novo pagamento pendente
@@ -234,7 +234,7 @@ async def salvar_filiacao(
             INSERT INTO pagamentos (cadastrado_id, ano, valor, status, metodo)
             VALUES (?, ?, ?, 'pendente', 'pix')
             """,
-            (cadastrado["id"], ano, valor / 100),
+            (cadastrado["id"], ano, valor),
         )
 
     registrar_log("pagamento_criado", cadastrado["id"], f"Pagamento criado para {ano}: R$ {valor/100:.2f}")
@@ -276,7 +276,7 @@ async def tela_pagamento(request: Request, ano: int, token: str):
         )
 
     # Dados para a tela
-    valor_centavos = int(pagamento["valor"] * 100)
+    valor_centavos = int(pagamento["valor"])
     pix_data = None
     erro_pagbank = None
 
@@ -376,7 +376,7 @@ async def gerar_pix(request: Request, ano: int, token: str):
     if pagamento["status"] == "pago":
         return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
 
-    valor_centavos = int(pagamento["valor"] * 100)
+    valor_centavos = int(pagamento["valor"])
 
     try:
         pix_data = await pagbank.criar_cobranca_pix(
@@ -426,7 +426,7 @@ async def gerar_boleto(request: Request, ano: int, token: str):
     if pagamento["status"] == "pago":
         return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
 
-    valor_centavos = int(pagamento["valor"] * 100)
+    valor_centavos = int(pagamento["valor"])
 
     # Converte para dict para usar .get()
     cad = dict(cadastrado)
@@ -506,7 +506,7 @@ async def pagar_cartao(
     if pagamento["status"] == "pago":
         return RedirectResponse(url=f"/filiacao/{ano}/{token}/pagamento")
 
-    valor_centavos = int(pagamento["valor"] * 100)
+    valor_centavos = int(pagamento["valor"])
 
     try:
         cartao_data = await pagbank.criar_cobranca_cartao(
@@ -538,6 +538,11 @@ async def pagar_cartao(
                 (datetime.now().isoformat(), pagamento["id"])
             )
             registrar_log("pagamento_cartao", cadastrado["id"], f"Pagamento com cartao aprovado: {cartao_data['order_id']}")
+
+            # Envia email de confirmacao com PDF
+            from .webhook import processar_pagamento_confirmado
+            import asyncio
+            asyncio.create_task(processar_pagamento_confirmado(cadastrado["id"], ano))
 
             return templates.TemplateResponse(
                 "confirmacao.html",

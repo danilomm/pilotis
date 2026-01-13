@@ -28,6 +28,7 @@ class Settings:
     # App
     BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "chave-padrao-desenvolvimento")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
 
     # Valores de filiacao (centavos)
     VALOR_ESTUDANTE: int = int(os.getenv("VALOR_ESTUDANTE", "11500"))

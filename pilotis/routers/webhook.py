@@ -40,7 +40,7 @@ async def processar_pagamento_confirmado(cadastrado_id: int, ano: int):
             registrar_log("erro_confirmacao", cadastrado_id, "Pagamento não encontrado")
             return
 
-        valor_centavos = int(pagamento["valor"] * 100)
+        valor_centavos = int(pagamento["valor"])
 
         # Gera PDF da declaração
         pdf_bytes = pdf.gerar_declaracao(

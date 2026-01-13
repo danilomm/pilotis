@@ -60,6 +60,7 @@ pilotis/
 | `GET /filiacao/{ano}/{token}/pagamento` | QR Code PIX |
 | `GET /filiados/{ano}` | Lista pública de filiados |
 | `POST /webhook/pagbank` | Confirmação de pagamento |
+| `GET /admin` | Painel administrativo |
 
 ## Categorias
 
@@ -81,6 +82,13 @@ python scripts/enviar_lembretes.py
 
 # Backup
 ./scripts/backup_db.sh
+
+# Administracao (pagamentos manuais, consultas)
+python scripts/admin.py pendentes           # Lista pendentes
+python scripts/admin.py buscar "email"      # Busca pessoa
+python scripts/admin.py pagar 123           # Marca pagamento como pago
+python scripts/admin.py novo                # Cadastra + pagamento manual
+python scripts/admin.py exportar 2026       # Exporta filiados CSV
 ```
 
 ## Fluxos
@@ -118,8 +126,35 @@ uvicorn pilotis.main:app --reload
 ## Credenciais (.env)
 
 ```
+DATABASE_PATH=/var/lib/pilotis/pilotis.db  # FORA do diretorio web!
 PAGBANK_TOKEN=...
 PAGBANK_SANDBOX=true
 BREVO_API_KEY=...
 BASE_URL=https://pilotis.docomomobrasil.com
+```
+
+## Painel Admin
+
+Acesso em `/admin` com senha configurada no `.env`.
+
+**Funcoes:**
+- Estatisticas (pagos, pendentes, arrecadado)
+- Buscar pessoa por nome/email
+- Marcar pagamento como pago (manual)
+- Cadastrar nova pessoa + pagamento
+- Excluir pagamento ou pessoa
+- Baixar backup do banco (.db)
+- Baixar tabela de filiados (CSV)
+
+## Seguranca
+
+**Banco de dados:** O arquivo `.db` contem dados pessoais (CPF, endereco, etc). Em producao, DEVE ficar fora do diretorio web:
+- Linux/VPS: `/var/lib/pilotis/pilotis.db`
+- Hospedagem compartilhada: `../dados_privados/pilotis.db` (acima do public_html)
+
+**Backups:** Tambem contem dados sensiveis. O diretorio `backups/` deve ficar protegido ou fora do diretorio web.
+
+**Admin:** A senha do painel deve ser forte. Em producao, use hash SHA256:
+```bash
+python -c "import hashlib; print('sha256:' + hashlib.sha256(b'sua_senha_forte').hexdigest())"
 ```
