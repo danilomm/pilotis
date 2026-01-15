@@ -6,7 +6,7 @@ Sistema de gestão de filiados do Docomomo Brasil.
 
 **Fases concluídas:** 1, 2, 3, 4, 5 + Painel Admin ✓
 **Testado:** PIX, Boleto, Cartão, Emails com PDF
-**Pendente:** Definir hospedagem e deploy em produção
+**Deploy:** Arquivos preparados, aguardando configuração do servidor
 
 ## Estrutura do Projeto
 
@@ -55,6 +55,12 @@ pilotis/
 │   ├── enviar_campanha.py
 │   ├── enviar_lembretes.py
 │   └── admin.py             # CLI para administração
+├── deploy/
+│   ├── pilotis.wsgi         # Entry point WSGI
+│   ├── .env.producao        # Template producao
+│   ├── DEPLOY.md            # Instrucoes
+│   ├── preparar_deploy.sh   # Script de preparacao
+│   └── servidor.yaml        # Config servidor
 └── data/
     └── pilotis.db
 ```
@@ -167,4 +173,70 @@ Acesso em `/admin` com senha configurada no `.env`.
 **Admin:** A senha do painel deve ser forte. Em producao, use hash SHA256:
 ```bash
 python -c "import hashlib; print('sha256:' + hashlib.sha256(b'sua_senha_forte').hexdigest())"
+```
+
+## Deploy
+
+**Servidor:** KingHost (via Labasoft)
+**URL:** https://pilotis.docomomobrasil.com
+**Tecnologia:** Apache mod_wsgi + Python 3.10+
+
+### Arquivos de deploy
+
+```
+deploy/
+├── pilotis.wsgi        # Entry point WSGI (adapta FastAPI via a2wsgi)
+├── .env.producao       # Template de configuracao
+├── DEPLOY.md           # Instrucoes completas
+├── preparar_deploy.sh  # Prepara arquivos para upload
+└── servidor.yaml       # Config e credenciais do servidor
+```
+
+### Fazer deploy
+
+```bash
+# 1. Preparar arquivos
+./deploy/preparar_deploy.sh
+
+# 2. Upload via FTP (ftp.app.docomomobrasil.com)
+#    upload/pilotis/* -> /apps_wsgi/pilotis/
+#    upload/dados_privados/* -> /dados_privados/
+
+# 3. Editar .env no servidor com credenciais reais
+```
+
+### Estrutura no servidor
+
+```
+/home/app/
+├── apps_wsgi/pilotis/     # Aplicacao
+│   ├── pilotis.wsgi
+│   ├── .env
+│   └── pilotis/           # Codigo Python
+└── dados_privados/
+    └── pilotis.db         # Banco (FORA do www)
+```
+
+## WordPress (Site Principal)
+
+API REST para gerenciar paginas de filiados no site docomomobrasil.com.
+
+```
+URL base: https://docomomobrasil.com/wp-json/wp/v2/
+Tipos: post, page, course (Educaz), dlm_download
+Auth: admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ
+```
+
+### Exemplo de uso
+
+```bash
+# Listar paginas
+curl -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
+  "https://docomomobrasil.com/wp-json/wp/v2/pages?search=filiados"
+
+# Criar/atualizar pagina
+curl -X POST -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Filiados 2025","content":"...","status":"publish"}' \
+  "https://docomomobrasil.com/wp-json/wp/v2/pages"
 ```

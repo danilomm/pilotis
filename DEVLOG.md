@@ -32,6 +32,26 @@
 - Importados data e método de pagamento das planilhas PagBank
 - 151 pagamentos atualizados (PIX: 100, Cartão: 58, Boleto: 9)
 
+### Preparação para Deploy ✓
+
+- Servidor: KingHost (via Labasoft), FTP funciona, SSH não
+- URL planejada: `https://pilotis.docomomobrasil.com`
+- Tecnologia: mod_wsgi (Apache) + Python
+
+**Arquivos criados em `deploy/`:**
+- `pilotis.wsgi` — Entry point WSGI com adaptador a2wsgi (ASGI→WSGI)
+- `.env.producao` — Template de configuração para produção
+- `DEPLOY.md` — Instruções completas de deploy via FTP
+- `preparar_deploy.sh` — Script que prepara arquivos para upload
+- `servidor.yaml` — Configuração e credenciais do servidor
+
+**Pendente do provedor (Labasoft):**
+- Criar subdomínio `pilotis.docomomobrasil.com`
+- Configurar VHost Apache para WSGI
+- Confirmar Python 3.10+ disponível
+- Instalar dependências (requirements.txt)
+- Criar diretório `/dados_privados/` fora do www
+
 ---
 
 ## 2026-01-12
@@ -94,11 +114,9 @@
 
 ## Próximos Passos
 
-1. Definir hospedagem (aguardando retorno do provedor)
-   - Se tiver Python: deploy direto
-   - Se tiver Node.js: migração ~1-2 dias
-   - Se não: VPS ou PaaS
-2. Configurar `.env` de produção (PagBank produção, Brevo)
-3. Definir valores e período da campanha 2026
-4. Configurar cron para `enviar_lembretes.py`
-5. Configurar webhook PagBank (URL de produção)
+1. **Aguardando Labasoft:** Configurar subdomínio e VHost
+2. **Deploy:** Executar `./deploy/preparar_deploy.sh` e fazer upload via FTP
+3. **Produção:** Configurar `.env` com credenciais reais (PagBank, Brevo, senha admin)
+4. **Webhook:** Configurar URL de produção no painel PagBank
+5. **Cron:** Configurar `enviar_lembretes.py` no servidor
+6. **Campanha:** Definir valores e disparar emails para filiação 2026

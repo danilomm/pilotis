@@ -16,6 +16,9 @@ data/*.db-journal
 backups/
 desenvolvimento/*.csv
 
+# Deploy (gerado pelo script preparar_deploy.sh)
+deploy/upload/
+
 # IDE
 .vscode/
 .idea/
