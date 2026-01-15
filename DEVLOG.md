@@ -1,5 +1,37 @@
 # Pilotis — Development Log
 
+## 2026-01-15
+
+### Consolidação de Dados 2024 ✓
+
+Análise completa dos filiados 2024:
+- Cruzamento de 3 fontes: site WordPress, formulário Google, PagBank
+- Identificadas 7 pessoas no site sem registro de pagamento (removidas)
+- Identificada 1 pessoa com pagamento que não estava no site (Luis Salvador Petrucci Gnoato - adicionada)
+
+**Atualizações no site WordPress:**
+- Removidas 7 pessoas sem pagamento da página 2024
+- Adicionado Luis Salvador Petrucci Gnoato (Internacional)
+- Criada página "Filiados 2025" com 167 membros
+- Adicionado menu sob "Filie-se!"
+
+**Consolidação no banco local:**
+- 89 pagamentos 2024 criados para cadastrados existentes (anterior)
+- 37 pagamentos 2024 adicionados para mais cadastrados existentes
+- 47 novos cadastrados inseridos com categoria "cadastrado"
+- Total: 771 cadastrados, 173 pagamentos 2024
+
+**Totais por categoria:**
+| Categoria | Quantidade |
+|-----------|------------|
+| cadastrado | 318 |
+| participante_seminario | 286 |
+| profissional_nacional | 72 |
+| profissional_internacional | 56 |
+| estudante | 39 |
+
+---
+
 ## 2026-01-13
 
 ### Painel Administrativo ✓
