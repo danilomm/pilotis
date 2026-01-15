@@ -19,12 +19,18 @@ Análise completa dos filiados 2024:
 - 89 pagamentos 2024 criados para cadastrados existentes (anterior)
 - 37 pagamentos 2024 adicionados para mais cadastrados existentes
 - 47 novos cadastrados inseridos com categoria "cadastrado"
-- Total: 771 cadastrados, 173 pagamentos 2024
+- 2 pessoas adicionadas manualmente (match de nome falso positivo corrigido)
+- Total: 773 cadastrados, 175 pagamentos 2024
+
+**Discrepância analisada:**
+- PagBank tinha 175 aprovados, mas 1 era duplicata (Cristiane Galhardo Biazin pagou 2x)
+- 2 pessoas foram incorretamente ignoradas por match de nome falso positivo (João Marcello e Ana Karina)
+- Corrigido: 174 únicos do PagBank + 1 de fonte anterior = 175 pagamentos
 
 **Totais por categoria:**
 | Categoria | Quantidade |
 |-----------|------------|
-| cadastrado | 318 |
+| cadastrado | 320 |
 | participante_seminario | 286 |
 | profissional_nacional | 72 |
 | profissional_internacional | 56 |
