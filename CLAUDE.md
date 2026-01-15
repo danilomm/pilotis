@@ -217,6 +217,27 @@ deploy/
     └── pilotis.db         # Banco (FORA do www)
 ```
 
+## Backup e Commit
+
+**IMPORTANTE:** Quando o usuário pedir "backup e commit", executar:
+
+```bash
+# 1. Gerar dump SQL do banco
+sqlite3 data/pilotis.db .dump > data/backup.sql
+
+# 2. Commit de tudo
+git add -A
+git commit -m "Descrição das mudanças"
+```
+
+O arquivo `data/backup.sql` é versionado no git e serve como ponto de restauração.
+
+Para restaurar:
+```bash
+rm data/pilotis.db
+sqlite3 data/pilotis.db < data/backup.sql
+```
+
 ## WordPress (Site Principal)
 
 API REST para gerenciar paginas de filiados no site docomomobrasil.com.
