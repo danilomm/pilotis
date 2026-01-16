@@ -238,6 +238,12 @@ rm data/pilotis.db
 sqlite3 data/pilotis.db < data/backup.sql
 ```
 
+## Regras de Consolidação de Dados
+
+- **Nomes duplicados:** Sempre usar o nome mais completo ao consolidar registros
+- **Emails:** Manter todos os emails da pessoa (principal + secundários)
+- **Filiações:** Preservar histórico de todos os anos
+
 ## WordPress (Site Principal)
 
 API REST para gerenciar paginas de filiados no site docomomobrasil.com.
