@@ -34,7 +34,7 @@ sqlite3 "$DB_PATH" .dump > "$BACKUP_FILE"
 
 echo "Backup criado: $BACKUP_FILE"
 echo "Tamanho: $(du -h "$BACKUP_FILE" | cut -f1)"
-echo "Registros: $(sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM cadastrados') cadastrados"
+echo "Registros: $(sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM pessoas') pessoas, $(sqlite3 "$DB_PATH" 'SELECT COUNT(*) FROM filiacoes WHERE valor IS NOT NULL') pagamentos"
 
 # Mantem apenas os ultimos 10 backups
 cd "$BACKUP_DIR"
