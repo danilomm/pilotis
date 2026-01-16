@@ -1,5 +1,68 @@
 # Pilotis — Development Log
 
+## 2026-01-16
+
+### Importação de Dados 2024 ✓
+
+**Arquivo fonte:** `desenvolvimento/filiacao_2024_final.csv`
+
+**Metodologia:**
+1. Para cada registro com status "pago":
+   - Buscar pessoa por email
+   - Se não encontrar, buscar por nome **manualmente**
+   - Criar filiação 2024 com dados do formulário
+
+2. Para "pago_sem_form" (6 pessoas já no DB):
+   - Buscar pessoa por email/nome
+   - Criar filiação 2024 com nota "Não preencheu formulário em 2024"
+
+3. Para "novo_sem_form" (6 pessoas novas):
+   - Criar pessoa nova
+   - Criar filiação 2024 com nota "Não preencheu formulário em 2024"
+
+4. Ignorar "nao_pago" (1 pessoa)
+
+**Resultado:**
+- 166 filiações "pago" importadas (55 pessoas novas criadas)
+- 6 filiações "pago_sem_form" importadas
+- 6 filiações "novo_sem_form" importadas (6 pessoas novas)
+- Total: 178 filiações 2024, 786 pessoas no banco
+
+**Filiados 2024 por categoria:**
+| Categoria | Qtd | Valor |
+|-----------|-----|-------|
+| Internacional | 67 | R$ 26.800 |
+| Nacional | 52 | R$ 10.400 |
+| Estudante | 59 | R$ 5.900 |
+| **Total** | **178** | **R$ 43.100** |
+
+### Campo `seminario` na tabela `filiacoes` ✓
+
+- Adicionado campo booleano `seminario` para marcar participantes do seminário
+- Populado com 401 participantes do 16º Seminário (2025) via planilha `seminario-docomomo-2025-inscritos.xlsx`
+- 7 emails adicionados para pessoas com emails diferentes na planilha
+
+**Filiações 2025:**
+| Categoria | Não Seminário | Seminário | Total |
+|-----------|---------------|-----------|-------|
+| estudante | 21 | 18 | 39 |
+| nao_filiado | 308 | 311 | 619 |
+| profissional_internacional | 24 | 31 | 55 |
+| profissional_nacional | 32 | 41 | 73 |
+| **Total** | **385** | **401** | **786** |
+
+### Atualização WordPress 2024 ✓
+
+- Adicionados: Celma Chaves Pont Vidal, Luís Salvador Petrucci Gnoato
+- Removidas: Maria Cristina Da Silva Leme, Maria Cristina Werneck (sem pagamento encontrado)
+- Nomes removidos salvos em `desenvolvimento/verificar_pagamento_2024.md`
+
+**Backups:**
+- `data/pilotis_backup_pre_import_2024.db`
+- `data/pilotis_backup_pos_import_2024.db`
+
+---
+
 ## 2026-01-15
 
 ### Consolidação de Dados 2024 ✓
