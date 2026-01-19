@@ -57,9 +57,34 @@
 - Removidas: Maria Cristina Da Silva Leme, Maria Cristina Werneck (sem pagamento encontrado)
 - Nomes removidos salvos em `desenvolvimento/verificar_pagamento_2024.md`
 
+### Consolidação de Duplicatas ✓
+
+Verificação manual de nomes duplicados no banco. Critério: sempre manter o nome mais completo.
+
+**16 duplicatas consolidadas:**
+- Bianca Oresko → Bianca de Freitas Oresko
+- Fernando G. Vazquez Ramos → Fernando Guillermo Vázquez Ramos
+- Luiz Amorim → Luiz Manuel do Eirado Amorim
+- Maisa F. Almeida → Maisa Fonseca de Almeida
+- Manuella Andrade → Manuella Marianna Carvalho Rodrigues de Andrade
+- Marcos Petroli → Marcos Amado Petroli
+- Marcos Cereto → Marcos Paulo Cereto
+- Marcus Deusdedit → Marcus Vinícius Barbosa Deusdedit
+- Márcio Fontão → Márcio Barbosa Fontão
+- Renato Anelli → Renato Luiz Sobral Anelli
+- Thiago Turchi → Thiago Pacheco Turchi
+- Yan Azevedo → Yan Fábio Leite de Azevedo
+- Andrea Tourinho → Andréa de Oliveira Tourinho
+- Denise Nunes → Denise Vianna Nunes
+- Mariana Brandão → Mariana Guimaraes Brandao
+- Mariana Jardim → Mariana Comerlato Jardim
+
+**Resultado:** 785 → 769 pessoas
+
 **Backups:**
 - `data/pilotis_backup_pre_import_2024.db`
 - `data/pilotis_backup_pos_import_2024.db`
+- `data/pilotis_backup_pos_consolidacao.db`
 
 ---
 
