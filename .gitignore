@@ -31,3 +31,4 @@ data/.~lock.*
 
 # Logs
 *.log
+public/data/
