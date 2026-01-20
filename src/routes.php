@@ -142,8 +142,8 @@ function get_post_data(): array {
 /**
  * Escapa string para HTML
  */
-function e(string $string): string {
-    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
+function e(?string $string): string {
+    return htmlspecialchars($string ?? '', ENT_QUOTES, 'UTF-8');
 }
 
 /**

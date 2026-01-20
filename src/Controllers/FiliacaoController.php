@@ -1,6 +1,6 @@
 <?php
 /**
- * Pilotis - Controller de Filiacao
+ * Pilotis - Controller de Filiação
  */
 
 class FiliacaoController {
@@ -9,7 +9,7 @@ class FiliacaoController {
      * Tela de entrada (pede email)
      */
     public static function entrada(string $ano): void {
-        $titulo = "Filiacao $ano";
+        $titulo = "Filiação $ano";
         $mensagem = null;
 
         ob_start();
@@ -19,72 +19,104 @@ class FiliacaoController {
     }
 
     /**
-     * Processa email e redireciona para formulario
+     * Processa email e envia link de acesso por email
+     * (Segurança: evita que alguém veja dados de terceiros informando o email)
      */
     public static function processarEntrada(string $ano): void {
+        require_once SRC_DIR . '/Services/BrevoService.php';
+
         $email = strtolower(trim($_POST['email'] ?? ''));
 
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            flash('error', 'Por favor, informe um email valido.');
+            flash('error', 'Por favor, informe um email válido.');
             redirect("/filiacao/$ano");
             return;
         }
 
-        // Busca cadastrado pelo email
-        $cadastrado = buscar_cadastrado_por_email($email);
+        // Busca pessoa pelo email
+        $pessoa = buscar_pessoa_por_email($email);
 
-        if ($cadastrado) {
-            // Ja existe, usa token existente ou gera novo
-            $token = $cadastrado['token'];
+        if ($pessoa) {
+            // Já existe, usa token existente ou gera novo
+            $token = $pessoa['token'];
             if (!$token) {
                 $token = gerar_token();
                 db_execute(
-                    "UPDATE cadastrados SET token = ? WHERE id = ?",
-                    [$token, $cadastrado['id']]
+                    "UPDATE pessoas SET token = ? WHERE id = ?",
+                    [$token, $pessoa['id']]
                 );
             }
-            registrar_log('entrada_email', $cadastrado['id'], "Entrada pelo email para $ano");
+            registrar_log('entrada_email', $pessoa['id'], "Entrada pelo email para $ano");
         } else {
-            // Novo cadastrado
-            $token = gerar_token();
-            $cadastrado_id = db_insert(
-                "INSERT INTO cadastrados (nome, email, token, data_cadastro) VALUES (?, ?, ?, ?)",
-                ['', $email, $token, date('Y-m-d H:i:s')]
-            );
-            registrar_log('novo_cadastro', $cadastrado_id, "Novo cadastro via entrada $ano");
+            // Nova pessoa
+            $pessoa_id = criar_pessoa($email);
+            $pessoa = buscar_pessoa_por_email($email);
+            $token = $pessoa['token'];
+            registrar_log('novo_cadastro', $pessoa_id, "Novo cadastro via entrada $ano");
         }
 
-        redirect("/filiacao/$ano/$token");
+        // Envia email com link de acesso
+        $nome = $pessoa['nome'] ?? '';
+        $erro_envio = null;
+
+        try {
+            $enviado = BrevoService::enviarLinkAcesso($email, $nome, (int)$ano, $token);
+
+            if ($enviado) {
+                registrar_log('link_acesso_enviado', $pessoa['id'], "Link de acesso enviado para $ano");
+            } else {
+                registrar_log('erro_envio_link', $pessoa['id'], "Falha ao enviar link de acesso para $ano");
+                $erro_envio = "Não foi possível enviar o email. Tente novamente.";
+            }
+        } catch (Exception $e) {
+            registrar_log('erro_envio_link', $pessoa['id'], "Exceção ao enviar link: " . $e->getMessage());
+            $erro_envio = "Erro ao enviar email: " . $e->getMessage();
+        }
+
+        // Mostra tela de confirmação de envio
+        $titulo = "Verifique seu Email";
+
+        ob_start();
+        require SRC_DIR . '/Views/filiacao/email_enviado.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
     }
 
     /**
-     * Formulario de filiacao pre-preenchido
+     * Formulário de filiação pré-preenchido
      */
     public static function formulario(string $ano, string $token): void {
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
 
         if (!$cadastrado) {
-            flash('error', 'Token invalido ou expirado.');
+            flash('error', 'Token inválido ou expirado.');
             redirect("/filiacao/$ano");
             return;
         }
 
-        // Monta lista de categorias
+        // Monta lista de categorias (Internacional primeiro como default)
         $categorias = [];
+        $tem_selecionada = false;
         foreach (CATEGORIAS_FILIACAO as $valor => $info) {
+            $selecionada = ($cadastrado['categoria'] ?? '') === $valor;
+            if ($selecionada) $tem_selecionada = true;
             $categorias[] = [
                 'valor' => $valor,
                 'label' => $info['nome'] . ' - ' . formatar_valor($info['valor']),
-                'selecionada' => ($cadastrado['categoria'] ?? '') === $valor,
+                'selecionada' => $selecionada,
             ];
         }
+        // Se nenhuma selecionada, seleciona Internacional (primeira)
+        if (!$tem_selecionada && !empty($categorias)) {
+            $categorias[0]['selecionada'] = true;
+        }
 
-        // Verifica se ja existe pagamento para este ano
-        $pagamento_existente = buscar_pagamento($cadastrado['id'], (int)$ano);
+        // Verifica se já existe filiação para este ano
+        $pagamento_existente = buscar_filiacao($cadastrado['id'], (int)$ano);
 
-        registrar_log('acesso_formulario', $cadastrado['id'], "Acesso ao formulario $ano");
+        registrar_log('acesso_formulario', $cadastrado['id'], "Acesso ao formulário $ano");
 
-        $titulo = "Filiacao $ano";
+        $titulo = "Filiação $ano";
 
         ob_start();
         require SRC_DIR . '/Views/filiacao/formulario.php';
@@ -93,20 +125,19 @@ class FiliacaoController {
     }
 
     /**
-     * Salva dados e cria pagamento
+     * Salva dados e cria filiação
      */
     public static function salvar(string $ano, string $token): void {
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
 
         if (!$cadastrado) {
-            flash('error', 'Token invalido.');
+            flash('error', 'Token inválido.');
             redirect("/filiacao/$ano");
             return;
         }
 
-        // Obtem dados do formulario
+        // Obtém dados do formulário
         $nome = trim($_POST['nome'] ?? '');
-        $email = strtolower(trim($_POST['email'] ?? ''));
         $cpf = trim($_POST['cpf'] ?? '');
         $telefone = trim($_POST['telefone'] ?? '');
         $endereco = trim($_POST['endereco'] ?? '');
@@ -118,70 +149,71 @@ class FiliacaoController {
         $formacao = trim($_POST['formacao'] ?? '');
         $instituicao = trim($_POST['instituicao'] ?? '');
         $categoria = trim($_POST['categoria'] ?? '');
-        $observacoes_filiado = trim($_POST['observacoes_filiado'] ?? '');
 
-        // Validacoes
-        if (empty($nome)) {
-            flash('error', 'Nome e obrigatorio.');
-            redirect("/filiacao/$ano/$token");
-            return;
+        // Validações dos campos obrigatórios
+        $obrigatorios = [
+            'nome' => 'Nome',
+            'cpf' => 'CPF',
+            'telefone' => 'Telefone',
+            'endereco' => 'Endereço',
+            'cep' => 'CEP',
+            'cidade' => 'Cidade',
+            'estado' => 'Estado',
+            'pais' => 'País',
+            'profissao' => 'Profissão',
+        ];
+
+        foreach ($obrigatorios as $campo => $label) {
+            if (empty($$campo)) {
+                flash('error', "$label é obrigatório.");
+                redirect("/filiacao/$ano/$token");
+                return;
+            }
         }
 
         if (!isset(CATEGORIAS_FILIACAO[$categoria])) {
-            flash('error', 'Categoria invalida.');
+            flash('error', 'Categoria inválida.');
             redirect("/filiacao/$ano/$token");
             return;
         }
 
-        // Atualiza cadastrado
-        db_execute("
-            UPDATE cadastrados SET
-                nome = ?, email = ?, cpf = ?, telefone = ?, endereco = ?,
-                cep = ?, cidade = ?, estado = ?, pais = ?, profissao = ?,
-                formacao = ?, instituicao = ?, categoria = ?,
-                observacoes_filiado = ?, data_atualizacao = ?
-            WHERE id = ?
-        ", [
-            $nome, $email, $cpf ?: null, $telefone ?: null, $endereco ?: null,
-            $cep ?: null, $cidade ?: null, $estado ?: null, $pais, $profissao ?: null,
-            $formacao ?: null, $instituicao ?: null, $categoria,
-            $observacoes_filiado ?: null, date('Y-m-d H:i:s'),
-            $cadastrado['id']
-        ]);
-
-        registrar_log('dados_atualizados', $cadastrado['id'], "Dados atualizados para filiacao $ano");
-
-        // Verifica pagamento existente
-        $pagamento = buscar_pagamento($cadastrado['id'], (int)$ano);
         $valor = valor_por_categoria($categoria);
 
-        if ($pagamento) {
-            if ($pagamento['status'] === 'pago') {
-                // Ja pagou, mostra confirmacao
-                $titulo = "Filiacao Confirmada";
-                $mensagem = "Sua filiacao ja esta confirmada!";
+        // Atualiza pessoa e filiação
+        atualizar_pessoa_filiacao($cadastrado['id'], (int)$ano, [
+            'nome' => $nome,
+            'cpf' => $cpf,
+            'telefone' => $telefone,
+            'endereco' => $endereco,
+            'cep' => $cep,
+            'cidade' => $cidade,
+            'estado' => $estado,
+            'pais' => $pais,
+            'profissao' => $profissao,
+            'formacao' => $formacao,
+            'instituicao' => $instituicao,
+            'categoria' => $categoria,
+            'valor' => $valor,
+        ]);
 
-                ob_start();
-                require SRC_DIR . '/Views/filiacao/confirmacao.php';
-                $content = ob_get_clean();
-                require SRC_DIR . '/Views/layout.php';
-                return;
-            }
+        registrar_log('dados_atualizados', $cadastrado['id'], "Dados atualizados para filiação $ano");
 
-            // Atualiza valor se categoria mudou
-            db_execute(
-                "UPDATE pagamentos SET valor = ? WHERE id = ?",
-                [$valor, $pagamento['id']]
-            );
-        } else {
-            // Cria novo pagamento pendente
-            db_insert(
-                "INSERT INTO pagamentos (cadastrado_id, ano, valor, status, metodo) VALUES (?, ?, ?, 'pendente', 'pix')",
-                [$cadastrado['id'], (int)$ano, $valor]
-            );
+        // Verifica filiação
+        $filiacao = buscar_filiacao($cadastrado['id'], (int)$ano);
+
+        if ($filiacao && $filiacao['data_pagamento']) {
+            // Já pagou, mostra confirmação
+            $titulo = "Filiação Confirmada";
+            $mensagem = "Sua filiação já está confirmada!";
+
+            ob_start();
+            require SRC_DIR . '/Views/filiacao/confirmacao.php';
+            $content = ob_get_clean();
+            require SRC_DIR . '/Views/layout.php';
+            return;
         }
 
-        registrar_log('pagamento_criado', $cadastrado['id'], "Pagamento criado para $ano: " . formatar_valor($valor));
+        registrar_log('filiacao_criada', $cadastrado['id'], "Filiação criada para $ano: " . formatar_valor($valor));
 
         redirect("/filiacao/$ano/$token/pagamento");
     }
@@ -192,24 +224,24 @@ class FiliacaoController {
     public static function pagamento(string $ano, string $token): void {
         require_once SRC_DIR . '/Services/PagBankService.php';
 
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
 
         if (!$cadastrado) {
-            flash('error', 'Token invalido.');
+            flash('error', 'Token inválido.');
             redirect("/filiacao/$ano");
             return;
         }
 
-        $pagamento = buscar_pagamento($cadastrado['id'], (int)$ano);
+        $filiacao = buscar_filiacao($cadastrado['id'], (int)$ano);
 
-        if (!$pagamento) {
+        if (!$filiacao) {
             redirect("/filiacao/$ano/$token");
             return;
         }
 
-        if ($pagamento['status'] === 'pago') {
-            $titulo = "Filiacao Confirmada";
-            $mensagem = "Sua filiacao ja esta confirmada!";
+        if ($filiacao['data_pagamento'] || $filiacao['status'] === 'pago') {
+            $titulo = "Filiação Confirmada";
+            $mensagem = "Sua filiação já está confirmada!";
 
             ob_start();
             require SRC_DIR . '/Views/filiacao/confirmacao.php';
@@ -218,32 +250,33 @@ class FiliacaoController {
             return;
         }
 
-        $valor_centavos = (int)$pagamento['valor'];
+        $valor_centavos = (int)$filiacao['valor'];
+        $pagamento = $filiacao; // Alias para compatibilidade com a view
         $pix_data = null;
         $boleto_data = null;
         $erro_pagbank = null;
 
-        // Se ainda nao tem order_id, cria cobranca PIX
-        if (empty($pagamento['pagbank_order_id'])) {
+        // Se ainda não tem order_id, cria cobrança PIX
+        if (empty($filiacao['pagbank_order_id'])) {
             try {
                 $pix_data = PagBankService::criarCobrancaPix(
                     $cadastrado['id'],
                     (int)$ano,
                     $cadastrado['nome'],
                     $cadastrado['email'],
-                    $cadastrado['cpf'],
+                    $cadastrado['cpf'] ?? null,
                     $valor_centavos,
-                    3 // dias expiracao
+                    3 // dias expiração
                 );
 
                 // Salva order_id e data de vencimento
                 db_execute("
-                    UPDATE pagamentos SET
+                    UPDATE filiacoes SET
                         pagbank_order_id = ?,
                         data_vencimento = ?,
                         metodo = 'pix'
                     WHERE id = ?
-                ", [$pix_data['order_id'], $pix_data['expiration_date'], $pagamento['id']]);
+                ", [$pix_data['order_id'], $pix_data['expiration_date'], $filiacao['id']]);
 
                 registrar_log('pix_gerado', $cadastrado['id'], "PIX gerado: " . $pix_data['order_id']);
 
@@ -252,17 +285,17 @@ class FiliacaoController {
                 registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao criar PIX: $erro_pagbank");
             }
         } else {
-            // Ja tem order_id, busca dados do PIX
+            // Já tem order_id, busca dados do PIX
             try {
-                $order_data = PagBankService::consultarPedido($pagamento['pagbank_order_id']);
+                $order_data = PagBankService::consultarPedido($filiacao['pagbank_order_id']);
                 $qr_codes = $order_data['qr_codes'] ?? [];
                 if (!empty($qr_codes)) {
                     $qr = $qr_codes[0];
                     $pix_data = [
-                        'order_id' => $pagamento['pagbank_order_id'],
+                        'order_id' => $filiacao['pagbank_order_id'],
                         'qr_code' => $qr['text'] ?? '',
                         'qr_code_link' => !empty($qr['links']) ? $qr['links'][0]['href'] : '',
-                        'expiration_date' => $pagamento['data_vencimento'],
+                        'expiration_date' => $filiacao['data_vencimento'],
                     ];
                 }
             } catch (Exception $e) {
@@ -271,18 +304,18 @@ class FiliacaoController {
         }
 
         // Dados de boleto se existir
-        if (!empty($pagamento['pagbank_boleto_link'])) {
+        if (!empty($filiacao['pagbank_boleto_link'])) {
             $boleto_data = [
-                'boleto_link' => $pagamento['pagbank_boleto_link'],
-                'barcode' => $pagamento['pagbank_boleto_barcode'] ?? '',
-                'due_date' => $pagamento['data_vencimento'] ?? '',
+                'boleto_link' => $filiacao['pagbank_boleto_link'],
+                'barcode' => $filiacao['pagbank_boleto_barcode'] ?? '',
+                'due_date' => $filiacao['data_vencimento'] ?? '',
             ];
         }
 
-        // Chave publica para criptografia de cartao
+        // Chave pública para criptografia de cartão
         $pagbank_public_key = PagBankService::obterChavePublica();
 
-        $titulo = "Pagamento - Filiacao $ano";
+        $titulo = "Pagamento - Filiação $ano";
         $valor_formatado = formatar_valor($valor_centavos);
 
         ob_start();
@@ -292,24 +325,24 @@ class FiliacaoController {
     }
 
     /**
-     * Gera cobranca PIX
+     * Gera cobrança PIX
      */
     public static function gerarPix(string $ano, string $token): void {
         require_once SRC_DIR . '/Services/PagBankService.php';
 
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
         if (!$cadastrado) {
             redirect("/filiacao/$ano");
             return;
         }
 
-        $pagamento = buscar_pagamento($cadastrado['id'], (int)$ano);
-        if (!$pagamento || $pagamento['status'] === 'pago') {
+        $filiacao = buscar_filiacao($cadastrado['id'], (int)$ano);
+        if (!$filiacao || $filiacao['data_pagamento']) {
             redirect("/filiacao/$ano/$token/pagamento");
             return;
         }
 
-        $valor_centavos = (int)$pagamento['valor'];
+        $valor_centavos = (int)$filiacao['valor'];
 
         try {
             $pix_data = PagBankService::criarCobrancaPix(
@@ -317,18 +350,18 @@ class FiliacaoController {
                 (int)$ano,
                 $cadastrado['nome'],
                 $cadastrado['email'],
-                $cadastrado['cpf'],
+                $cadastrado['cpf'] ?? null,
                 $valor_centavos,
                 3
             );
 
             db_execute("
-                UPDATE pagamentos SET
+                UPDATE filiacoes SET
                     pagbank_order_id = ?,
                     data_vencimento = ?,
                     metodo = 'pix'
                 WHERE id = ?
-            ", [$pix_data['order_id'], $pix_data['expiration_date'], $pagamento['id']]);
+            ", [$pix_data['order_id'], $pix_data['expiration_date'], $filiacao['id']]);
 
             registrar_log('pix_gerado', $cadastrado['id'], "PIX gerado: " . $pix_data['order_id']);
 
@@ -340,31 +373,31 @@ class FiliacaoController {
     }
 
     /**
-     * Gera cobranca por boleto
+     * Gera cobrança por boleto
      */
     public static function gerarBoleto(string $ano, string $token): void {
         require_once SRC_DIR . '/Services/PagBankService.php';
 
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
         if (!$cadastrado) {
             redirect("/filiacao/$ano");
             return;
         }
 
-        $pagamento = buscar_pagamento($cadastrado['id'], (int)$ano);
-        if (!$pagamento || $pagamento['status'] === 'pago') {
+        $filiacao = buscar_filiacao($cadastrado['id'], (int)$ano);
+        if (!$filiacao || $filiacao['data_pagamento']) {
             redirect("/filiacao/$ano/$token/pagamento");
             return;
         }
 
-        $valor_centavos = (int)$pagamento['valor'];
+        $valor_centavos = (int)$filiacao['valor'];
 
-        // Monta endereco
+        // Monta endereço
         $endereco = [
-            'street' => $cadastrado['endereco'] ?: 'Nao informado',
+            'street' => $cadastrado['endereco'] ?: 'Não informado',
             'number' => 'S/N',
-            'locality' => $cadastrado['cidade'] ?: 'Nao informado',
-            'city' => $cadastrado['cidade'] ?: 'Nao informado',
+            'locality' => $cadastrado['cidade'] ?: 'Não informado',
+            'city' => $cadastrado['cidade'] ?: 'Não informado',
             'region_code' => $cadastrado['estado'] ?: 'DF',
             'postal_code' => str_replace('-', '', $cadastrado['cep'] ?: '70000000'),
         ];
@@ -375,14 +408,14 @@ class FiliacaoController {
                 (int)$ano,
                 $cadastrado['nome'],
                 $cadastrado['email'],
-                $cadastrado['cpf'],
+                $cadastrado['cpf'] ?? null,
                 $valor_centavos,
                 $endereco,
                 3
             );
 
             db_execute("
-                UPDATE pagamentos SET
+                UPDATE filiacoes SET
                     pagbank_order_id = ?,
                     pagbank_charge_id = ?,
                     pagbank_boleto_link = ?,
@@ -396,7 +429,7 @@ class FiliacaoController {
                 $boleto_data['boleto_link'],
                 $boleto_data['barcode'],
                 $boleto_data['due_date'],
-                $pagamento['id']
+                $filiacao['id']
             ]);
 
             registrar_log('boleto_gerado', $cadastrado['id'], "Boleto gerado: " . $boleto_data['order_id']);
@@ -409,19 +442,19 @@ class FiliacaoController {
     }
 
     /**
-     * Processa pagamento com cartao de credito
+     * Processa pagamento com cartão de crédito
      */
     public static function pagarCartao(string $ano, string $token): void {
         require_once SRC_DIR . '/Services/PagBankService.php';
 
-        $cadastrado = buscar_cadastrado_por_token($token);
+        $cadastrado = buscar_pessoa_por_token($token);
         if (!$cadastrado) {
             redirect("/filiacao/$ano");
             return;
         }
 
-        $pagamento = buscar_pagamento($cadastrado['id'], (int)$ano);
-        if (!$pagamento || $pagamento['status'] === 'pago') {
+        $filiacao = buscar_filiacao($cadastrado['id'], (int)$ano);
+        if (!$filiacao || $filiacao['data_pagamento']) {
             redirect("/filiacao/$ano/$token/pagamento");
             return;
         }
@@ -430,12 +463,12 @@ class FiliacaoController {
         $holder_name = $_POST['holder_name'] ?? '';
 
         if (empty($card_encrypted) || empty($holder_name)) {
-            flash('error', 'Dados do cartao incompletos.');
+            flash('error', 'Dados do cartão incompletos.');
             redirect("/filiacao/$ano/$token/pagamento");
             return;
         }
 
-        $valor_centavos = (int)$pagamento['valor'];
+        $valor_centavos = (int)$filiacao['valor'];
 
         try {
             $cartao_data = PagBankService::criarCobrancaCartao(
@@ -443,34 +476,34 @@ class FiliacaoController {
                 (int)$ano,
                 $cadastrado['nome'],
                 $cadastrado['email'],
-                $cadastrado['cpf'],
+                $cadastrado['cpf'] ?? null,
                 $valor_centavos,
                 $card_encrypted,
                 $holder_name
             );
 
             db_execute("
-                UPDATE pagamentos SET
+                UPDATE filiacoes SET
                     pagbank_order_id = ?,
                     pagbank_charge_id = ?,
                     metodo = 'cartao'
                 WHERE id = ?
-            ", [$cartao_data['order_id'], $cartao_data['charge_id'], $pagamento['id']]);
+            ", [$cartao_data['order_id'], $cartao_data['charge_id'], $filiacao['id']]);
 
             // Se pagamento aprovado imediatamente
             if ($cartao_data['status'] === 'PAID') {
                 db_execute(
-                    "UPDATE pagamentos SET status = 'pago', data_pagamento = ? WHERE id = ?",
-                    [date('Y-m-d H:i:s'), $pagamento['id']]
+                    "UPDATE filiacoes SET status = 'pago', data_pagamento = ? WHERE id = ?",
+                    [date('Y-m-d H:i:s'), $filiacao['id']]
                 );
-                registrar_log('pagamento_cartao', $cadastrado['id'], "Pagamento com cartao aprovado: " . $cartao_data['order_id']);
+                registrar_log('pagamento_cartao', $cadastrado['id'], "Pagamento com cartão aprovado: " . $cartao_data['order_id']);
 
-                // Envia email de confirmacao com PDF
+                // Envia email de confirmação com PDF
                 require_once SRC_DIR . '/Controllers/WebhookController.php';
                 WebhookController::processarPagamentoConfirmado($cadastrado['id'], (int)$ano);
 
-                $titulo = "Filiacao Confirmada";
-                $mensagem = "Pagamento aprovado! Sua filiacao esta confirmada.";
+                $titulo = "Filiação Confirmada";
+                $mensagem = "Pagamento aprovado! Sua filiação está confirmada.";
 
                 ob_start();
                 require SRC_DIR . '/Views/filiacao/confirmacao.php';
@@ -478,11 +511,11 @@ class FiliacaoController {
                 require SRC_DIR . '/Views/layout.php';
                 return;
             } else {
-                registrar_log('cartao_pendente', $cadastrado['id'], "Cartao pendente/recusado: " . $cartao_data['status']);
+                registrar_log('cartao_pendente', $cadastrado['id'], "Cartão pendente/recusado: " . $cartao_data['status']);
             }
 
         } catch (Exception $e) {
-            registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao processar cartao: " . $e->getMessage());
+            registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao processar cartão: " . $e->getMessage());
             flash('error', 'Erro ao processar pagamento. Tente novamente.');
         }
 

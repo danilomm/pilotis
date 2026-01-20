@@ -1,6 +1,11 @@
 <?php
 /**
  * Pilotis - Conexão com banco de dados SQLite
+ *
+ * Schema existente:
+ * - pessoas (id, nome, cpf, token, ativo, notas, created_at, updated_at)
+ * - emails (id, pessoa_id, email, principal)
+ * - filiacoes (id, pessoa_id, ano, categoria, valor, data_pagamento, metodo, pagbank_id, ...)
  */
 
 require_once __DIR__ . '/config.php';
@@ -27,72 +32,56 @@ function get_db(): PDO {
         $_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $_db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-        // Inicializa schema se banco novo
-        init_schema($_db);
+        // Garante que tabelas auxiliares existam
+        init_extra_tables($_db);
     }
 
     return $_db;
 }
 
 /**
- * Inicializa schema do banco
+ * Cria tabelas auxiliares se não existirem
  */
-function init_schema(PDO $db): void {
+function init_extra_tables(PDO $db): void {
+    // Tabela de log
     $db->exec("
-        CREATE TABLE IF NOT EXISTS cadastrados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            email TEXT NOT NULL,
-            cpf TEXT,
-            telefone TEXT,
-            endereco TEXT,
-            cep TEXT,
-            cidade TEXT,
-            estado TEXT CHECK(length(estado) <= 2 OR estado IS NULL),
-            pais TEXT DEFAULT 'Brasil',
-            profissao TEXT,
-            formacao TEXT,
-            instituicao TEXT,
-            categoria TEXT CHECK(categoria IN ('estudante', 'profissional_nacional', 'profissional_internacional', 'participante_seminario', 'cadastrado')),
-            seminario_2025 BOOLEAN DEFAULT 0,
-            data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP,
-            data_atualizacao DATETIME,
-            token TEXT UNIQUE,
-            token_expira DATETIME,
-            observacoes TEXT,
-            observacoes_filiado TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS pagamentos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            cadastrado_id INTEGER NOT NULL REFERENCES cadastrados(id),
-            ano INTEGER NOT NULL,
-            valor DECIMAL(10,2) NOT NULL,
-            status TEXT DEFAULT 'pendente' CHECK(status IN ('pendente', 'pago', 'cancelado', 'expirado')),
-            metodo TEXT CHECK(metodo IN ('pix', 'boleto', 'cartao', 'manual')),
-            pagbank_order_id TEXT,
-            pagbank_charge_id TEXT,
-            pagbank_boleto_link TEXT,
-            pagbank_boleto_barcode TEXT,
-            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-            data_pagamento DATETIME,
-            data_vencimento DATETIME,
-            UNIQUE(cadastrado_id, ano)
-        );
-
         CREATE TABLE IF NOT EXISTS log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             tipo TEXT NOT NULL,
-            cadastrado_id INTEGER,
+            pessoa_id INTEGER,
             mensagem TEXT
         );
-
-        CREATE INDEX IF NOT EXISTS idx_pagamentos_status ON pagamentos(status);
-        CREATE INDEX IF NOT EXISTS idx_pagamentos_ano ON pagamentos(ano);
-        CREATE INDEX IF NOT EXISTS idx_cadastrados_email ON cadastrados(email);
-        CREATE INDEX IF NOT EXISTS idx_cadastrados_token ON cadastrados(token);
     ");
+
+    // Adiciona colunas extras na filiacoes se não existirem
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN status TEXT DEFAULT 'pendente'");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN pagbank_order_id TEXT");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN pagbank_charge_id TEXT");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN pagbank_boleto_link TEXT");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN pagbank_boleto_barcode TEXT");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE filiacoes ADD COLUMN data_vencimento TEXT");
+    } catch (PDOException $e) {}
+
+    // Atualiza status baseado em data_pagamento
+    $db->exec("UPDATE filiacoes SET status = 'pago' WHERE data_pagamento IS NOT NULL AND status IS NULL");
+    $db->exec("UPDATE filiacoes SET status = 'pendente' WHERE data_pagamento IS NULL AND status IS NULL");
 }
 
 /**
@@ -135,55 +124,92 @@ function db_insert(string $sql, array $params = []): int {
 /**
  * Registra entrada no log
  */
-function registrar_log(string $tipo, ?int $cadastrado_id = null, string $mensagem = ''): void {
+function registrar_log(string $tipo, ?int $pessoa_id = null, string $mensagem = ''): void {
     db_execute(
         "INSERT INTO log (tipo, cadastrado_id, mensagem) VALUES (?, ?, ?)",
-        [$tipo, $cadastrado_id, $mensagem]
+        [$tipo, $pessoa_id, $mensagem]
     );
 }
 
 // === Funções de busca ===
 
 /**
- * Busca cadastrado por email (pode ter múltiplos separados por ;)
+ * Busca pessoa por email
+ * Retorna dados da pessoa com email principal
  */
-function buscar_cadastrado_por_email(string $email): ?array {
+function buscar_pessoa_por_email(string $email): ?array {
     $email = strtolower(trim($email));
 
-    // Busca exata
-    $cadastrado = db_fetch_one(
-        "SELECT * FROM cadastrados WHERE LOWER(email) = ?",
-        [$email]
-    );
+    // Busca na tabela emails
+    $result = db_fetch_one("
+        SELECT p.*, e.email
+        FROM pessoas p
+        JOIN emails e ON e.pessoa_id = p.id
+        WHERE LOWER(e.email) = ?
+    ", [$email]);
 
-    if ($cadastrado) {
-        return $cadastrado;
+    if ($result) {
+        // Busca última filiação para pegar dados extras
+        $filiacao = db_fetch_one("
+            SELECT telefone, endereco, cep, cidade, estado, pais,
+                   profissao, formacao, instituicao, categoria
+            FROM filiacoes
+            WHERE pessoa_id = ?
+            ORDER BY ano DESC
+            LIMIT 1
+        ", [$result['id']]);
+
+        if ($filiacao) {
+            $result = array_merge($result, $filiacao);
+        }
     }
 
-    // Busca se o email está em uma lista de emails
-    return db_fetch_one(
-        "SELECT * FROM cadastrados WHERE LOWER(email) LIKE ?",
-        ["%$email%"]
-    );
+    return $result;
 }
 
 /**
- * Busca cadastrado por token
+ * Busca pessoa por token
  */
-function buscar_cadastrado_por_token(string $token): ?array {
-    return db_fetch_one(
-        "SELECT * FROM cadastrados WHERE token = ?",
-        [$token]
-    );
+function buscar_pessoa_por_token(string $token): ?array {
+    $result = db_fetch_one("
+        SELECT p.*, e.email
+        FROM pessoas p
+        LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+        WHERE p.token = ?
+    ", [$token]);
+
+    if ($result) {
+        // Se não tem email principal, pega qualquer um
+        if (!$result['email']) {
+            $email = db_fetch_one("SELECT email FROM emails WHERE pessoa_id = ? LIMIT 1", [$result['id']]);
+            $result['email'] = $email['email'] ?? '';
+        }
+
+        // Busca última filiação para pegar dados extras
+        $filiacao = db_fetch_one("
+            SELECT telefone, endereco, cep, cidade, estado, pais,
+                   profissao, formacao, instituicao, categoria
+            FROM filiacoes
+            WHERE pessoa_id = ?
+            ORDER BY ano DESC
+            LIMIT 1
+        ", [$result['id']]);
+
+        if ($filiacao) {
+            $result = array_merge($result, $filiacao);
+        }
+    }
+
+    return $result;
 }
 
 /**
- * Busca pagamento por cadastrado e ano
+ * Busca filiação por pessoa e ano
  */
-function buscar_pagamento(int $cadastrado_id, int $ano): ?array {
+function buscar_filiacao(int $pessoa_id, int $ano): ?array {
     return db_fetch_one(
-        "SELECT * FROM pagamentos WHERE cadastrado_id = ? AND ano = ?",
-        [$cadastrado_id, $ano]
+        "SELECT * FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+        [$pessoa_id, $ano]
     );
 }
 
@@ -192,10 +218,113 @@ function buscar_pagamento(int $cadastrado_id, int $ano): ?array {
  */
 function listar_filiados(int $ano): array {
     return db_fetch_all("
-        SELECT c.nome, c.categoria, c.cidade, c.estado
-        FROM cadastrados c
-        JOIN pagamentos p ON c.id = p.cadastrado_id
-        WHERE p.ano = ? AND p.status = 'pago'
-        ORDER BY c.nome
+        SELECT p.nome, f.categoria, f.cidade, f.estado
+        FROM pessoas p
+        JOIN filiacoes f ON p.id = f.pessoa_id
+        WHERE f.ano = ? AND (f.data_pagamento IS NOT NULL OR f.status = 'pago')
+        ORDER BY p.nome
     ", [$ano]);
+}
+
+/**
+ * Cria nova pessoa com email
+ */
+function criar_pessoa(string $email, string $nome = ''): int {
+    $email = strtolower(trim($email));
+    $token = gerar_token();
+
+    // Cria pessoa
+    $pessoa_id = db_insert(
+        "INSERT INTO pessoas (nome, token, created_at) VALUES (?, ?, ?)",
+        [$nome, $token, date('Y-m-d H:i:s')]
+    );
+
+    // Cria email principal
+    db_insert(
+        "INSERT INTO emails (pessoa_id, email, principal) VALUES (?, ?, 1)",
+        [$pessoa_id, $email]
+    );
+
+    return $pessoa_id;
+}
+
+/**
+ * Atualiza dados da pessoa e filiação
+ */
+function atualizar_pessoa_filiacao(
+    int $pessoa_id,
+    int $ano,
+    array $dados
+): void {
+    // Atualiza pessoa
+    db_execute(
+        "UPDATE pessoas SET nome = ?, cpf = ?, updated_at = ? WHERE id = ?",
+        [$dados['nome'], $dados['cpf'] ?: null, date('Y-m-d H:i:s'), $pessoa_id]
+    );
+
+    // Verifica se filiação existe
+    $filiacao = buscar_filiacao($pessoa_id, $ano);
+
+    if ($filiacao) {
+        // Atualiza filiação existente
+        db_execute("
+            UPDATE filiacoes SET
+                categoria = ?, valor = ?, telefone = ?, endereco = ?,
+                cep = ?, cidade = ?, estado = ?, pais = ?,
+                profissao = ?, formacao = ?, instituicao = ?
+            WHERE pessoa_id = ? AND ano = ?
+        ", [
+            $dados['categoria'],
+            $dados['valor'],
+            $dados['telefone'] ?: null,
+            $dados['endereco'] ?: null,
+            $dados['cep'] ?: null,
+            $dados['cidade'] ?: null,
+            $dados['estado'] ?: null,
+            $dados['pais'] ?: 'Brasil',
+            $dados['profissao'] ?: null,
+            $dados['formacao'] ?: null,
+            $dados['instituicao'] ?: null,
+            $pessoa_id,
+            $ano
+        ]);
+    } else {
+        // Cria nova filiação
+        db_insert("
+            INSERT INTO filiacoes (
+                pessoa_id, ano, categoria, valor, status,
+                telefone, endereco, cep, cidade, estado, pais,
+                profissao, formacao, instituicao, created_at
+            ) VALUES (?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ", [
+            $pessoa_id,
+            $ano,
+            $dados['categoria'],
+            $dados['valor'],
+            $dados['telefone'] ?: null,
+            $dados['endereco'] ?: null,
+            $dados['cep'] ?: null,
+            $dados['cidade'] ?: null,
+            $dados['estado'] ?: null,
+            $dados['pais'] ?: 'Brasil',
+            $dados['profissao'] ?: null,
+            $dados['formacao'] ?: null,
+            $dados['instituicao'] ?: null,
+            date('Y-m-d H:i:s')
+        ]);
+    }
+}
+
+// === Aliases para compatibilidade ===
+
+function buscar_cadastrado_por_email(string $email): ?array {
+    return buscar_pessoa_por_email($email);
+}
+
+function buscar_cadastrado_por_token(string $token): ?array {
+    return buscar_pessoa_por_token($token);
+}
+
+function buscar_pagamento(int $pessoa_id, int $ano): ?array {
+    return buscar_filiacao($pessoa_id, $ano);
 }

@@ -51,7 +51,7 @@ class WebhookController {
         // Atualiza status conforme retorno
         if ($dados['paid']) {
             db_execute("
-                UPDATE pagamentos SET
+                UPDATE filiacoes SET
                     status = 'pago',
                     data_pagamento = ?,
                     pagbank_order_id = ?,
@@ -74,7 +74,7 @@ class WebhookController {
 
         } elseif (in_array($dados['status'], ['CANCELED', 'DECLINED'])) {
             db_execute("
-                UPDATE pagamentos SET
+                UPDATE filiacoes SET
                     status = 'cancelado',
                     pagbank_order_id = ?,
                     pagbank_charge_id = ?
@@ -94,59 +94,73 @@ class WebhookController {
     /**
      * Processa pagamento confirmado: gera PDF e envia email
      */
-    public static function processarPagamentoConfirmado(int $cadastrado_id, int $ano): void {
+    public static function processarPagamentoConfirmado(int $pessoa_id, int $ano): void {
         require_once SRC_DIR . '/Services/PdfService.php';
         require_once SRC_DIR . '/Services/BrevoService.php';
 
         try {
-            // Busca dados do cadastrado
-            $cadastrado = db_fetch_one(
-                "SELECT * FROM cadastrados WHERE id = ?",
-                [$cadastrado_id]
-            );
+            // Busca dados da pessoa com email
+            $pessoa = db_fetch_one("
+                SELECT p.*, e.email
+                FROM pessoas p
+                LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+                WHERE p.id = ?
+            ", [$pessoa_id]);
 
-            if (!$cadastrado) {
-                registrar_log('erro_confirmacao', $cadastrado_id, "Cadastrado nao encontrado");
+            if (!$pessoa) {
+                registrar_log('erro_confirmacao', $pessoa_id, "Pessoa nao encontrada");
                 return;
             }
 
-            // Busca dados do pagamento
-            $pagamento = buscar_pagamento($cadastrado_id, $ano);
+            // Se não tem email principal, pega qualquer um
+            if (!$pessoa['email']) {
+                $email_row = db_fetch_one("SELECT email FROM emails WHERE pessoa_id = ? LIMIT 1", [$pessoa_id]);
+                $pessoa['email'] = $email_row['email'] ?? '';
+            }
 
-            if (!$pagamento) {
-                registrar_log('erro_confirmacao', $cadastrado_id, "Pagamento nao encontrado");
+            if (!$pessoa['email']) {
+                registrar_log('erro_confirmacao', $pessoa_id, "Pessoa sem email cadastrado");
                 return;
             }
 
-            $valor_centavos = (int)$pagamento['valor'];
+            // Busca dados da filiacao
+            $filiacao = buscar_filiacao($pessoa_id, $ano);
+
+            if (!$filiacao) {
+                registrar_log('erro_confirmacao', $pessoa_id, "Filiacao nao encontrada para ano $ano");
+                return;
+            }
+
+            $valor_centavos = (int)$filiacao['valor'];
+            $categoria = $filiacao['categoria'];
 
             // Gera PDF da declaracao
             $pdf_bytes = PdfService::gerarDeclaracao(
-                $cadastrado['nome'],
-                $cadastrado['email'],
-                $cadastrado['categoria'],
+                $pessoa['nome'],
+                $pessoa['email'],
+                $categoria,
                 $ano,
                 $valor_centavos
             );
 
             // Envia email de confirmacao com PDF anexo
             $enviado = BrevoService::enviarConfirmacaoFiliacao(
-                $cadastrado['email'],
-                $cadastrado['nome'],
-                $cadastrado['categoria'],
+                $pessoa['email'],
+                $pessoa['nome'],
+                $categoria,
                 $ano,
                 $valor_centavos,
                 $pdf_bytes
             );
 
             if ($enviado) {
-                registrar_log('email_confirmacao_enviado', $cadastrado_id, "Email de confirmacao enviado para " . $cadastrado['email']);
+                registrar_log('email_confirmacao_enviado', $pessoa_id, "Email de confirmacao enviado para " . $pessoa['email']);
             } else {
-                registrar_log('erro_email_confirmacao', $cadastrado_id, "Falha ao enviar email para " . $cadastrado['email']);
+                registrar_log('erro_email_confirmacao', $pessoa_id, "Falha ao enviar email para " . $pessoa['email']);
             }
 
         } catch (Exception $e) {
-            registrar_log('erro_confirmacao', $cadastrado_id, "Erro ao processar confirmacao: " . $e->getMessage());
+            registrar_log('erro_confirmacao', $pessoa_id, "Erro ao processar confirmacao: " . $e->getMessage());
         }
     }
 }

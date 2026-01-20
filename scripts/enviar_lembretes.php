@@ -9,7 +9,7 @@
  *
  * Envia lembretes para:
  *   - Pagamentos que vencem hoje
- *   - Pagamentos vencidos ha mais de 7 dias (semanal)
+ *   - Pagamentos vencidos há mais de 7 dias (semanal)
  *
  * Ideal para rodar via cron diariamente.
  */
@@ -31,20 +31,21 @@ $dry_run = isset($options['dry-run']);
 echo "Envio de lembretes de pagamento\n";
 echo "Data: " . date('Y-m-d H:i:s') . "\n";
 if ($dry_run) {
-    echo "[DRY-RUN] Nenhum email sera enviado\n";
+    echo "[DRY-RUN] Nenhum email será enviado\n";
 }
 echo str_repeat('-', 50) . "\n";
 
 $hoje = date('Y-m-d');
 
-// Busca pagamentos pendentes
+// Busca filiações pendentes
 $pendentes = db_fetch_all("
-    SELECT p.id, p.cadastrado_id, p.ano, p.valor, p.data_vencimento,
-           c.nome, c.email, c.token
-    FROM pagamentos p
-    JOIN cadastrados c ON c.id = p.cadastrado_id
-    WHERE p.status = 'pendente'
-    AND p.data_vencimento IS NOT NULL
+    SELECT f.id, f.pessoa_id, f.ano, f.valor, f.data_vencimento,
+           p.nome, e.email, p.token
+    FROM filiacoes f
+    JOIN pessoas p ON p.id = f.pessoa_id
+    LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+    WHERE f.status = 'pendente'
+    AND f.data_vencimento IS NOT NULL
 ");
 
 echo "Pagamentos pendentes encontrados: " . count($pendentes) . "\n\n";
@@ -57,9 +58,9 @@ foreach ($pendentes as $p) {
     $vencimento = $p['data_vencimento'];
     $dias_restantes = (strtotime($vencimento) - strtotime($hoje)) / 86400;
 
-    // Criterios para envio:
+    // Critérios para envio:
     // 1. Vence hoje (dias_restantes = 0)
-    // 2. Venceu e e domingo (lembrete semanal)
+    // 2. Venceu e é domingo (lembrete semanal)
     $enviar = false;
     $motivo = '';
 
@@ -77,14 +78,27 @@ foreach ($pendentes as $p) {
         continue;
     }
 
-    // Gera token se nao tiver
+    // Gera token se não tiver
     $token = $p['token'];
     if (!$token) {
         $token = gerar_token();
-        db_execute("UPDATE cadastrados SET token = ? WHERE id = ?", [$token, $p['cadastrado_id']]);
+        db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $p['pessoa_id']]);
     }
 
-    echo "{$p['nome']} <{$p['email']}> - {$p['ano']} - $motivo ... ";
+    $email = $p['email'];
+    if (!$email) {
+        // Busca qualquer email
+        $email_row = db_fetch_one("SELECT email FROM emails WHERE pessoa_id = ? LIMIT 1", [$p['pessoa_id']]);
+        $email = $email_row['email'] ?? null;
+    }
+
+    if (!$email) {
+        echo "{$p['nome']} - SEM EMAIL\n";
+        $pulados++;
+        continue;
+    }
+
+    echo "{$p['nome']} <{$email}> - {$p['ano']} - $motivo ... ";
 
     if ($dry_run) {
         echo "[DRY-RUN]\n";
@@ -94,7 +108,7 @@ foreach ($pendentes as $p) {
 
     try {
         $enviado = BrevoService::enviarLembretePagamento(
-            $p['email'],
+            $email,
             $p['nome'],
             $p['ano'],
             $token,
@@ -105,7 +119,7 @@ foreach ($pendentes as $p) {
         if ($enviado) {
             echo "OK\n";
             $enviados++;
-            registrar_log('lembrete_enviado', $p['cadastrado_id'], "Lembrete {$p['ano']} enviado");
+            registrar_log('lembrete_enviado', $p['pessoa_id'], "Lembrete {$p['ano']} enviado");
         } else {
             echo "ERRO\n";
             $erros++;

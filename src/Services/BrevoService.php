@@ -275,24 +275,62 @@ class BrevoService {
         $html = "
         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
             <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Filiacao Docomomo Brasil</h1>
+                <h1 style='color: white; margin: 0;'>Filiação Docomomo Brasil</h1>
             </div>
             <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Ola <strong>$nome</strong>,</p>
-                <p>Obrigado por sua participacao no <strong>16o Seminario Docomomo Brasil</strong>!</p>
-                <p>Convidamos voce a se filiar ao Docomomo Brasil e fortalecer nossa rede de documentacao
-                e conservacao da arquitetura, urbanismo e paisagismo modernos.</p>
+                <p>Olá <strong>$nome</strong>,</p>
+                <p>Obrigado por sua participação no <strong>16º Seminário Docomomo Brasil</strong>!</p>
+                <p>Convidamos você a se filiar ao Docomomo Brasil e fortalecer nossa rede de documentação
+                e conservação da arquitetura, urbanismo e paisagismo modernos.</p>
                 <p style='text-align: center; margin: 30px 0;'>
                     <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Filiar-se Agora</a>
                 </p>
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associacao de Colaboradores do Docomomo Brasil<br>
+                Associação de Colaboradores do Docomomo Brasil<br>
                 @docomomobrasil
             </div>
         </div>
         ";
 
-        return self::enviarEmail($email, "Filiacao Docomomo Brasil $ano - Participante do 16o Seminario", $html);
+        return self::enviarEmail($email, "Filiação Docomomo Brasil $ano - Participante do 16º Seminário", $html);
+    }
+
+    /**
+     * Envia link de acesso ao formulário de filiação
+     * (Segurança: só quem tem acesso ao email pode preencher o formulário)
+     */
+    public static function enviarLinkAcesso(
+        string $email,
+        string $nome,
+        int $ano,
+        string $token
+    ): bool {
+        $link = BASE_URL . "/filiacao/$ano/$token";
+        $nome_display = $nome ?: 'filiado(a)';
+
+        $html = "
+        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
+                <h1 style='color: white; margin: 0;'>Acesso à Filiação</h1>
+            </div>
+            <div style='padding: 20px; background-color: #f9f9f9;'>
+                <p>Olá <strong>$nome_display</strong>,</p>
+                <p>Você solicitou acesso ao formulário de filiação do <strong>Docomomo Brasil</strong> para o ano de <strong>$ano</strong>.</p>
+                <p>Clique no botão abaixo para acessar seu formulário:</p>
+                <p style='text-align: center; margin: 30px 0;'>
+                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Acessar Formulário</a>
+                </p>
+                <p><small>Se você não solicitou este acesso, ignore este email.</small></p>
+                <p><small>Este link é pessoal e intransferível.</small></p>
+            </div>
+            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
+                Associação de Colaboradores do Docomomo Brasil<br>
+                @docomomobrasil
+            </div>
+        </div>
+        ";
+
+        return self::enviarEmail($email, "Acesso à Filiação Docomomo Brasil $ano", $html);
     }
 }

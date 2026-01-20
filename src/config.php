@@ -35,8 +35,12 @@ define('SRC_DIR', BASE_DIR . '/src');
 define('PUBLIC_DIR', BASE_DIR . '/public');
 define('DATA_DIR', BASE_DIR . '/data');
 
-// Banco de dados
-define('DATABASE_PATH', env('DATABASE_PATH', DATA_DIR . '/pilotis.db'));
+// Banco de dados (resolve caminho relativo para absoluto)
+$db_path = env('DATABASE_PATH', 'data/pilotis.db');
+if ($db_path[0] !== '/') {
+    $db_path = BASE_DIR . '/' . $db_path;
+}
+define('DATABASE_PATH', $db_path);
 
 // PagBank
 define('PAGBANK_TOKEN', env('PAGBANK_TOKEN', ''));

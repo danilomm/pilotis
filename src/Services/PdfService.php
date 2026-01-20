@@ -75,15 +75,15 @@ class PdfService {
         // Titulo
         $pdf->SetY(55);
         $pdf->SetFont('helvetica', 'B', 16);
-        $pdf->Cell(0, 10, 'DECLARACAO', 0, 1, 'C');
+        $pdf->Cell(0, 10, 'DECLARAÇÃO', 0, 1, 'C');
 
         // Texto da declaracao
         $categoria_nome = CATEGORIAS_DISPLAY[$categoria] ?? $categoria;
         $valor_formatado = formatar_valor($valor_centavos);
 
-        $texto = "Declaramos para os devidos fins que $nome e filiada/o ao " .
+        $texto = "Declaramos para os devidos fins que $nome é filiada/o ao " .
                  "Docomomo Brasil na modalidade $categoria_nome [Anuidade: $valor_formatado] " .
-                 "para o periodo de janeiro a dezembro de $ano.";
+                 "para o período de janeiro a dezembro de $ano.";
 
         $pdf->SetY(75);
         $pdf->SetFont('helvetica', '', 12);
@@ -96,8 +96,8 @@ class PdfService {
 
         $pdf->SetFont('helvetica', '', 11);
         $pdf->Cell(0, 5, 'Coordenadora do Docomomo Brasil', 0, 1, 'L');
-        $pdf->Cell(0, 5, 'Associacao de Colaboradores do Docomomo Brasil', 0, 1, 'L');
-        $pdf->Cell(0, 5, "Gestao $gestao", 0, 1, 'L');
+        $pdf->Cell(0, 5, 'Associação de Colaboradores do Docomomo Brasil', 0, 1, 'L');
+        $pdf->Cell(0, 5, "Gestão $gestao", 0, 1, 'L');
         $pdf->Cell(0, 5, '@docomomobrasil', 0, 1, 'L');
 
         // Dados do filiado no rodape

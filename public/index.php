@@ -5,10 +5,21 @@
  * Todas as requisicoes passam por aqui
  */
 
+// Debug: mostra erros em desenvolvimento
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Carrega arquivos base
 require_once __DIR__ . '/../src/config.php';
 require_once __DIR__ . '/../src/routes.php';
 require_once __DIR__ . '/../src/db.php';
+
+// Autoload do Composer (para TCPDF e outras bibliotecas)
+$autoload = BASE_DIR . '/vendor/autoload.php';
+if (file_exists($autoload)) {
+    require_once $autoload;
+}
 
 // Carrega Controllers
 require_once SRC_DIR . '/Controllers/FiliacaoController.php';

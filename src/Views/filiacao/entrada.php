@@ -1,6 +1,6 @@
 <article>
-    <h2>Filiacao <?= e($ano) ?></h2>
-    <p>Para iniciar ou renovar sua filiacao ao <strong>Docomomo Brasil</strong>, informe seu email.</p>
+    <h2>Filiação <?= e($ano) ?></h2>
+    <p>Para iniciar ou renovar sua filiação ao <strong>Docomomo Brasil</strong>, informe seu email.</p>
 
     <form method="POST" action="/filiacao/<?= e($ano) ?>">
         <label for="email">Email</label>
@@ -9,5 +9,5 @@
         <button type="submit">Continuar</button>
     </form>
 
-    <p><small>Se voce ja possui cadastro, seus dados serao pre-preenchidos.</small></p>
+    <p><small>Enviaremos um link de acesso para seu email. Se você já possui cadastro, seus dados serão pré-preenchidos.</small></p>
 </article>
