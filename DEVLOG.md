@@ -1,5 +1,77 @@
 # Pilotis — Development Log
 
+## 2026-01-20
+
+### Testes do Fluxo de Pagamento ✓
+
+**PIX:**
+- ✅ Geração de QR Code funcionando
+- ✅ Código copia-cola funcionando
+
+**Boleto:**
+- ✅ Geração de boleto funcionando
+- ⚠️ PDF do sandbox mostra nome fictício ("Caroline Luz") — limitação do ambiente de teste
+- 📋 **Pendente:** Testar em produção para confirmar que nome real aparece
+
+**Cartão de Crédito:**
+- ✅ Criptografia PagBank.js funcionando
+- ✅ Pagamento aprovado imediatamente
+- ✅ Email de confirmação enviado com PDF anexo
+
+### Correções de Segurança ✓
+
+- Fluxo de entrada alterado: agora envia link por email em vez de redirecionar direto
+- Evita que alguém veja dados de terceiros apenas informando o email
+- Nova view `email_enviado.php` com instruções
+
+### Correções de Bugs ✓
+
+- `WebhookController`: corrigido nomes de tabelas (`cadastrados` → `pessoas`, `pagamentos` → `filiacoes`)
+- `config.php`: corrigido resolução de caminho relativo do banco de dados
+- `db.php`: corrigido nome de coluna na tabela log (`pessoa_id` → `cadastrado_id`)
+- `routes.php`: função `e()` agora aceita valores null
+
+### Melhorias no Formulário ✓
+
+- Todos os campos obrigatórios marcados com asterisco (*)
+- Nota explicativa sobre campos obrigatórios
+- Validação server-side de todos os campos obrigatórios
+- CPF obrigatório (exigência do PagBank)
+- Explicação sobre endereço de correspondência
+
+### PDF da Declaração ✓
+
+- Instalado TCPDF via Composer para geração profissional
+- Corrigidos acentos: DECLARAÇÃO, período, é, Gestão, Associação
+- Autoload do Composer adicionado ao index.php
+
+### Limpeza ✓
+
+- Removido `public/data/pilotis.db` (cópia antiga em local inseguro)
+- Adicionado `public/data/` ao `.gitignore`
+
+---
+
+## Pendências
+
+### Para testar em produção:
+- [ ] Boleto: confirmar que nome real aparece no PDF (não o fictício do sandbox)
+
+### Para testar localmente:
+- [ ] Painel Admin (`/admin`)
+- [ ] Lista pública de filiados (`/filiados/2026`)
+- [ ] Scripts de campanha (`scripts/enviar_campanha.php`)
+- [ ] Scripts de lembretes (`scripts/enviar_lembretes.php`)
+
+### Para deploy:
+- [ ] Upload via FTP para KingHost
+- [ ] Configurar `.env` com credenciais de produção
+- [ ] Configurar `PAGBANK_SANDBOX=false`
+- [ ] Testar webhook em produção
+- [ ] Configurar cron para lembretes
+
+---
+
 ## 2026-01-16
 
 ### Importação de Dados 2024 ✓
