@@ -1,0 +1,27 @@
+# Pilotis - URL Rewriting
+# Todas as requisições passam pelo index.php (Front Controller)
+
+RewriteEngine On
+
+# Se o arquivo ou diretório existe, serve diretamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redireciona tudo para index.php
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Segurança: bloqueia acesso a arquivos sensíveis
+<FilesMatch "\.(env|db|sqlite|sql|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Cabeçalhos de segurança
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Charset
+AddDefaultCharset UTF-8

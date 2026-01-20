@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { color: #4a8c4a; }
+        .destaque { background: #f0f7f0; padding: 15px; border-left: 4px solid #4a8c4a; margin: 20px 0; }
+        .valores { margin: 20px 0; }
+        .valores li { margin: 8px 0; }
+        .botao { display: inline-block; background: #4a8c4a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 15px 0; }
+        .rodape { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Filiação Docomomo Brasil {{ ano }}</h1>
+
+    <p>Olá {{ nome }},</p>
+
+    <p>Obrigado por sua participação no <strong>16º Seminário Docomomo Brasil</strong>!</p>
+
+    <p>Gostaríamos de convidá-lo(a) a se filiar ao <strong>Docomomo Brasil</strong> e fortalecer nossa rede de documentação e conservação da arquitetura, urbanismo e paisagismo modernos.</p>
+
+    <div class="destaque">
+        <p>Desde 1992, o Docomomo Brasil atua na preservação do legado modernista brasileiro, realizando inventários, campanhas de tombamento e divulgação de obras representativas do Movimento Moderno. Fazemos parte de uma rede internacional presente em 69 países, com mais de 3.000 membros entre arquitetos, historiadores, urbanistas e pesquisadores.</p>
+    </div>
+
+    <p><strong>Benefícios da filiação:</strong></p>
+    <ul>
+        <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
+        <li>Participação na rede de profissionais e pesquisadores</li>
+        <li>Acesso às atividades e publicações</li>
+        <li><em>Filiação internacional:</em> Docomomo Journal, Member Card, descontos em museus parceiros</li>
+    </ul>
+
+    <p><strong>Valores {{ ano }}:</strong></p>
+    <ul class="valores">
+        <li><strong>Filiação Plena Internacional+Brasil:</strong> R$ 460,00</li>
+        <li><strong>Filiação Plena Brasil:</strong> R$ 230,00</li>
+        <li><strong>Filiação Estudante Brasil:</strong> R$ 115,00</li>
+    </ul>
+
+    <p><a href="{{ link }}" style="display: inline-block; background: #4a8c4a; color: #ffffff !important; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 15px 0; font-weight: bold;">Filiar-se ao Docomomo Brasil</a></p>
+
+    <div class="rodape">
+        <p>
+            <strong>Associação de Colaboradores do Docomomo Brasil</strong><br>
+            Documentação e Conservação do Movimento Moderno<br>
+            <a href="https://instagram.com/docomomobrasil">@docomomobrasil</a> ·
+            <a href="https://docomomobrasil.com">docomomobrasil.com</a>
+        </p>
+    </div>
+</body>
+</html>

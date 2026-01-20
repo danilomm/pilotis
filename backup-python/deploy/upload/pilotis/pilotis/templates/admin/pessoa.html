@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ pessoa.nome }} - Pilotis Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+        .status-pago { color: #2a2; }
+        .status-pendente { color: #c80; }
+        .acoes-pessoa { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .danger { background: #c00; border-color: #c00; }
+        .danger:hover { background: #a00; border-color: #a00; }
+        .salvo { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+        @media (max-width: 600px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="header">
+            <h1>Editar cadastro</h1>
+            <div class="acoes-pessoa">
+                <a href="/admin" role="button" class="secondary outline">Voltar</a>
+                <form method="post" action="/admin/excluir/pessoa/{{ pessoa.id }}" style="display: inline;"
+                      onsubmit="return confirm('ATENCAO: Isso vai excluir a pessoa e TODOS os pagamentos. Confirma?');">
+                    <button type="submit" class="danger">Excluir pessoa</button>
+                </form>
+            </div>
+        </div>
+
+        {% if salvo %}
+        <div class="salvo">Dados salvos com sucesso!</div>
+        {% endif %}
+
+        <form method="post" action="/admin/pessoa/{{ pessoa.id }}">
+            <article>
+                <header><strong>Dados pessoais</strong></header>
+
+                <label for="nome">Nome completo</label>
+                <input type="text" id="nome" name="nome" value="{{ pessoa.nome or '' }}" required>
+
+                <div class="grid-2">
+                    <div>
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email" value="{{ pessoa.email or '' }}" required>
+                    </div>
+                    <div>
+                        <label for="cpf">CPF</label>
+                        <input type="text" id="cpf" name="cpf" value="{{ pessoa.cpf or '' }}">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div>
+                        <label for="telefone">Telefone</label>
+                        <input type="text" id="telefone" name="telefone" value="{{ pessoa.telefone or '' }}">
+                    </div>
+                    <div>
+                        <label for="categoria">Categoria</label>
+                        <select id="categoria" name="categoria">
+                            <option value="">-</option>
+                            <option value="estudante" {% if pessoa.categoria == 'estudante' %}selected{% endif %}>Estudante</option>
+                            <option value="profissional_nacional" {% if pessoa.categoria == 'profissional_nacional' %}selected{% endif %}>Profissional Brasil</option>
+                            <option value="profissional_internacional" {% if pessoa.categoria == 'profissional_internacional' %}selected{% endif %}>Profissional Internacional</option>
+                        </select>
+                    </div>
+                </div>
+            </article>
+
+            <article>
+                <header><strong>Endereco para correspondencia</strong></header>
+
+                <label for="endereco">Endereco</label>
+                <input type="text" id="endereco" name="endereco" value="{{ pessoa.endereco or '' }}">
+
+                <div class="grid-3">
+                    <div>
+                        <label for="cep">CEP</label>
+                        <input type="text" id="cep" name="cep" value="{{ pessoa.cep or '' }}">
+                    </div>
+                    <div>
+                        <label for="cidade">Cidade</label>
+                        <input type="text" id="cidade" name="cidade" value="{{ pessoa.cidade or '' }}">
+                    </div>
+                    <div>
+                        <label for="estado">Estado</label>
+                        <input type="text" id="estado" name="estado" value="{{ pessoa.estado or '' }}" maxlength="2">
+                    </div>
+                </div>
+
+                <label for="pais">Pais</label>
+                <input type="text" id="pais" name="pais" value="{{ pessoa.pais or 'Brasil' }}">
+            </article>
+
+            <article>
+                <header><strong>Dados profissionais</strong></header>
+
+                <div class="grid-2">
+                    <div>
+                        <label for="profissao">Profissao</label>
+                        <input type="text" id="profissao" name="profissao" value="{{ pessoa.profissao or '' }}">
+                    </div>
+                    <div>
+                        <label for="formacao">Formacao</label>
+                        <input type="text" id="formacao" name="formacao" value="{{ pessoa.formacao or '' }}">
+                    </div>
+                </div>
+
+                <label for="instituicao">Instituicao</label>
+                <input type="text" id="instituicao" name="instituicao" value="{{ pessoa.instituicao or '' }}">
+            </article>
+
+            <article>
+                <header><strong>Observacoes</strong></header>
+                <label for="observacoes">Observacoes internas (so admin ve)</label>
+                <textarea id="observacoes" name="observacoes" rows="2">{{ pessoa.observacoes or '' }}</textarea>
+
+                <label for="observacoes_filiado">Observacoes do filiado</label>
+                <textarea id="observacoes_filiado" name="observacoes_filiado" rows="2">{{ pessoa.observacoes_filiado or '' }}</textarea>
+            </article>
+
+            <button type="submit">Salvar alteracoes</button>
+        </form>
+
+        <article>
+            <header><strong>Pagamentos</strong></header>
+
+            {% if pagamentos %}
+            <figure>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ano</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Metodo</th>
+                            <th>Data</th>
+                            <th>Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in pagamentos %}
+                        <tr>
+                            <td>{{ p.id }}</td>
+                            <td>{{ p.ano }}</td>
+                            <td>R$ {{ "%.2f"|format(p.valor/100) }}</td>
+                            <td class="status-{{ p.status }}">{{ p.status }}</td>
+                            <td>{{ p.metodo or '-' }}</td>
+                            <td>{{ (p.data_pagamento or p.data_criacao)[:10] if (p.data_pagamento or p.data_criacao) else '-' }}</td>
+                            <td>
+                                {% if p.status == 'pendente' %}
+                                <form method="post" action="/admin/pagar/{{ p.id }}" style="display: inline;">
+                                    <button type="submit" class="outline" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Pagar</button>
+                                </form>
+                                {% endif %}
+                                <form method="post" action="/admin/excluir/pagamento/{{ p.id }}" style="display: inline;"
+                                      onsubmit="return confirm('Excluir este pagamento?');">
+                                    <button type="submit" class="outline secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Excluir</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </figure>
+            {% else %}
+            <p>Nenhum pagamento registrado.</p>
+            {% endif %}
+        </article>
+
+        <article>
+            <header><strong>Link de filiacao</strong></header>
+            {% if pessoa.token %}
+            <p>
+                <code style="word-break: break-all;">{{ request.base_url }}filiacao/2026/{{ pessoa.token }}</code>
+            </p>
+            {% else %}
+            <p>Token nao gerado.</p>
+            {% endif %}
+        </article>
+    </main>
+</body>
+</html>

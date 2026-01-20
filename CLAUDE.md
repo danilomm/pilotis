@@ -1,81 +1,90 @@
 # Pilotis — Contexto para Claude
 
-Sistema de gestão de filiados do Docomomo Brasil.
+Sistema de gestao de filiados do Docomomo Brasil.
 
 ## Status Atual
 
-**Fases concluídas:** 1, 2, 3, 4, 5 + Painel Admin ✓
-**Testado:** PIX, Boleto, Cartão, Emails com PDF
-**Deploy:** Arquivos preparados, aguardando configuração do servidor
+**Versao:** 1.0.0 (PHP)
+**Tecnologia:** PHP 8.1+ / SQLite / Pico CSS
+**Testado:** PIX, Boleto, Cartao, Emails com PDF
+**Deploy:** Pronto para upload via FTP
 
 ## Estrutura do Projeto
 
 ```
 pilotis/
-├── pilotis/
-│   ├── main.py
-│   ├── config.py
-│   ├── db.py
-│   ├── models.py
-│   ├── routers/
-│   │   ├── filiacao.py      # Formulário e pagamento
-│   │   ├── filiados.py      # Lista pública
-│   │   ├── webhook.py       # PagBank callbacks
-│   │   └── admin.py         # Painel administrativo
-│   ├── services/
-│   │   ├── pagbank.py       # API PagBank (PIX)
-│   │   ├── email.py         # API Brevo
-│   │   └── pdf.py           # Declaração de filiação
-│   ├── static/
-│   │   ├── logo-docomomo.png
-│   │   └── logo-docomomo.jpg
-│   └── templates/
-│       ├── base.html
-│       ├── entrada.html
-│       ├── filiacao.html
-│       ├── pagamento.html
-│       ├── confirmacao.html
-│       ├── filiados.html
-│       ├── emails/
-│       │   ├── confirmacao.html
-│       │   ├── lembrete.html
-│       │   ├── campanha_renovacao.html
-│       │   ├── campanha_convite.html
-│       │   └── campanha_seminario.html
-│       └── admin/
-│           ├── login.html
-│           ├── painel.html
-│           ├── buscar.html
-│           ├── pessoa.html
-│           └── novo.html
+├── public/                 # Document root (Apache)
+│   ├── index.php          # Front controller
+│   ├── .htaccess          # URL rewriting
+│   └── assets/
+│       └── img/
+│           ├── logo-docomomo.png
+│           └── logo-docomomo.jpg
+├── src/
+│   ├── config.php         # Configuracoes e helpers
+│   ├── db.php             # Conexao SQLite + funcoes
+│   ├── routes.php         # Sistema de rotas
+│   ├── Controllers/
+│   │   ├── FiliacaoController.php
+│   │   ├── FiliadosController.php
+│   │   ├── WebhookController.php
+│   │   └── AdminController.php
+│   ├── Services/
+│   │   ├── PagBankService.php
+│   │   ├── BrevoService.php
+│   │   └── PdfService.php
+│   └── Views/
+│       ├── layout.php
+│       ├── filiacao/
+│       │   ├── entrada.php
+│       │   ├── formulario.php
+│       │   ├── pagamento.php
+│       │   └── confirmacao.php
+│       ├── filiados/
+│       │   └── listar.php
+│       ├── admin/
+│       │   ├── login.php
+│       │   ├── painel.php
+│       │   ├── buscar.php
+│       │   ├── pessoa.php
+│       │   └── novo.php
+│       └── errors/
+│           ├── 404.php
+│           └── 500.php
 ├── scripts/
-│   ├── importar_csv.py
-│   ├── gerar_tokens.py
-│   ├── backup_db.sh
-│   ├── enviar_campanha.py
-│   ├── enviar_lembretes.py
-│   └── admin.py             # CLI para administração
-├── deploy/
-│   ├── pilotis.wsgi         # Entry point WSGI
-│   ├── .env.producao        # Template producao
-│   ├── DEPLOY.md            # Instrucoes
-│   ├── preparar_deploy.sh   # Script de preparacao
-│   └── servidor.yaml        # Config servidor
-└── data/
-    └── pilotis.db
+│   ├── enviar_campanha.php
+│   ├── enviar_lembretes.php
+│   └── admin.php          # CLI para administracao
+├── data/
+│   ├── pilotis.db         # Banco SQLite
+│   └── backup.sql         # Versionado no git
+├── backup-python/         # Codigo Python anterior (referencia)
+├── .env                   # Credenciais (nao versionado)
+├── .env.example           # Template de credenciais
+└── composer.json          # Dependencias (TCPDF)
 ```
 
 ## Rotas
 
-| Rota | Função |
+| Rota | Funcao |
 |------|--------|
 | `GET /filiacao/{ano}` | Entrada por email |
-| `GET /filiacao/{ano}/{token}` | Formulário pré-preenchido |
+| `POST /filiacao/{ano}` | Processa email |
+| `GET /filiacao/{ano}/{token}` | Formulario pre-preenchido |
 | `POST /filiacao/{ano}/{token}` | Salvar e criar pagamento |
-| `GET /filiacao/{ano}/{token}/pagamento` | QR Code PIX |
-| `GET /filiados/{ano}` | Lista pública de filiados |
-| `POST /webhook/pagbank` | Confirmação de pagamento |
+| `GET /filiacao/{ano}/{token}/pagamento` | Tela de pagamento |
+| `POST /filiacao/{ano}/{token}/gerar-pix` | Gera PIX |
+| `POST /filiacao/{ano}/{token}/gerar-boleto` | Gera Boleto |
+| `POST /filiacao/{ano}/{token}/pagar-cartao` | Paga com Cartao |
+| `GET /filiados/{ano}` | Lista publica de filiados |
+| `POST /webhook/pagbank` | Confirmacao de pagamento |
 | `GET /admin` | Painel administrativo |
+| `GET /admin/login` | Tela de login |
+| `GET /admin/buscar` | Busca cadastrados |
+| `GET /admin/pessoa/{id}` | Detalhes de pessoa |
+| `GET /admin/novo` | Novo cadastro |
+| `GET /admin/download/csv` | Exportar filiados |
+| `GET /admin/download/banco` | Backup do banco |
 
 ## Categorias
 
@@ -85,67 +94,87 @@ pilotis/
 | profissional_nacional | Filiado Pleno Brasil | R$ 230 |
 | estudante | Filiado Estudante Brasil | R$ 115 |
 
-## Scripts
+## Scripts CLI
 
 ```bash
 # Campanha
-python scripts/enviar_campanha.py --ano 2026 --dry-run
-python scripts/enviar_campanha.py --ano 2026 --tipo seminario
+php scripts/enviar_campanha.php --ano 2026 --dry-run
+php scripts/enviar_campanha.php --ano 2026 --tipo seminario
+php scripts/enviar_campanha.php --ano 2026 --tipo convite
 
 # Lembretes (rodar via cron)
-python scripts/enviar_lembretes.py
+php scripts/enviar_lembretes.php
+php scripts/enviar_lembretes.php --dry-run
 
-# Backup
-./scripts/backup_db.sh
-
-# Administracao (pagamentos manuais, consultas)
-python scripts/admin.py pendentes           # Lista pendentes
-python scripts/admin.py buscar "email"      # Busca pessoa
-python scripts/admin.py pagar 123           # Marca pagamento como pago
-python scripts/admin.py novo                # Cadastra + pagamento manual
-python scripts/admin.py exportar 2026       # Exporta filiados CSV
+# Administracao
+php scripts/admin.php pendentes           # Lista pendentes
+php scripts/admin.php buscar "email"      # Busca pessoa
+php scripts/admin.php pagar 123           # Marca pagamento como pago
+php scripts/admin.php novo                # Cadastra + pagamento manual
+php scripts/admin.php exportar 2026       # Exporta filiados CSV
+php scripts/admin.php stats 2026          # Estatisticas do ano
 ```
 
 ## Fluxos
 
-**Filiação:**
+**Filiacao:**
 1. Pessoa acessa `/filiacao/2026` ou clica link do email
 2. Informa email → sistema busca/cria cadastro
-3. Preenche formulário → cria pagamento pendente
+3. Preenche formulario → cria pagamento pendente
 4. Gera PIX (3 dias validade) → mostra QR Code
 5. Pagamento confirmado via webhook → email + PDF
 
 **Campanhas:**
 - `renovacao`: filiados do ano anterior
-- `seminario`: participantes do 16º Seminário não filiados
+- `seminario`: participantes do 16o Seminario nao filiados
 - `convite`: outros cadastrados
 
 **Lembretes:**
 - No dia do vencimento
-- Semanalmente após vencer
+- Semanalmente apos vencer (domingos)
 
-## Declaração PDF
+## Declaracao PDF
 
-Gerada com ReportLab, texto justificado:
-- Logo JPG (sem transparência)
+Gerada com TCPDF (ou fallback simples):
+- Logo JPG (sem transparencia)
 - Nome, categoria, valor, ano
-- Assinatura: Marta Peixoto, Coordenadora, Gestão 2026-2027
+- Assinatura: Marta Peixoto, Coordenadora, Gestao 2026-2027
 
-## Comandos
+## Comandos de Desenvolvimento
 
 ```bash
-source venv/bin/activate
-uvicorn pilotis.main:app --reload
+# Servidor local (requer PHP 8.1+)
+cd public && php -S localhost:8000
+
+# Instalar TCPDF (opcional, para PDF melhor)
+composer install
 ```
 
 ## Credenciais (.env)
 
 ```
-DATABASE_PATH=/var/lib/pilotis/pilotis.db  # FORA do diretorio web!
-PAGBANK_TOKEN=...
+# Banco de dados
+DATABASE_PATH=data/pilotis.db
+
+# PagBank
+PAGBANK_TOKEN=seu_token_aqui
 PAGBANK_SANDBOX=true
-BREVO_API_KEY=...
-BASE_URL=https://pilotis.docomomobrasil.com
+
+# Email (Brevo - ex-Sendinblue)
+BREVO_API_KEY=sua_chave_aqui
+EMAIL_FROM=tesouraria@docomomobrasil.com
+
+# App
+BASE_URL=http://localhost:8000
+SECRET_KEY=chave_secreta_para_tokens
+
+# Admin
+ADMIN_PASSWORD=sua_senha_aqui
+
+# Valores de filiacao (centavos)
+VALOR_ESTUDANTE=11500
+VALOR_PROFISSIONAL=23000
+VALOR_INTERNACIONAL=46000
 ```
 
 ## Painel Admin
@@ -165,61 +194,53 @@ Acesso em `/admin` com senha configurada no `.env`.
 ## Seguranca
 
 **Banco de dados:** O arquivo `.db` contem dados pessoais (CPF, endereco, etc). Em producao, DEVE ficar fora do diretorio web:
-- Linux/VPS: `/var/lib/pilotis/pilotis.db`
-- Hospedagem compartilhada: `../dados_privados/pilotis.db` (acima do public_html)
-
-**Backups:** Tambem contem dados sensiveis. O diretorio `backups/` deve ficar protegido ou fora do diretorio web.
+- `../dados_privados/pilotis.db` (acima do public_html)
 
 **Admin:** A senha do painel deve ser forte. Em producao, use hash SHA256:
 ```bash
-python -c "import hashlib; print('sha256:' + hashlib.sha256(b'sua_senha_forte').hexdigest())"
+php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 ```
 
 ## Deploy
 
 **Servidor:** KingHost (via Labasoft)
 **URL:** https://pilotis.docomomobrasil.com
-**Tecnologia:** Apache mod_wsgi + Python 3.10+
-
-### Arquivos de deploy
-
-```
-deploy/
-├── pilotis.wsgi        # Entry point WSGI (adapta FastAPI via a2wsgi)
-├── .env.producao       # Template de configuracao
-├── DEPLOY.md           # Instrucoes completas
-├── preparar_deploy.sh  # Prepara arquivos para upload
-└── servidor.yaml       # Config e credenciais do servidor
-```
-
-### Fazer deploy
-
-```bash
-# 1. Preparar arquivos
-./deploy/preparar_deploy.sh
-
-# 2. Upload via FTP (ftp.app.docomomobrasil.com)
-#    upload/pilotis/* -> /apps_wsgi/pilotis/
-#    upload/dados_privados/* -> /dados_privados/
-
-# 3. Editar .env no servidor com credenciais reais
-```
+**Tecnologia:** Apache + PHP 8.1+
 
 ### Estrutura no servidor
 
 ```
 /home/app/
-├── apps_wsgi/pilotis/     # Aplicacao
-│   ├── pilotis.wsgi
+├── public_html/pilotis/   # Document root
+│   ├── index.php
+│   ├── .htaccess
 │   ├── .env
-│   └── pilotis/           # Codigo Python
+│   └── assets/
+├── pilotis-src/           # Codigo PHP (fora do www)
+│   ├── src/
+│   └── scripts/
 └── dados_privados/
     └── pilotis.db         # Banco (FORA do www)
 ```
 
+### Fazer deploy
+
+```bash
+# 1. Upload via FTP (ftp.app.docomomobrasil.com)
+#    - public/* -> /public_html/pilotis/
+#    - src/* -> /pilotis-src/src/
+#    - scripts/* -> /pilotis-src/scripts/
+
+# 2. Editar index.php para apontar caminhos corretos
+
+# 3. Criar .env no servidor com credenciais reais
+
+# 4. Ajustar DATABASE_PATH no .env
+```
+
 ## Backup e Commit
 
-**IMPORTANTE:** Quando o usuário pedir "backup e commit", executar:
+**IMPORTANTE:** Quando o usuario pedir "backup e commit", executar:
 
 ```bash
 # 1. Gerar dump SQL do banco
@@ -227,10 +248,10 @@ sqlite3 data/pilotis.db .dump > data/backup.sql
 
 # 2. Commit de tudo
 git add -A
-git commit -m "Descrição das mudanças"
+git commit -m "Descricao das mudancas"
 ```
 
-O arquivo `data/backup.sql` é versionado no git e serve como ponto de restauração.
+O arquivo `data/backup.sql` e versionado no git e serve como ponto de restauracao.
 
 Para restaurar:
 ```bash
@@ -238,11 +259,11 @@ rm data/pilotis.db
 sqlite3 data/pilotis.db < data/backup.sql
 ```
 
-## Regras de Consolidação de Dados
+## Regras de Consolidacao de Dados
 
 - **Nomes duplicados:** Sempre usar o nome mais completo ao consolidar registros
-- **Emails:** Manter todos os emails da pessoa (principal + secundários)
-- **Filiações:** Preservar histórico de todos os anos
+- **Emails:** Manter todos os emails da pessoa (principal + secundarios)
+- **Filiacoes:** Preservar historico de todos os anos
 
 ## WordPress (Site Principal)
 
@@ -267,3 +288,8 @@ curl -X POST -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
   -d '{"title":"Filiados 2025","content":"...","status":"publish"}' \
   "https://docomomobrasil.com/wp-json/wp/v2/pages"
 ```
+
+## Migracao Python -> PHP
+
+O codigo Python original esta preservado em `backup-python/` para referencia.
+O banco de dados SQLite e o mesmo (compativel).

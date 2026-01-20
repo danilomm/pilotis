@@ -1,9 +1,13 @@
-# Python
-venv/
+# Python (backup)
+backup-python/venv/
 __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+
+# PHP
+/vendor/
+composer.lock
 
 # Ambiente
 .env
@@ -15,6 +19,7 @@ data/*.db-journal
 # Backups e arquivos de desenvolvimento (dados sensíveis)
 backups/
 desenvolvimento/*.csv
+*.csv
 
 # Deploy (gerado pelo script preparar_deploy.sh)
 deploy/upload/
@@ -23,3 +28,6 @@ deploy/upload/
 .vscode/
 .idea/
 data/.~lock.*
+
+# Logs
+*.log
