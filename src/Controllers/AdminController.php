@@ -333,6 +333,80 @@ class AdminController {
     }
 
     /**
+     * Editar filiação
+     */
+    public static function filiacao(string $id): void {
+        self::exigirLogin();
+
+        $filiacao = db_fetch_one("
+            SELECT f.*, p.nome as pessoa_nome
+            FROM filiacoes f
+            JOIN pessoas p ON p.id = f.pessoa_id
+            WHERE f.id = ?
+        ", [(int)$id]);
+
+        if (!$filiacao) {
+            flash('error', 'Filiação não encontrada.');
+            redirect('/admin');
+            return;
+        }
+
+        $salvo = isset($_GET['salvo']);
+        $titulo = "Admin - Filiação {$filiacao['ano']}";
+
+        ob_start();
+        require SRC_DIR . '/Views/admin/filiacao.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Salvar alterações de filiação
+     */
+    public static function salvarFiliacao(string $id): void {
+        self::exigirLogin();
+
+        $filiacao = db_fetch_one("SELECT id, pessoa_id FROM filiacoes WHERE id = ?", [(int)$id]);
+        if (!$filiacao) {
+            flash('error', 'Filiação não encontrada.');
+            redirect('/admin');
+            return;
+        }
+
+        $categoria = trim($_POST['categoria'] ?? '');
+        $valor = (int)($_POST['valor'] ?? 0);
+        $status = trim($_POST['status'] ?? '');
+        $metodo = trim($_POST['metodo'] ?? '') ?: null;
+        $data_pagamento = trim($_POST['data_pagamento'] ?? '') ?: null;
+        $telefone = trim($_POST['telefone'] ?? '') ?: null;
+        $endereco = trim($_POST['endereco'] ?? '') ?: null;
+        $cep = trim($_POST['cep'] ?? '') ?: null;
+        $cidade = trim($_POST['cidade'] ?? '') ?: null;
+        $estado = trim($_POST['estado'] ?? '') ?: null;
+        $pais = trim($_POST['pais'] ?? '') ?: null;
+        $profissao = trim($_POST['profissao'] ?? '') ?: null;
+        $formacao = trim($_POST['formacao'] ?? '') ?: null;
+        $instituicao = trim($_POST['instituicao'] ?? '') ?: null;
+
+        db_execute("
+            UPDATE filiacoes SET
+                categoria = ?, valor = ?, status = ?, metodo = ?, data_pagamento = ?,
+                telefone = ?, endereco = ?, cep = ?, cidade = ?, estado = ?, pais = ?,
+                profissao = ?, formacao = ?, instituicao = ?
+            WHERE id = ?
+        ", [
+            $categoria, $valor, $status, $metodo, $data_pagamento,
+            $telefone, $endereco, $cep, $cidade, $estado, $pais,
+            $profissao, $formacao, $instituicao, (int)$id
+        ]);
+
+        registrar_log('edicao_filiacao', $filiacao['pessoa_id'], "Filiação $id editada via admin");
+
+        flash('success', 'Filiação salva com sucesso.');
+        redirect("/admin/filiacao/$id?salvo=1");
+    }
+
+    /**
      * Formulario de novo cadastro
      */
     public static function novoForm(): void {

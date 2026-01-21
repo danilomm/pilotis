@@ -68,6 +68,8 @@ get('/admin/contatos', 'AdminController::contatos');
 get('/admin/buscar', 'AdminController::buscar');
 get('/admin/pessoa/{id}', 'AdminController::pessoa');
 post('/admin/pessoa/{id}', 'AdminController::salvarPessoa');
+get('/admin/filiacao/{id}', 'AdminController::filiacao');
+post('/admin/filiacao/{id}', 'AdminController::salvarFiliacao');
 get('/admin/novo', 'AdminController::novoForm');
 post('/admin/novo', 'AdminController::novoSalvar');
 post('/admin/pagar/{filiacao_id}', 'AdminController::marcarPago');
