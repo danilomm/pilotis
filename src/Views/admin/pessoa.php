@@ -68,22 +68,14 @@
                             <mark style="background: #dc3545; margin-left: 10px;"><?= e($f['status'] ?? '-') ?></mark>
                         <?php endif; ?>
                     </div>
-                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                        <a href="/admin/filiacao/<?= e($f['id']) ?>" style="display: inline-block; padding: 4px 8px; font-size: 11px; background: #6c757d; color: white !important; text-decoration: none; border-radius: 4px; line-height: 1.4;">Editar</a>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap; align-items: center;">
+                        <?php $s = "display:inline-block;width:auto;margin:0;padding:4px 8px;font-size:11px;line-height:1;border:none;border-radius:4px;cursor:pointer;text-decoration:none;"; ?>
+                        <a href="/admin/filiacao/<?= e($f['id']) ?>" style="<?= $s ?>background:#6c757d;color:white!important;">Editar</a>
                         <?php if ($f['status'] !== 'pago'): ?>
-                            <form method="POST" action="/admin/pagar/<?= e($f['id']) ?>" style="margin: 0;">
-                                <button type="submit" style="padding: 4px 8px; font-size: 11px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                                        onclick="return confirm('Marcar como pago?')">Pagar</button>
-                            </form>
-                            <form method="POST" action="/admin/enviar-email/<?= e($f['id']) ?>" style="margin: 0;">
-                                <button type="submit" style="padding: 4px 8px; font-size: 11px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                                        onclick="return confirm('Enviar email de filiação?')">Email</button>
-                            </form>
+                        <form method="POST" action="/admin/pagar/<?= e($f['id']) ?>" style="margin:0;display:contents;"><button type="submit" style="<?= $s ?>background:#28a745;color:white;" onclick="return confirm('Marcar como pago?')">Pagar</button></form>
+                        <form method="POST" action="/admin/enviar-email/<?= e($f['id']) ?>" style="margin:0;display:contents;"><button type="submit" style="<?= $s ?>background:#17a2b8;color:white;" onclick="return confirm('Enviar email?')">Email</button></form>
                         <?php endif; ?>
-                        <form method="POST" action="/admin/excluir/pagamento/<?= e($f['id']) ?>" style="margin: 0;">
-                            <button type="submit" style="padding: 4px 8px; font-size: 11px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;"
-                                    onclick="return confirm('Excluir filiação?')">Excluir</button>
-                        </form>
+                        <form method="POST" action="/admin/excluir/pagamento/<?= e($f['id']) ?>" style="margin:0;display:contents;"><button type="submit" style="<?= $s ?>background:#dc3545;color:white;" onclick="return confirm('Excluir filiação?')">Excluir</button></form>
                     </div>
                 </div>
 

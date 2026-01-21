@@ -71,7 +71,12 @@
             <input type="text" id="profissao" name="profissao" value="<?= e($cadastrado['profissao'] ?? '') ?>" required>
 
             <label for="formacao">Formação</label>
-            <input type="text" id="formacao" name="formacao" value="<?= e($cadastrado['formacao'] ?? '') ?>">
+            <select id="formacao" name="formacao">
+                <option value="">Selecione...</option>
+                <?php foreach (FORMACOES as $f): ?>
+                    <option value="<?= e($f) ?>" <?= ($cadastrado['formacao'] ?? '') === $f ? 'selected' : '' ?>><?= e($f) ?></option>
+                <?php endforeach; ?>
+            </select>
 
             <label for="instituicao">Instituição</label>
             <input type="text" id="instituicao" name="instituicao" value="<?= e($cadastrado['instituicao'] ?? '') ?>" placeholder="Se mais de uma, separe por vírgula">

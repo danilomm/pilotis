@@ -89,6 +89,17 @@ define('CATEGORIAS_DISPLAY', [
     'estudante' => 'Filiação Estudante Docomomo Brasil',
 ]);
 
+// Opções de formação acadêmica
+define('FORMACOES', [
+    'Ensino Médio',
+    'Graduação em andamento',
+    'Graduação',
+    'Especialização / MBA',
+    'Mestrado',
+    'Doutorado',
+    'Pós-Doutorado',
+]);
+
 /**
  * Retorna valor da filiação por categoria (em centavos)
  */

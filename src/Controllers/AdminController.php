@@ -108,6 +108,219 @@ class AdminController {
     }
 
     /**
+     * Gestão de Campanha
+     */
+    public static function campanha(): void {
+        self::exigirLogin();
+
+        $ano_atual = (int)date('Y');
+        $ano_campanha = $ano_atual; // Campanha do ano em curso
+
+        // Estatísticas do ano anterior
+        $ano_anterior = $ano_campanha - 1;
+        $stats_anterior = db_fetch_one("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos
+            FROM filiacoes
+            WHERE ano = ? AND categoria <> 'nao_filiado'
+        ", [$ano_anterior]);
+
+        // Estatísticas do ano atual
+        $stats_atual = db_fetch_one("
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'enviado' THEN 1 ELSE 0 END) as enviados,
+                SUM(CASE WHEN status = 'acesso' THEN 1 ELSE 0 END) as acessos,
+                SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
+                SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos,
+                SUM(CASE WHEN status = 'nao_pago' THEN 1 ELSE 0 END) as nao_pagos
+            FROM filiacoes
+            WHERE ano = ?
+        ", [$ano_campanha]);
+
+        // Contatos totais (para envio)
+        $total_contatos = db_fetch_one("SELECT COUNT(*) as total FROM pessoas")['total'];
+
+        // Valores atuais
+        $valores = [
+            'estudante' => VALOR_ESTUDANTE,
+            'profissional_nacional' => VALOR_PROFISSIONAL,
+            'profissional_internacional' => VALOR_INTERNACIONAL,
+        ];
+
+        $titulo = "Admin - Campanha $ano_campanha";
+
+        ob_start();
+        require SRC_DIR . '/Views/admin/campanha.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Prepara campanha criando registros vazios para pagos do ano anterior
+     * (Dados serão herdados automaticamente no formulário ou ao fechar)
+     */
+    public static function prepararCampanha(): void {
+        self::exigirLogin();
+
+        $ano_atual = (int)date('Y');
+        $ano_anterior = $ano_atual - 1;
+
+        // Busca pessoas PAGAS do ano anterior que não têm registro no ano atual
+        $pessoas_sem_registro = db_fetch_all("
+            SELECT f.pessoa_id
+            FROM filiacoes f
+            WHERE f.ano = ? AND f.status = 'pago' AND f.categoria <> 'nao_filiado'
+            AND NOT EXISTS (
+                SELECT 1 FROM filiacoes f2
+                WHERE f2.pessoa_id = f.pessoa_id AND f2.ano = ?
+            )
+        ", [$ano_anterior, $ano_atual]);
+
+        $criados = 0;
+        foreach ($pessoas_sem_registro as $p) {
+            // Cria registro apenas com pessoa_id, ano e status (sem dados)
+            db_insert("
+                INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
+                VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
+            ", [$p['pessoa_id'], $ano_atual]);
+            $criados++;
+        }
+
+        registrar_log('campanha_preparada', null, "Campanha $ano_atual: $criados registros criados a partir de $ano_anterior");
+
+        flash('success', "Campanha preparada: $criados registros criados.");
+        redirect('/admin/campanha');
+    }
+
+    /**
+     * Fecha campanha: marca não pagos e herda dados do ano anterior (só campos vazios)
+     */
+    public static function fecharCampanha(): void {
+        self::exigirLogin();
+
+        $ano_atual = (int)date('Y');
+        $ano_anterior = $ano_atual - 1;
+
+        // Busca filiações do ano atual que não estão pagas (com dados atuais)
+        $nao_pagos = db_fetch_all("
+            SELECT f.*
+            FROM filiacoes f
+            WHERE f.ano = ? AND f.status <> 'pago'
+        ", [$ano_atual]);
+
+        $fechados = 0;
+        foreach ($nao_pagos as $np) {
+            // Busca dados do ano anterior
+            $anterior = db_fetch_one("
+                SELECT telefone, endereco, cep, cidade, estado, pais,
+                       profissao, formacao, instituicao
+                FROM filiacoes
+                WHERE pessoa_id = ? AND ano = ?
+            ", [$np['pessoa_id'], $ano_anterior]);
+
+            // Usa dados atuais se existirem, senão herda do ano anterior
+            $telefone = $np['telefone'] ?: ($anterior['telefone'] ?? null);
+            $endereco = $np['endereco'] ?: ($anterior['endereco'] ?? null);
+            $cep = $np['cep'] ?: ($anterior['cep'] ?? null);
+            $cidade = $np['cidade'] ?: ($anterior['cidade'] ?? null);
+            $estado = $np['estado'] ?: ($anterior['estado'] ?? null);
+            $pais = $np['pais'] ?: ($anterior['pais'] ?? null);
+            $profissao = $np['profissao'] ?: ($anterior['profissao'] ?? null);
+            $formacao = $np['formacao'] ?: ($anterior['formacao'] ?? null);
+            $instituicao = $np['instituicao'] ?: ($anterior['instituicao'] ?? null);
+
+            db_execute("
+                UPDATE filiacoes SET
+                    status = 'nao_pago',
+                    categoria = 'nao_filiado',
+                    telefone = ?, endereco = ?, cep = ?, cidade = ?, estado = ?, pais = ?,
+                    profissao = ?, formacao = ?, instituicao = ?
+                WHERE id = ?
+            ", [
+                $telefone, $endereco, $cep, $cidade, $estado, $pais,
+                $profissao, $formacao, $instituicao,
+                $np['id']
+            ]);
+            $fechados++;
+        }
+
+        registrar_log('campanha_fechada', null, "Campanha $ano_atual fechada: $fechados registros marcados como não pago");
+
+        flash('success', "Campanha fechada: $fechados registros marcados como não pago.");
+        redirect('/admin/campanha');
+    }
+
+    /**
+     * Envia emails da campanha
+     */
+    public static function enviarCampanha(): void {
+        self::exigirLogin();
+
+        $tipo = $_POST['tipo'] ?? 'todos';
+        $ano = (int)date('Y');
+
+        require_once SRC_DIR . '/Services/BrevoService.php';
+
+        // Busca destinatários baseado no tipo
+        if ($tipo === 'todos') {
+            // Todos os contatos
+            $destinatarios = db_fetch_all("
+                SELECT p.id, p.nome, p.token,
+                       (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                FROM pessoas p
+                WHERE EXISTS (SELECT 1 FROM emails WHERE pessoa_id = p.id)
+            ");
+        } else {
+            // Apenas filiados do ano com status específico
+            $destinatarios = db_fetch_all("
+                SELECT p.id, p.nome, p.token,
+                       (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                FROM pessoas p
+                JOIN filiacoes f ON f.pessoa_id = p.id
+                WHERE f.ano = ? AND f.status = ? AND f.categoria <> 'nao_filiado'
+            ", [$ano, $tipo]);
+        }
+
+        $enviados = 0;
+        $erros = 0;
+
+        foreach ($destinatarios as $d) {
+            if (empty($d['email'])) continue;
+
+            $resultado = BrevoService::enviarCampanhaRenovacao(
+                $d['email'],
+                $d['nome'] ?? 'Associado',
+                $ano,
+                $d['token']
+            );
+
+            if ($resultado) {
+                $enviados++;
+                // Atualiza ou cria registro de filiação
+                $filiacao = db_fetch_one(
+                    "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+                    [$d['id'], $ano]
+                );
+                if (!$filiacao) {
+                    db_insert("
+                        INSERT INTO filiacoes (pessoa_id, ano, categoria, status, created_at)
+                        VALUES (?, ?, 'profissional_nacional', 'enviado', CURRENT_TIMESTAMP)
+                    ", [$d['id'], $ano]);
+                }
+            } else {
+                $erros++;
+            }
+        }
+
+        registrar_log('campanha_enviada', null, "Campanha $ano ($tipo): $enviados enviados, $erros erros");
+
+        flash('success', "Emails enviados: $enviados. Erros: $erros.");
+        redirect('/admin/campanha');
+    }
+
+    /**
      * Painel principal
      */
     public static function painel(): void {

@@ -95,7 +95,15 @@
             </div>
             <div>
                 <label for="formacao">Formação</label>
-                <input type="text" id="formacao" name="formacao" value="<?= e($filiacao['formacao'] ?? '') ?>">
+                <select id="formacao" name="formacao">
+                    <option value="">Selecione...</option>
+                    <?php foreach (FORMACOES as $f): ?>
+                        <option value="<?= e($f) ?>" <?= ($filiacao['formacao'] ?? '') === $f ? 'selected' : '' ?>><?= e($f) ?></option>
+                    <?php endforeach; ?>
+                    <?php if ($filiacao['formacao'] && !in_array($filiacao['formacao'], FORMACOES)): ?>
+                        <option value="<?= e($filiacao['formacao']) ?>" selected><?= e($filiacao['formacao']) ?> (legado)</option>
+                    <?php endif; ?>
+                </select>
             </div>
         </div>
 
