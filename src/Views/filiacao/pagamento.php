@@ -70,21 +70,6 @@ $extra_head = '<script src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/d
                 <?php endif; ?>
 
                 <p><small>Vencimento: <?= e($boleto_data['due_date']) ?></small></p>
-
-                <?php if (PAGBANK_SANDBOX): ?>
-                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; color: #856404; text-align: left;">
-                    <strong>Debug (modo sandbox):</strong><br>
-                    <small>
-                        <strong>Order ID:</strong> <?= e($filiacao['pagbank_order_id'] ?? 'N/A') ?><br>
-                        <strong>Charge ID:</strong> <?= e($filiacao['pagbank_charge_id'] ?? 'N/A') ?><br>
-                        <strong>Link:</strong> <?= e($boleto_data['boleto_link']) ?><br>
-                        <strong>Cadastrado ID:</strong> <?= e($cadastrado['id']) ?><br>
-                        <strong>Nome (cadastrado):</strong> <?= e($cadastrado['nome']) ?><br>
-                        <strong>CPF (cadastrado):</strong> <?= e($cadastrado['cpf'] ?? 'N/A') ?><br>
-                        <strong>Email (cadastrado):</strong> <?= e($cadastrado['email']) ?><br>
-                    </small>
-                </div>
-                <?php endif; ?>
             </div>
 
             <form method="POST" action="/filiacao/<?= e($ano) ?>/<?= e($token) ?>/gerar-boleto" style="margin-top: 20px;">

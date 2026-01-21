@@ -3,6 +3,7 @@
         <h2><?= e($pessoa['nome'] ?: 'Cadastro #' . $pessoa['id']) ?></h2>
         <div>
             <a href="/admin" role="button" class="outline">Painel</a>
+            <a href="/admin/contatos" role="button" class="outline">Contatos</a>
             <a href="/admin/buscar" role="button" class="outline">Buscar</a>
         </div>
     </div>
@@ -30,121 +31,76 @@
                 <input type="text" id="cpf" name="cpf" value="<?= e($pessoa['cpf'] ?? '') ?>">
             </div>
             <div>
-                <label for="telefone">Telefone</label>
-                <input type="text" id="telefone" name="telefone" value="<?= e($pessoa['telefone'] ?? '') ?>">
+                <label for="token">Token</label>
+                <input type="text" id="token" value="<?= e($pessoa['token'] ?? '') ?>" readonly disabled>
             </div>
         </div>
 
-        <label for="categoria">Categoria</label>
-        <select id="categoria" name="categoria">
-            <option value="">-- Selecione --</option>
-            <?php foreach (CATEGORIAS_DISPLAY as $val => $nome): ?>
-                <option value="<?= e($val) ?>" <?= ($pessoa['categoria'] ?? '') === $val ? 'selected' : '' ?>>
-                    <?= e($nome) ?>
-                </option>
-            <?php endforeach; ?>
-            <option value="participante_seminario" <?= ($pessoa['categoria'] ?? '') === 'participante_seminario' ? 'selected' : '' ?>>
-                Participante Seminario
-            </option>
-            <option value="cadastrado" <?= ($pessoa['categoria'] ?? '') === 'cadastrado' ? 'selected' : '' ?>>
-                Cadastrado
-            </option>
-        </select>
-
-        <label for="endereco">Endereco</label>
-        <input type="text" id="endereco" name="endereco" value="<?= e($pessoa['endereco'] ?? '') ?>">
-
-        <div class="grid">
-            <div>
-                <label for="cep">CEP</label>
-                <input type="text" id="cep" name="cep" value="<?= e($pessoa['cep'] ?? '') ?>">
-            </div>
-            <div>
-                <label for="cidade">Cidade</label>
-                <input type="text" id="cidade" name="cidade" value="<?= e($pessoa['cidade'] ?? '') ?>">
-            </div>
-        </div>
-
-        <div class="grid">
-            <div>
-                <label for="estado">Estado (UF)</label>
-                <input type="text" id="estado" name="estado" value="<?= e($pessoa['estado'] ?? '') ?>" maxlength="2">
-            </div>
-            <div>
-                <label for="pais">Pais</label>
-                <input type="text" id="pais" name="pais" value="<?= e($pessoa['pais'] ?? 'Brasil') ?>">
-            </div>
-        </div>
-
-        <div class="grid">
-            <div>
-                <label for="profissao">Profissao</label>
-                <input type="text" id="profissao" name="profissao" value="<?= e($pessoa['profissao'] ?? '') ?>">
-            </div>
-            <div>
-                <label for="formacao">Formacao</label>
-                <input type="text" id="formacao" name="formacao" value="<?= e($pessoa['formacao'] ?? '') ?>">
-            </div>
-        </div>
-
-        <label for="instituicao">Instituicao</label>
-        <input type="text" id="instituicao" name="instituicao" value="<?= e($pessoa['instituicao'] ?? '') ?>">
-
-        <label for="observacoes">Observacoes (admin)</label>
-        <textarea id="observacoes" name="observacoes" rows="2"><?= e($pessoa['observacoes'] ?? '') ?></textarea>
-
-        <label for="observacoes_filiado">Observacoes do filiado</label>
-        <textarea id="observacoes_filiado" name="observacoes_filiado" rows="2"><?= e($pessoa['observacoes_filiado'] ?? '') ?></textarea>
+        <label for="notas">Notas (admin)</label>
+        <textarea id="notas" name="notas" rows="2"><?= e($pessoa['notas'] ?? '') ?></textarea>
 
         <button type="submit">Salvar</button>
     </form>
 
     <hr>
 
-    <!-- Pagamentos -->
-    <h3>Pagamentos</h3>
+    <!-- Filiações -->
+    <h3>Filiações</h3>
 
-    <?php if (empty($pagamentos)): ?>
-        <p>Nenhum pagamento registrado.</p>
+    <?php if (empty($filiacoes)): ?>
+        <p>Nenhuma filiação registrada.</p>
     <?php else: ?>
         <table>
             <thead>
                 <tr>
                     <th>Ano</th>
+                    <th>Categoria</th>
                     <th>Valor</th>
                     <th>Status</th>
-                    <th>Metodo</th>
+                    <th>Método</th>
                     <th>Data Pagamento</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($pagamentos as $p): ?>
+                <?php foreach ($filiacoes as $f): ?>
                     <tr>
-                        <td><?= e($p['ano']) ?></td>
-                        <td><?= formatar_valor((int)$p['valor']) ?></td>
+                        <td><?= e($f['ano']) ?></td>
+                        <td><?= e(CATEGORIAS_DISPLAY[$f['categoria'] ?? ''] ?? $f['categoria'] ?? '-') ?></td>
+                        <td><?= formatar_valor((int)$f['valor']) ?></td>
                         <td>
-                            <?php if ($p['status'] === 'pago'): ?>
+                            <?php if ($f['status'] === 'pago'): ?>
                                 <mark style="background: #28a745;">Pago</mark>
-                            <?php elseif ($p['status'] === 'pendente'): ?>
+                            <?php elseif ($f['status'] === 'pendente'): ?>
                                 <mark style="background: #ffc107; color: #000;">Pendente</mark>
+                            <?php elseif ($f['status'] === 'enviado'): ?>
+                                <mark style="background: #17a2b8;">Enviado</mark>
+                            <?php elseif ($f['status'] === 'acesso'): ?>
+                                <mark style="background: #6c757d;">Acesso</mark>
                             <?php else: ?>
-                                <mark style="background: #dc3545;"><?= e($p['status']) ?></mark>
+                                <mark style="background: #dc3545;"><?= e($f['status'] ?? '-') ?></mark>
                             <?php endif; ?>
                         </td>
-                        <td><?= e($p['metodo'] ?? '-') ?></td>
-                        <td><?= e($p['data_pagamento'] ?? '-') ?></td>
-                        <td>
-                            <?php if ($p['status'] === 'pendente'): ?>
-                                <form method="POST" action="/admin/pagar/<?= e($p['id']) ?>" style="display: inline;">
-                                    <button type="submit" class="outline" style="padding: 5px 10px; font-size: 12px;">
-                                        Marcar Pago
+                        <td><?= e($f['metodo'] ?? '-') ?></td>
+                        <td><?= e($f['data_pagamento'] ?? '-') ?></td>
+                        <td style="white-space: nowrap;">
+                            <?php if ($f['status'] !== 'pago'): ?>
+                                <form method="POST" action="/admin/pagar/<?= e($f['id']) ?>" style="display: inline;">
+                                    <button type="submit" class="outline" style="padding: 5px 10px; font-size: 12px;"
+                                            onclick="return confirm('Marcar como pago?')">
+                                        Pagar
+                                    </button>
+                                </form>
+                                <form method="POST" action="/admin/enviar-email/<?= e($f['id']) ?>" style="display: inline;">
+                                    <button type="submit" class="outline" style="padding: 5px 10px; font-size: 12px;"
+                                            onclick="return confirm('Enviar email de filiação?')">
+                                        Email
                                     </button>
                                 </form>
                             <?php endif; ?>
-                            <form method="POST" action="/admin/excluir/pagamento/<?= e($p['id']) ?>" style="display: inline;">
+                            <form method="POST" action="/admin/excluir/pagamento/<?= e($f['id']) ?>" style="display: inline;">
                                 <button type="submit" class="secondary outline" style="padding: 5px 10px; font-size: 12px;"
-                                        onclick="return confirm('Excluir pagamento?')">
+                                        onclick="return confirm('Excluir filiação?')">
                                     Excluir
                                 </button>
                             </form>
@@ -159,19 +115,18 @@
 
     <!-- Info adicional -->
     <details>
-        <summary>Informacoes do Cadastro</summary>
+        <summary>Informações do Cadastro</summary>
         <p><strong>ID:</strong> <?= e($pessoa['id']) ?></p>
         <p><strong>Token:</strong> <?= e($pessoa['token'] ?? '-') ?></p>
-        <p><strong>Data Cadastro:</strong> <?= e($pessoa['data_cadastro'] ?? '-') ?></p>
-        <p><strong>Ultima Atualizacao:</strong> <?= e($pessoa['data_atualizacao'] ?? '-') ?></p>
-        <p><strong>Seminario 2025:</strong> <?= ($pessoa['seminario_2025'] ?? 0) ? 'Sim' : 'Nao' ?></p>
+        <p><strong>Data Cadastro:</strong> <?= e($pessoa['created_at'] ?? '-') ?></p>
+        <p><strong>Última Atualização:</strong> <?= e($pessoa['updated_at'] ?? '-') ?></p>
     </details>
 
     <hr>
 
     <!-- Excluir pessoa -->
     <form method="POST" action="/admin/excluir/pessoa/<?= e($pessoa['id']) ?>"
-          onsubmit="return confirm('ATENCAO: Esta acao excluira a pessoa e todos os seus pagamentos. Continuar?')">
+          onsubmit="return confirm('ATENÇÃO: Esta ação excluirá a pessoa e todas as suas filiações. Continuar?')">
         <button type="submit" class="secondary" style="background-color: #dc3545;">
             Excluir Pessoa
         </button>

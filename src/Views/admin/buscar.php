@@ -1,7 +1,10 @@
 <article>
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h2>Buscar Cadastrados</h2>
-        <a href="/admin" role="button" class="outline">Voltar</a>
+        <div>
+            <a href="/admin" role="button" class="outline">Painel</a>
+            <a href="/admin/contatos" role="button" class="outline">Contatos</a>
+        </div>
     </div>
 
     <form method="GET" action="/admin/buscar">
@@ -19,8 +22,7 @@
                 <tr>
                     <th>Nome</th>
                     <th>Email</th>
-                    <th>Categoria</th>
-                    <th>Pagamentos</th>
+                    <th>Filiações</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,8 +34,7 @@
                             </a>
                         </td>
                         <td><?= e($r['email']) ?></td>
-                        <td><?= e(CATEGORIAS_DISPLAY[$r['categoria'] ?? ''] ?? $r['categoria'] ?? '-') ?></td>
-                        <td><?= e($r['pagamentos'] ?? '-') ?></td>
+                        <td><?= e($r['filiacoes'] ?? '-') ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

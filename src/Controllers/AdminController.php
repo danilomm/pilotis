@@ -114,34 +114,98 @@ class AdminController {
         self::exigirLogin();
 
         $ano = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
+        $ordem = $_GET['ordem'] ?? 'data';
+        $status = $_GET['status'] ?? '';
 
-        // Estatisticas
+        // Estatisticas (exclui nao_filiado)
         $stats = db_fetch_one("
             SELECT
                 COUNT(*) as total,
                 SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos,
-                SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
+                SUM(CASE WHEN status = 'pendente' OR status = 'enviado' OR status = 'acesso' THEN 1 ELSE 0 END) as pendentes,
                 SUM(CASE WHEN status = 'pago' THEN valor ELSE 0 END) as arrecadado
-            FROM pagamentos WHERE ano = ?
+            FROM filiacoes WHERE ano = ? AND categoria <> 'nao_filiado'
         ", [$ano]);
 
-        // Pagamentos recentes
+        // Ordenação
+        $order_by = match($ordem) {
+            'nome' => 'p.nome ASC',
+            'categoria' => 'f.categoria ASC, p.nome ASC',
+            'status' => 'f.status ASC, p.nome ASC',
+            default => 'f.data_pagamento DESC, f.created_at DESC'
+        };
+
+        // Filtro de status
+        $status_filter = '';
+        $params = [$ano];
+        if ($status) {
+            $status_filter = ' AND f.status = ?';
+            $params[] = $status;
+        }
+
+        // Filiações
         $pagamentos = db_fetch_all("
-            SELECT p.id, p.cadastrado_id, c.nome, c.email, p.valor, p.status, p.metodo,
-                   p.data_criacao, p.data_pagamento
-            FROM pagamentos p
-            JOIN cadastrados c ON c.id = p.cadastrado_id
-            WHERE p.ano = ?
+            SELECT f.id, f.pessoa_id, p.nome,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email,
+                   f.valor, f.status, f.metodo,
+                   f.created_at, f.data_pagamento, f.categoria
+            FROM filiacoes f
+            JOIN pessoas p ON p.id = f.pessoa_id
+            WHERE f.ano = ? AND f.categoria <> 'nao_filiado' $status_filter
             ORDER BY
-                CASE p.status WHEN 'pendente' THEN 0 ELSE 1 END,
-                p.data_criacao DESC
-            LIMIT 100
-        ", [$ano]);
+                CASE f.status WHEN 'pendente' THEN 0 WHEN 'enviado' THEN 1 WHEN 'acesso' THEN 2 ELSE 3 END,
+                $order_by
+        ", $params);
+
+        // Ordenação com suporte a acentos (quando ordenando por nome)
+        if ($ordem === 'nome' && class_exists('Collator')) {
+            $collator = new Collator('pt_BR');
+            usort($pagamentos, fn($a, $b) => $collator->compare($a['nome'] ?? '', $b['nome'] ?? ''));
+        }
 
         $titulo = "Admin - Painel";
 
         ob_start();
         require SRC_DIR . '/Views/admin/painel.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Lista todos os contatos
+     */
+    public static function contatos(): void {
+        self::exigirLogin();
+
+        $ordem = $_GET['ordem'] ?? 'nome';
+
+        // Ordenação
+        $order_by = match($ordem) {
+            'ultima' => 'ultima_filiacao DESC, p.nome ASC',
+            default => 'p.nome ASC'
+        };
+
+        // Todos os contatos com última filiação paga
+        $contatos = db_fetch_all("
+            SELECT p.id, p.nome,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email,
+                   (SELECT MAX(f.ano) FROM filiacoes f
+                    WHERE f.pessoa_id = p.id AND f.status = 'pago' AND f.categoria <> 'nao_filiado'
+                   ) as ultima_filiacao
+            FROM pessoas p
+            ORDER BY $order_by
+        ");
+
+        // Ordenação com suporte a acentos (quando ordenando por nome)
+        if ($ordem === 'nome' && class_exists('Collator')) {
+            $collator = new Collator('pt_BR');
+            usort($contatos, fn($a, $b) => $collator->compare($a['nome'] ?? '', $b['nome'] ?? ''));
+        }
+
+        $titulo = "Admin - Contatos";
+
+        ob_start();
+        require SRC_DIR . '/Views/admin/contatos.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -157,13 +221,14 @@ class AdminController {
 
         if ($q) {
             $resultados = db_fetch_all("
-                SELECT c.id, c.nome, c.email, c.categoria, c.token,
-                       GROUP_CONCAT(p.ano || ':' || p.status, ', ') as pagamentos
-                FROM cadastrados c
-                LEFT JOIN pagamentos p ON p.cadastrado_id = c.id
-                WHERE c.email LIKE ? OR c.nome LIKE ?
-                GROUP BY c.id
-                ORDER BY c.nome
+                SELECT p.id, p.nome, e.email, p.token,
+                       GROUP_CONCAT(f.ano || ':' || f.status, ', ') as filiacoes
+                FROM pessoas p
+                LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+                LEFT JOIN filiacoes f ON f.pessoa_id = p.id
+                WHERE e.email LIKE ? OR p.nome LIKE ?
+                GROUP BY p.id
+                ORDER BY p.nome
                 LIMIT 50
             ", ["%$q%", "%$q%"]);
         }
@@ -182,7 +247,12 @@ class AdminController {
     public static function pessoa(string $id): void {
         self::exigirLogin();
 
-        $pessoa = db_fetch_one("SELECT * FROM cadastrados WHERE id = ?", [(int)$id]);
+        $pessoa = db_fetch_one("
+            SELECT p.*, e.email
+            FROM pessoas p
+            LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+            WHERE p.id = ?
+        ", [(int)$id]);
 
         if (!$pessoa) {
             flash('error', 'Pessoa nao encontrada.');
@@ -190,9 +260,15 @@ class AdminController {
             return;
         }
 
-        $pagamentos = db_fetch_all("
-            SELECT * FROM pagamentos
-            WHERE cadastrado_id = ?
+        // Se não tem email principal, pega qualquer um
+        if (!$pessoa['email']) {
+            $email_row = db_fetch_one("SELECT email FROM emails WHERE pessoa_id = ? LIMIT 1", [(int)$id]);
+            $pessoa['email'] = $email_row['email'] ?? '';
+        }
+
+        $filiacoes = db_fetch_all("
+            SELECT * FROM filiacoes
+            WHERE pessoa_id = ?
             ORDER BY ano DESC
         ", [(int)$id]);
 
@@ -211,7 +287,7 @@ class AdminController {
     public static function salvarPessoa(string $id): void {
         self::exigirLogin();
 
-        $pessoa = db_fetch_one("SELECT id FROM cadastrados WHERE id = ?", [(int)$id]);
+        $pessoa = db_fetch_one("SELECT id FROM pessoas WHERE id = ?", [(int)$id]);
         if (!$pessoa) {
             flash('error', 'Pessoa nao encontrada.');
             redirect('/admin');
@@ -221,34 +297,34 @@ class AdminController {
         $nome = trim($_POST['nome'] ?? '');
         $email = strtolower(trim($_POST['email'] ?? ''));
         $cpf = trim($_POST['cpf'] ?? '') ?: null;
-        $telefone = trim($_POST['telefone'] ?? '') ?: null;
-        $categoria = trim($_POST['categoria'] ?? '') ?: null;
-        $endereco = trim($_POST['endereco'] ?? '') ?: null;
-        $cep = trim($_POST['cep'] ?? '') ?: null;
-        $cidade = trim($_POST['cidade'] ?? '') ?: null;
-        $estado = strtoupper(substr(trim($_POST['estado'] ?? ''), 0, 2)) ?: null;
-        $pais = trim($_POST['pais'] ?? '') ?: null;
-        $profissao = trim($_POST['profissao'] ?? '') ?: null;
-        $formacao = trim($_POST['formacao'] ?? '') ?: null;
-        $instituicao = trim($_POST['instituicao'] ?? '') ?: null;
-        $observacoes = trim($_POST['observacoes'] ?? '') ?: null;
-        $observacoes_filiado = trim($_POST['observacoes_filiado'] ?? '') ?: null;
+        $notas = trim($_POST['notas'] ?? '') ?: null;
 
+        // Atualiza pessoa
         db_execute("
-            UPDATE cadastrados SET
-                nome = ?, email = ?, cpf = ?, telefone = ?, categoria = ?,
-                endereco = ?, cep = ?, cidade = ?, estado = ?, pais = ?,
-                profissao = ?, formacao = ?, instituicao = ?,
-                observacoes = ?, observacoes_filiado = ?,
-                data_atualizacao = CURRENT_TIMESTAMP
+            UPDATE pessoas SET
+                nome = ?, cpf = ?, notas = ?,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ", [
-            $nome, $email, $cpf, $telefone, $categoria,
-            $endereco, $cep, $cidade, $estado, $pais,
-            $profissao, $formacao, $instituicao,
-            $observacoes, $observacoes_filiado,
-            (int)$id
-        ]);
+        ", [$nome, $cpf, $notas, (int)$id]);
+
+        // Atualiza email principal
+        if ($email) {
+            $email_existe = db_fetch_one(
+                "SELECT id FROM emails WHERE pessoa_id = ? AND principal = 1",
+                [(int)$id]
+            );
+            if ($email_existe) {
+                db_execute(
+                    "UPDATE emails SET email = ? WHERE id = ?",
+                    [$email, $email_existe['id']]
+                );
+            } else {
+                db_execute(
+                    "INSERT INTO emails (pessoa_id, email, principal) VALUES (?, ?, 1)",
+                    [(int)$id, $email]
+                );
+            }
+        }
 
         registrar_log('edicao_admin', (int)$id, 'Dados editados via admin');
 
@@ -272,7 +348,7 @@ class AdminController {
     }
 
     /**
-     * Cria novo cadastro + pagamento
+     * Cria novo cadastro + filiação
      */
     public static function novoSalvar(): void {
         self::exigirLogin();
@@ -282,7 +358,6 @@ class AdminController {
         $categoria = trim($_POST['categoria'] ?? '');
         $ano = (int)($_POST['ano'] ?? date('Y'));
         $cpf = trim($_POST['cpf'] ?? '') ?: null;
-        $telefone = trim($_POST['telefone'] ?? '') ?: null;
 
         if (empty($nome) || empty($email) || empty($categoria)) {
             flash('error', 'Preencha todos os campos obrigatorios.');
@@ -290,123 +365,182 @@ class AdminController {
             return;
         }
 
-        // Verifica se ja existe
-        $existente = db_fetch_one("SELECT id FROM cadastrados WHERE email = ?", [$email]);
+        // Verifica se ja existe por email
+        $existente = buscar_pessoa_por_email($email);
 
         if ($existente) {
-            $cadastrado_id = $existente['id'];
-            // Atualiza categoria se necessario
-            db_execute("UPDATE cadastrados SET categoria = ? WHERE id = ?", [$categoria, $cadastrado_id]);
+            $pessoa_id = $existente['id'];
+            // Atualiza nome e CPF se necessário
+            db_execute("UPDATE pessoas SET nome = ?, cpf = ? WHERE id = ?", [$nome, $cpf, $pessoa_id]);
         } else {
-            $cadastrado_id = db_insert("
-                INSERT INTO cadastrados (nome, email, cpf, telefone, categoria, token)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ", [$nome, $email, $cpf, $telefone, $categoria, gerar_token()]);
+            // Cria pessoa
+            $pessoa_id = db_insert("
+                INSERT INTO pessoas (nome, cpf, token, created_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ", [$nome, $cpf, gerar_token()]);
+
+            // Cria email
+            db_execute("
+                INSERT INTO emails (pessoa_id, email, principal)
+                VALUES (?, ?, 1)
+            ", [$pessoa_id, $email]);
         }
 
-        // Verifica se ja tem pagamento para o ano
-        $pag_existe = db_fetch_one(
-            "SELECT id FROM pagamentos WHERE cadastrado_id = ? AND ano = ?",
-            [$cadastrado_id, $ano]
+        // Verifica se ja tem filiação para o ano
+        $filiacao_existe = db_fetch_one(
+            "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+            [$pessoa_id, $ano]
         );
 
-        if ($pag_existe) {
+        if ($filiacao_existe) {
             // Marca como pago
             db_execute("
-                UPDATE pagamentos
-                SET status = 'pago', metodo = 'manual', data_pagamento = CURRENT_TIMESTAMP
+                UPDATE filiacoes
+                SET status = 'pago', metodo = 'manual', data_pagamento = CURRENT_TIMESTAMP, categoria = ?
                 WHERE id = ?
-            ", [$pag_existe['id']]);
+            ", [$categoria, $filiacao_existe['id']]);
         } else {
-            // Cria pagamento
+            // Cria filiação
             $valor = valor_por_categoria($categoria);
             db_insert("
-                INSERT INTO pagamentos (cadastrado_id, ano, valor, status, metodo, data_pagamento)
-                VALUES (?, ?, ?, 'pago', 'manual', CURRENT_TIMESTAMP)
-            ", [$cadastrado_id, $ano, $valor]);
+                INSERT INTO filiacoes (pessoa_id, ano, categoria, valor, status, metodo, data_pagamento, created_at)
+                VALUES (?, ?, ?, ?, 'pago', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ", [$pessoa_id, $ano, $categoria, $valor]);
         }
 
-        registrar_log('cadastro_manual', $cadastrado_id, 'Cadastro e pagamento criados via admin');
+        registrar_log('cadastro_manual', $pessoa_id, 'Cadastro e filiação criados via admin');
 
         flash('success', 'Cadastro criado com sucesso.');
-        redirect("/admin/pessoa/$cadastrado_id");
+        redirect("/admin/pessoa/$pessoa_id");
     }
 
     /**
-     * Marca pagamento como pago
+     * Marca filiação como paga
      */
-    public static function marcarPago(string $pagamento_id): void {
+    public static function marcarPago(string $filiacao_id): void {
         self::exigirLogin();
 
-        $pag = db_fetch_one(
-            "SELECT cadastrado_id, ano FROM pagamentos WHERE id = ?",
-            [(int)$pagamento_id]
+        $filiacao = db_fetch_one(
+            "SELECT pessoa_id, ano FROM filiacoes WHERE id = ?",
+            [(int)$filiacao_id]
         );
 
-        if (!$pag) {
-            flash('error', 'Pagamento nao encontrado.');
+        if (!$filiacao) {
+            flash('error', 'Filiação não encontrada.');
             redirect('/admin');
             return;
         }
 
         db_execute("
-            UPDATE pagamentos
+            UPDATE filiacoes
             SET status = 'pago',
                 metodo = COALESCE(metodo, 'manual'),
                 data_pagamento = CURRENT_TIMESTAMP
             WHERE id = ?
-        ", [(int)$pagamento_id]);
+        ", [(int)$filiacao_id]);
 
-        registrar_log('pagamento_manual', $pag['cadastrado_id'], "Pagamento $pagamento_id marcado como pago via admin");
+        registrar_log('pagamento_manual', $filiacao['pessoa_id'], "Filiação $filiacao_id marcada como paga via admin");
 
-        flash('success', 'Pagamento marcado como pago.');
-        redirect("/admin?ano={$pag['ano']}");
+        flash('success', 'Filiação marcada como paga.');
+        redirect("/admin?ano={$filiacao['ano']}");
     }
 
     /**
-     * Exclui um pagamento
+     * Envia email de filiação para pessoa
      */
-    public static function excluirPagamento(string $pagamento_id): void {
+    public static function enviarEmail(string $filiacao_id): void {
         self::exigirLogin();
 
-        $pag = db_fetch_one(
-            "SELECT cadastrado_id, ano FROM pagamentos WHERE id = ?",
-            [(int)$pagamento_id]
-        );
+        $filiacao = db_fetch_one("
+            SELECT f.*, p.nome, p.token, e.email
+            FROM filiacoes f
+            JOIN pessoas p ON p.id = f.pessoa_id
+            LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+            WHERE f.id = ?
+        ", [(int)$filiacao_id]);
 
-        if (!$pag) {
-            flash('error', 'Pagamento nao encontrado.');
+        if (!$filiacao) {
+            flash('error', 'Filiação não encontrada.');
             redirect('/admin');
             return;
         }
 
-        db_execute("DELETE FROM pagamentos WHERE id = ?", [(int)$pagamento_id]);
-        registrar_log('exclusao', $pag['cadastrado_id'], "Pagamento $pagamento_id excluido via admin");
+        if (empty($filiacao['email'])) {
+            flash('error', 'Pessoa não tem email cadastrado.');
+            redirect("/admin/pessoa/{$filiacao['pessoa_id']}");
+            return;
+        }
 
-        flash('success', 'Pagamento excluido.');
-        redirect("/admin/pessoa/{$pag['cadastrado_id']}");
+        // Carrega o serviço de email
+        require_once SRC_DIR . '/Services/BrevoService.php';
+
+        // Envia email de renovação/filiação
+        $resultado = BrevoService::enviarCampanhaRenovacao(
+            $filiacao['email'],
+            $filiacao['nome'],
+            $filiacao['ano'],
+            $filiacao['token']
+        );
+
+        if ($resultado) {
+            // Atualiza status para 'enviado' se ainda não estava
+            if ($filiacao['status'] === 'enviado' || empty($filiacao['status'])) {
+                db_execute("UPDATE filiacoes SET status = 'enviado' WHERE id = ?", [(int)$filiacao_id]);
+            }
+            registrar_log('email_enviado', $filiacao['pessoa_id'], "Email de filiação {$filiacao['ano']} enviado via admin");
+            flash('success', 'Email enviado com sucesso.');
+        } else {
+            flash('error', 'Erro ao enviar email.');
+        }
+
+        redirect("/admin/pessoa/{$filiacao['pessoa_id']}");
     }
 
     /**
-     * Exclui uma pessoa e todos os seus pagamentos
+     * Exclui uma filiação
+     */
+    public static function excluirPagamento(string $filiacao_id): void {
+        self::exigirLogin();
+
+        $filiacao = db_fetch_one(
+            "SELECT pessoa_id, ano FROM filiacoes WHERE id = ?",
+            [(int)$filiacao_id]
+        );
+
+        if (!$filiacao) {
+            flash('error', 'Filiação não encontrada.');
+            redirect('/admin');
+            return;
+        }
+
+        db_execute("DELETE FROM filiacoes WHERE id = ?", [(int)$filiacao_id]);
+        registrar_log('exclusao', $filiacao['pessoa_id'], "Filiação $filiacao_id excluída via admin");
+
+        flash('success', 'Filiação excluída.');
+        redirect("/admin/pessoa/{$filiacao['pessoa_id']}");
+    }
+
+    /**
+     * Exclui uma pessoa e todos os seus dados
      */
     public static function excluirPessoa(string $pessoa_id): void {
         self::exigirLogin();
 
-        $pessoa = db_fetch_one("SELECT nome FROM cadastrados WHERE id = ?", [(int)$pessoa_id]);
+        $pessoa = db_fetch_one("SELECT nome FROM pessoas WHERE id = ?", [(int)$pessoa_id]);
 
         if (!$pessoa) {
-            flash('error', 'Pessoa nao encontrada.');
+            flash('error', 'Pessoa não encontrada.');
             redirect('/admin');
             return;
         }
 
-        db_execute("DELETE FROM pagamentos WHERE cadastrado_id = ?", [(int)$pessoa_id]);
-        db_execute("DELETE FROM cadastrados WHERE id = ?", [(int)$pessoa_id]);
+        db_execute("DELETE FROM filiacoes WHERE pessoa_id = ?", [(int)$pessoa_id]);
+        db_execute("DELETE FROM emails WHERE pessoa_id = ?", [(int)$pessoa_id]);
+        db_execute("DELETE FROM pessoas WHERE id = ?", [(int)$pessoa_id]);
 
-        registrar_log('exclusao', null, "Pessoa $pessoa_id ({$pessoa['nome']}) excluida via admin");
+        registrar_log('exclusao', null, "Pessoa $pessoa_id ({$pessoa['nome']}) excluída via admin");
 
-        flash('success', 'Pessoa excluida.');
+        flash('success', 'Pessoa excluída.');
         redirect('/admin');
     }
 
@@ -441,14 +575,15 @@ class AdminController {
         $ano = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
 
         $rows = db_fetch_all("
-            SELECT c.nome, c.email, c.cpf, c.telefone, c.categoria,
-                   c.endereco, c.cep, c.cidade, c.estado, c.pais,
-                   c.profissao, c.instituicao,
-                   p.valor, p.metodo, p.status, p.data_pagamento
-            FROM cadastrados c
-            JOIN pagamentos p ON p.cadastrado_id = c.id
-            WHERE p.ano = ?
-            ORDER BY p.status DESC, c.nome
+            SELECT p.nome, e.email, p.cpf,
+                   f.telefone, f.categoria, f.endereco, f.cep, f.cidade, f.estado, f.pais,
+                   f.profissao, f.instituicao,
+                   f.valor, f.metodo, f.status, f.data_pagamento
+            FROM pessoas p
+            JOIN filiacoes f ON f.pessoa_id = p.id
+            LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+            WHERE f.ano = ?
+            ORDER BY f.status DESC, p.nome
         ", [$ano]);
 
         $filename = "filiados_$ano.csv";

@@ -45,6 +45,10 @@ class BrevoService {
                 'name' => EMAIL_FROM_NAME,
                 'email' => $from_email,
             ],
+            'replyTo' => [
+                'name' => EMAIL_FROM_NAME,
+                'email' => $from_email,
+            ],
             'to' => $to_list,
             'subject' => $assunto,
             'htmlContent' => $html,
@@ -84,7 +88,7 @@ class BrevoService {
     }
 
     /**
-     * Envia email de confirmacao de filiacao com declaracao em anexo
+     * Envia email de confirmação de filiação com declaração em anexo
      */
     public static function enviarConfirmacaoFiliacao(
         string $email,
@@ -101,11 +105,11 @@ class BrevoService {
         $html = "
         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
             <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Filiacao Confirmada!</h1>
+                <h1 style='color: white; margin: 0;'>Filiação Confirmada!</h1>
             </div>
             <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Ola <strong>$nome</strong>,</p>
-                <p>Sua filiacao ao <strong>Docomomo Brasil</strong> para o ano de <strong>$ano</strong> esta confirmada!</p>
+                <p>Olá <strong>$nome</strong>,</p>
+                <p>Sua filiação ao <strong>Docomomo Brasil</strong> para o ano de <strong>$ano</strong> está confirmada!</p>
                 <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
                     <tr>
                         <td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Categoria:</strong></td>
@@ -116,12 +120,12 @@ class BrevoService {
                         <td style='padding: 10px; border-bottom: 1px solid #ddd;'>$valor_formatado</td>
                     </tr>
                 </table>
-                <p>Em anexo, enviamos sua declaracao de filiacao.</p>
+                <p>Em anexo, enviamos sua declaração de filiação.</p>
                 <p>Obrigado por fazer parte do Docomomo Brasil!</p>
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associacao de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                Associação de Colaboradores do Docomomo Brasil<br>
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";
@@ -133,7 +137,7 @@ class BrevoService {
 
         return self::enviarEmail(
             $email,
-            "Filiacao Docomomo Brasil $ano - Confirmada!",
+            "Filiação Docomomo Brasil $ano - Confirmada!",
             $html,
             $anexos ?: null
         );
@@ -152,7 +156,7 @@ class BrevoService {
     ): bool {
         $valor_formatado = formatar_valor($valor_centavos);
         $link = BASE_URL . "/filiacao/$ano/$token/pagamento";
-        $urgencia = $dias_restantes <= 0 ? 'ULTIMO AVISO: ' : '';
+        $urgencia = $dias_restantes <= 0 ? 'ÚLTIMO AVISO: ' : '';
 
         $html = "
         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
@@ -160,29 +164,29 @@ class BrevoService {
                 <h1 style='color: white; margin: 0;'>{$urgencia}Lembrete de Pagamento</h1>
             </div>
             <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Ola <strong>$nome</strong>,</p>
-                <p>Identificamos que sua filiacao ao Docomomo Brasil para $ano ainda esta pendente de pagamento.</p>
+                <p>Olá <strong>$nome</strong>,</p>
+                <p>Identificamos que sua filiação ao Docomomo Brasil para $ano ainda está pendente de pagamento.</p>
                 <p><strong>Valor:</strong> $valor_formatado</p>
                 " . ($dias_restantes <= 0 ? "<p style='color: red;'><strong>Seu PIX expira hoje!</strong></p>" : "<p>Restam $dias_restantes dias para o vencimento.</p>") . "
                 <p style='text-align: center; margin: 30px 0;'>
                     <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Realizar Pagamento</a>
                 </p>
-                <p><small>Se ja realizou o pagamento, por favor desconsidere este email.</small></p>
+                <p><small>Se já realizou o pagamento, por favor desconsidere este email.</small></p>
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associacao de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                Associação de Colaboradores do Docomomo Brasil<br>
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";
 
-        $assunto = "{$urgencia}Filiacao Docomomo Brasil $ano - Pagamento Pendente";
+        $assunto = "{$urgencia}Filiação Docomomo Brasil $ano - Pagamento Pendente";
 
         return self::enviarEmail($email, $assunto, $html);
     }
 
     /**
-     * Envia email de campanha para filiados existentes (renovacao)
+     * Envia email de campanha para filiados existentes (renovação)
      */
     public static function enviarCampanhaRenovacao(
         string $email,
@@ -195,33 +199,33 @@ class BrevoService {
         $html = "
         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
             <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Renove sua Filiacao</h1>
+                <h1 style='color: white; margin: 0;'>Renove sua Filiação</h1>
             </div>
             <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Ola <strong>$nome</strong>,</p>
-                <p>E hora de renovar sua filiacao ao Docomomo Brasil!</p>
-                <p><strong>Beneficios da filiacao:</strong></p>
+                <p>Olá <strong>$nome</strong>,</p>
+                <p>É hora de renovar sua filiação ao Docomomo Brasil!</p>
+                <p><strong>Benefícios da filiação:</strong></p>
                 <ul>
-                    <li>Descontos em eventos do Docomomo Brasil e nucleos regionais</li>
-                    <li>Acesso a rede de profissionais e pesquisadores</li>
+                    <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
+                    <li>Acesso à rede de profissionais e pesquisadores</li>
                     <li>Para internacional: Docomomo Journal, Member Card, descontos em museus</li>
                 </ul>
                 <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Renovar Filiacao</a>
+                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Renovar Filiação</a>
                 </p>
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associacao de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                Associação de Colaboradores do Docomomo Brasil<br>
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";
 
-        return self::enviarEmail($email, "Renove sua Filiacao - Docomomo Brasil $ano", $html);
+        return self::enviarEmail($email, "Renove sua Filiação - Docomomo Brasil $ano", $html);
     }
 
     /**
-     * Envia email de campanha para novos (convite a filiacao)
+     * Envia email de campanha para novos (convite à filiação)
      */
     public static function enviarCampanhaConvite(
         string $email,
@@ -234,31 +238,32 @@ class BrevoService {
         $html = "
         <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
             <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Convite para Filiacao</h1>
+                <h1 style='color: white; margin: 0;'>Convite para Filiação</h1>
             </div>
             <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Ola <strong>$nome</strong>,</p>
-                <p>Gostariamos de convidar voce a se filiar ao <strong>Docomomo Brasil</strong>!</p>
+                <p>Olá <strong>$nome</strong>,</p>
+                <p>Gostaríamos de convidar você a se filiar ao <strong>Docomomo Brasil</strong>!</p>
                 <p>O Docomomo (Documentation and Conservation of buildings, sites and neighbourhoods of the Modern Movement)
-                e uma organizacao internacional dedicada a documentacao e conservacao do patrimonio moderno.</p>
-                <p><strong>Beneficios da filiacao:</strong></p>
+                é uma organização internacional dedicada à documentação e conservação do patrimônio moderno.
+                Conheça mais sobre o Docomomo Brasil em <a href='https://www.docomomobrasil.com'>www.docomomobrasil.com</a>.</p>
+                <p><strong>Benefícios da filiação:</strong></p>
                 <ul>
-                    <li>Descontos em eventos do Docomomo Brasil e nucleos regionais</li>
-                    <li>Acesso a rede de profissionais e pesquisadores</li>
-                    <li>Participacao nas atividades e publicacoes</li>
+                    <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
+                    <li>Acesso à rede de profissionais e pesquisadores</li>
+                    <li>Participação nas atividades e publicações</li>
                 </ul>
                 <p style='text-align: center; margin: 30px 0;'>
                     <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Filiar-se Agora</a>
                 </p>
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associacao de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                Associação de Colaboradores do Docomomo Brasil<br>
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";
 
-        return self::enviarEmail($email, "Convite para Filiacao - Docomomo Brasil $ano", $html);
+        return self::enviarEmail($email, "Convite para Filiação - Docomomo Brasil $ano", $html);
     }
 
     /**
@@ -288,7 +293,7 @@ class BrevoService {
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
                 Associação de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";
@@ -326,7 +331,7 @@ class BrevoService {
             </div>
             <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
                 Associação de Colaboradores do Docomomo Brasil<br>
-                @docomomobrasil
+                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
             </div>
         </div>
         ";

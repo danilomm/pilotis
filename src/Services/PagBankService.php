@@ -192,14 +192,7 @@ class PagBankService {
             $payload['notification_urls'] = [BASE_URL . '/webhook/pagbank'];
         }
 
-        // DEBUG: Log do payload enviado
-        error_log("=== BOLETO DEBUG ===");
-        error_log("Payload enviado: " . json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
         $data = self::request('POST', '/orders', $payload);
-
-        // DEBUG: Log da resposta
-        error_log("Resposta PagBank: " . json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
         $charges = $data['charges'] ?? [];
         $charge_data = $charges[0] ?? [];
@@ -214,11 +207,6 @@ class PagBankService {
                 break;
             }
         }
-
-        // DEBUG: Log do link encontrado
-        error_log("Boleto link encontrado: $boleto_link");
-        error_log("Holder no response: " . json_encode($boleto['holder'] ?? 'N/A'));
-        error_log("=== FIM DEBUG ===");
 
         return [
             'order_id' => $data['id'] ?? '',
