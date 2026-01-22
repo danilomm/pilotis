@@ -182,6 +182,62 @@ Percentuais:
 - Novos/Retornaram/Renovaram: % do total de filiados do ano
 - Não renovaram: % dos filiados do ano anterior
 
+### Consolidação de Dados Históricos (ZIPs) ✓
+
+Processados 3 arquivos ZIP do Google Drive com dados históricos:
+- `filiação 2018-*.zip` — certificados e comprovantes 2018
+- `filiação 2019-*.zip` — certificados e comprovantes 2019
+- `FILIAÇÃO-*.zip` — dados gerais 2015-2023
+
+**Dados extraídos e salvos:**
+- `importacao/consolidado_planilhas.csv` — 388 pessoas únicas das planilhas
+- `importacao/certificados_emitidos.csv` — 224 certificados (pagamentos confirmados)
+  - 2018: 20 certificados
+  - 2019: 94 certificados (dupla/pleno/estudante)
+  - 2021: 110 certificados
+
+**Cruzamento com banco:**
+- 382 já existiam (email bate)
+- 3 duplicatas consolidadas (mesmo nome, email diferente)
+- 4 novos cadastros adicionados
+
+### Consolidação de Duplicatas ✓
+
+**Duplicatas por nome exato (41):** Consolidadas automaticamente via `scripts/consolidar_duplicatas.php`
+
+**Duplicatas por revisão manual (11):**
+
+Por nome similar:
+- Fernando Guillermo Vázquez/Vazquez Ramos
+- Isabela (Ferreira) Milagre
+- Lúcia Siqueira/Squeira de Queiroz Varella
+- Margareth (Campos) da Silva Pereira
+- Mirthes (Ivany Soares) Baffi
+
+Por acento/typo:
+- Luis/Luís Salvador Petrucci Gnoato
+- Jose/José Carlos Huapaya Espinoza
+- Lucia/Lúcia Moreira do Nascimento
+- Marcia/Márcia Gadelha Cavalcante
+- Erica/Érica Maria de Barros Martins
+- Evelyn Furquim Werneck Lima(-C.)
+
+### Novos Scripts de Verificação ✓
+
+- `scripts/verificar_emails.php` — typos de domínio, duplicados, inválidos
+- `scripts/revisar_nomes.php` — VERIFICAR_MANUAL, nomes curtos, estranhos
+- `scripts/emails_typos.php` — mapa de typos conhecidos (gmal→gmail, etc)
+- `scripts/consolidar_duplicatas.php` — unifica pessoas por nome exato
+
+### Estado Final do Banco
+
+| Métrica | Valor |
+|---------|-------|
+| Pessoas | 1.070 |
+| Emails | 1.217 |
+| Filiações | 1.674 |
+| Pessoas com 2+ emails | 132 |
+
 ---
 
 ## 2026-01-20
