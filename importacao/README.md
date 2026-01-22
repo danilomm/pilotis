@@ -83,8 +83,10 @@ Colunas:
 
 ### Normalizacao
 
-- `instituicoes_normalizadas.php` - Mapa de normalizacao de instituicoes
-- `normalizar_2024_2025.php` - Aplica normalizacao em 2024/2025
+- `instituicoes_normalizadas.php` - Mapa de normalizacao de instituicoes (~400 entradas)
+- `cidades_normalizadas.php` - Mapa de normalizacao de cidades (~100 entradas)
+- `normalizar_2024_2025.php` - Aplica normalizacao de instituicoes em 2024/2025
+- `normalizar_cidades.php` - Aplica normalizacao de cidades em todos os anos
 - `atualizar_normalizacao.php` - Atualiza banco com CSVs limpos
 
 ### Correcoes manuais
@@ -117,6 +119,23 @@ Exemplos de normalizacao:
 - "universidade presbiteriana mackenzie" -> "Mackenzie"
 - "propar ufrgs" -> "PROPAR-UFRGS"
 
+### Cidades
+
+Mapeamento em `scripts/cidades_normalizadas.php`.
+
+Regras de normalizacao:
+- Remover estado/UF do nome (ex: "Aracaju - SE" -> "Aracaju")
+- Acentuar corretamente (ex: "Sao Paulo" -> "São Paulo")
+- Capitalizar corretamente (ex: "FORTALEZA" -> "Fortaleza")
+- Preposicoes em minusculo (ex: "Rio De Janeiro" -> "Rio de Janeiro")
+- Estado como cidade vira vazio (ex: "Santa Catarina" -> "")
+
+Exemplos:
+- "São Paulo Sp" -> "São Paulo"
+- "Belém/Pará" -> "Belém"
+- "Florianopolis" -> "Florianópolis"
+- "CAMPINAS" -> "Campinas"
+
 ### Metodos de Pagamento
 
 - PIX
@@ -140,13 +159,20 @@ Exemplos de normalizacao:
 
 ### Para atualizar normalizacao
 
+**Instituicoes:**
 1. Adicionar novos mapeamentos em `instituicoes_normalizadas.php`
 2. Rodar `normalizar_2024_2025.php` ou equivalente
 3. Verificar resultados
 
+**Cidades:**
+1. Adicionar novos mapeamentos em `cidades_normalizadas.php`
+2. Rodar `php scripts/normalizar_cidades.php`
+3. Verificar resultados
+
 ## Historico
 
-- 2025-01-22: Criacao desta estrutura
+- 2025-01-22: Normalizacao de cidades em todos os anos (38 registros)
+- 2025-01-22: Criacao desta estrutura organizada
 - 2025-01-22: Normalizacao de 2024/2025 (metodos e instituicoes)
 - 2025-01-22: Reimportacao de 2022/2023 com preservacao de unidades (FAU-USP, IAU-USP)
 - 2025-01-21: Importacao inicial de 2022
