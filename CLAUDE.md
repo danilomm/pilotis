@@ -63,14 +63,12 @@ pilotis/
 │   ├── limpar_csv_*.php   # Scripts de limpeza por ano
 │   ├── importar_csv_*.php # Scripts de importacao por ano
 │   └── normalizar_*.php   # Scripts de normalizacao
-├── importacao/            # Arquivos de importacao (versionado)
-│   ├── originais/         # CSVs originais do Google Forms
-│   ├── limpos/            # CSVs limpos e normalizados
-│   ├── scripts/           # Copia dos scripts de importacao
-│   └── README.md          # Documentacao de importacao
-├── data/
-│   ├── pilotis.db         # Banco SQLite
-│   └── backup.sql         # Versionado no git
+├── dados/                 # SUBMODULE (repo privado: pilotis-dados)
+│   ├── data/
+│   │   ├── pilotis.db     # Banco SQLite
+│   │   └── backup.sql     # Versionado no repo privado
+│   ├── importacao/        # CSVs de importação
+│   └── DEVLOG.md          # Log com dados sensíveis
 ├── backup-python/         # Codigo Python anterior (referencia)
 ├── .env                   # Credenciais (nao versionado)
 ├── .env.example           # Template de credenciais
@@ -179,7 +177,7 @@ composer install
 
 ```
 # Banco de dados
-DATABASE_PATH=data/pilotis.db
+DATABASE_PATH=dados/data/pilotis.db
 
 # PagBank
 PAGBANK_TOKEN=seu_token_aqui
@@ -265,23 +263,18 @@ php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 
 ## Backup e Commit
 
-**IMPORTANTE:** Quando o usuario pedir "backup e commit", executar:
+**IMPORTANTE:** Quando o usuario pedir "backup e commit", executar o script:
 
 ```bash
-# 1. Gerar dump SQL do banco
-sqlite3 data/pilotis.db .dump > data/backup.sql
-
-# 2. Commit de tudo
-git add -A
-git commit -m "Descricao das mudancas"
+./backup.sh "Descricao das mudancas"
 ```
 
-O arquivo `data/backup.sql` e versionado no git e serve como ponto de restauracao.
+O script faz commit nos dois repos (publico e privado).
 
-Para restaurar:
+Para restaurar o banco:
 ```bash
-rm data/pilotis.db
-sqlite3 data/pilotis.db < data/backup.sql
+rm dados/data/pilotis.db
+sqlite3 dados/data/pilotis.db < dados/data/backup.sql
 ```
 
 ## Regras de Consolidacao de Dados
@@ -293,7 +286,7 @@ sqlite3 data/pilotis.db < data/backup.sql
 - **Telefones internacionais:** Manter formato internacional (+1, +351, etc). Verificar endereco quando numero parecer estranho
 - **Prioridade para correcao de dados:** Ao encontrar dados inconsistentes ou faltantes:
   1. Primeiro: buscar em outros anos da mesma pessoa
-  2. Segundo: verificar no CSV original (importacao/originais/)
+  2. Segundo: verificar no CSV original (dados/importacao/originais/)
   3. Ultimo: usar metodos dedutivos (inferir do CEP, endereco, etc)
 
 ## WordPress (Site Principal)
@@ -303,18 +296,18 @@ API REST para gerenciar paginas de filiados no site docomomobrasil.com.
 ```
 URL base: https://docomomobrasil.com/wp-json/wp/v2/
 Tipos: post, page, course (Educaz), dlm_download
-Auth: admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ
+Auth: Credenciais em .env (WP_USER e WP_APP_PASSWORD)
 ```
 
 ### Exemplo de uso
 
 ```bash
 # Listar paginas
-curl -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
+curl -u "$WP_USER:$WP_APP_PASSWORD" \
   "https://docomomobrasil.com/wp-json/wp/v2/pages?search=filiados"
 
 # Criar/atualizar pagina
-curl -X POST -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
+curl -X POST -u "$WP_USER:$WP_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d '{"title":"Filiados 2025","content":"...","status":"publish"}' \
   "https://docomomobrasil.com/wp-json/wp/v2/pages"
@@ -324,11 +317,11 @@ curl -X POST -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
 
 Processo para importar filiados de planilhas de anos anteriores (Google Forms exportados).
 
-**Documentacao completa:** `importacao/README.md`
+**Documentacao completa:** `dados/importacao/README.md`
 
 **Arquivos preservados:**
-- `importacao/originais/` - CSVs originais do Google Forms
-- `importacao/limpos/` - CSVs limpos e normalizados
+- `dados/importacao/originais/` - CSVs originais do Google Forms
+- `dados/importacao/limpos/` - CSVs limpos e normalizados
 - `importacao/scripts/` - Scripts usados na importacao
 
 ### Visao Geral
@@ -373,8 +366,8 @@ Cada ano tem estrutura de colunas diferente. Criar script baseado em `limpar_csv
 - `scripts/instituicoes_normalizadas.php` - Mapeamento de instituicoes (reutilizavel, compartilhado entre anos)
 
 **IMPORTANTE:** Preservar os arquivos na pasta `importacao/`:
-- `importacao/originais/` - CSVs originais do Google Forms
-- `importacao/limpos/` - CSVs limpos e normalizados
+- `dados/importacao/originais/` - CSVs originais do Google Forms
+- `dados/importacao/limpos/` - CSVs limpos e normalizados
 - `importacao/scripts/` - Copia dos scripts usados
 
 Esses arquivos sao necessarios para correcoes futuras e servem de template para novos anos.
@@ -407,7 +400,7 @@ Se nao houver unidade especifica, usar apenas a sigla: USP, UFRJ, UFBA, etc.
 Executar script de verificacao de emails:
 
 ```bash
-php scripts/verificar_emails.php importacao/limpos/filiados_YYYY_limpo.csv
+php scripts/verificar_emails.php dados/importacao/limpos/filiados_YYYY_limpo.csv
 ```
 
 O script verifica:
@@ -424,7 +417,7 @@ Se encontrar problemas, **corrigir no CSV antes de continuar**.
 Executar script de revisao de nomes:
 
 ```bash
-php scripts/revisar_nomes.php importacao/limpos/filiados_YYYY_limpo.csv
+php scripts/revisar_nomes.php dados/importacao/limpos/filiados_YYYY_limpo.csv
 ```
 
 O script lista:

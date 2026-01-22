@@ -36,7 +36,7 @@ define('PUBLIC_DIR', BASE_DIR . '/public');
 define('DATA_DIR', BASE_DIR . '/data');
 
 // Banco de dados (resolve caminho relativo para absoluto)
-$db_path = env('DATABASE_PATH', 'data/pilotis.db');
+$db_path = env('DATABASE_PATH', 'dados/data/pilotis.db');
 if ($db_path[0] !== '/') {
     $db_path = BASE_DIR . '/' . $db_path;
 }
