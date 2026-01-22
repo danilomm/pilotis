@@ -146,53 +146,107 @@
                 </div>
 
             <?php else: ?>
-                <!-- Campanha fechada: mostra resumo final -->
+                <!-- Campanha fechada: mostra resumo final com métricas detalhadas -->
+                <?php $m = $c['metricas'] ?? null; ?>
+
+                <!-- Resumo principal -->
                 <div class="grid" style="margin-bottom: 15px;">
-                    <div style="background: #e9ecef; padding: 10px; border-radius: 8px; text-align: center;">
-                        <strong style="color: #495057; font-size: 1.3em;"><?= (int)($stats['total'] ?? 0) ?></strong>
-                        <br><small>Total</small>
+                    <div style="background: #17a2b8; padding: 10px; border-radius: 8px; text-align: center;">
+                        <strong style="color: white; font-size: 1.3em;"><?= $m ? $m['emails_enviados'] : 0 ?></strong>
+                        <br><small style="color: white;">Emails Enviados</small>
                     </div>
                     <div style="background: #28a745; padding: 10px; border-radius: 8px; text-align: center;">
                         <strong style="color: white; font-size: 1.3em;"><?= (int)($stats['pagos'] ?? 0) ?></strong>
-                        <br><small style="color: white;">Pagos</small>
+                        <br><small style="color: white;">Filiados</small>
                     </div>
                     <div style="background: #dc3545; padding: 10px; border-radius: 8px; text-align: center;">
-                        <strong style="color: white; font-size: 1.3em;"><?= (int)($stats['nao_pagos'] ?? 0) ?></strong>
-                        <br><small style="color: white;">Não Pagos</small>
+                        <strong style="color: white; font-size: 1.3em;"><?= $m ? $m['nao_renovaram']['total'] : 0 ?></strong>
+                        <br><small style="color: white;">Não Renovaram</small>
                     </div>
                     <div style="background: #d4edda; padding: 10px; border-radius: 8px; text-align: center;">
                         <strong style="color: #155724; font-size: 1.3em;"><?= formatar_valor((int)($stats['arrecadado'] ?? 0)) ?></strong>
                         <br><small style="color: #155724;">Arrecadado</small>
                     </div>
                 </div>
-            <?php endif; ?>
 
-            <!-- Detalhes por categoria (para todas as campanhas) -->
-            <?php if (!empty($c['categorias'])): ?>
+                <?php if ($m): ?>
+                <!-- Composição dos filiados -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <div style="flex: 1; min-width: 120px; background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center;">
+                        <strong style="color: #1565c0;"><?= $m['novos']['total'] ?></strong>
+                        <br><small style="color: #1565c0;">🆕 Novos</small>
+                    </div>
+                    <div style="flex: 1; min-width: 120px; background: #fff3e0; padding: 10px; border-radius: 8px; text-align: center;">
+                        <strong style="color: #e65100;"><?= $m['retornaram']['total'] ?></strong>
+                        <br><small style="color: #e65100;">🔄 Retornaram</small>
+                    </div>
+                    <div style="flex: 1; min-width: 120px; background: #e8f5e9; padding: 10px; border-radius: 8px; text-align: center;">
+                        <strong style="color: #2e7d32;"><?= $m['renovaram']['total'] ?></strong>
+                        <br><small style="color: #2e7d32;">✅ Renovaram</small>
+                    </div>
+                </div>
+
+                <!-- Detalhes expandíveis -->
                 <details style="margin-top: 10px;">
                     <summary style="cursor: pointer;">Detalhes por categoria</summary>
-                    <table style="margin-top: 10px; font-size: 0.9em;">
+
+                    <table style="margin-top: 10px; font-size: 0.85em; width: 100%;">
                         <thead>
-                            <tr>
-                                <th>Categoria</th>
-                                <th style="text-align: right;">Valor</th>
-                                <th style="text-align: right;">Qtd</th>
-                                <th style="text-align: right;">Subtotal</th>
+                            <tr style="background: #f8f9fa;">
+                                <th></th>
+                                <th style="text-align: center;">Estudante</th>
+                                <th style="text-align: center;">Nacional</th>
+                                <th style="text-align: center;">Internacional</th>
+                                <th style="text-align: right;">Total</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
-                                <?php $cat_data = $c['categorias'][$cat_key] ?? null; ?>
-                                <tr>
-                                    <td><?= e(CATEGORIAS_DISPLAY[$cat_key] ?? $cat_key) ?></td>
-                                    <td style="text-align: right;"><?= formatar_valor($valores[$cat_key] ?? 0) ?></td>
-                                    <td style="text-align: right;"><?= $cat_data ? $cat_data['qtd'] : 0 ?></td>
-                                    <td style="text-align: right;"><?= $cat_data ? formatar_valor($cat_data['total']) : '-' ?></td>
-                                </tr>
-                            <?php endforeach; ?>
+                            <tr>
+                                <td><strong>Filiados</strong></td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= $c['categorias'][$cat_key]['qtd'] ?? 0 ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><strong><?= (int)($stats['pagos'] ?? 0) ?></strong></td>
+                            </tr>
+                            <tr style="color: #1565c0;">
+                                <td>&nbsp;&nbsp;🆕 Novos</td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= $m['novos']['por_categoria'][$cat_key]['qtd'] ?? 0 ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><?= $m['novos']['total'] ?></td>
+                            </tr>
+                            <tr style="color: #e65100;">
+                                <td>&nbsp;&nbsp;🔄 Retornaram</td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= $m['retornaram']['por_categoria'][$cat_key]['qtd'] ?? 0 ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><?= $m['retornaram']['total'] ?></td>
+                            </tr>
+                            <tr style="color: #2e7d32;">
+                                <td>&nbsp;&nbsp;✅ Renovaram</td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= $m['renovaram']['por_categoria'][$cat_key]['qtd'] ?? 0 ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><?= $m['renovaram']['total'] ?></td>
+                            </tr>
+                            <tr style="color: #c62828; border-top: 1px solid #ddd;">
+                                <td><strong>Não Renovaram</strong></td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= $m['nao_renovaram']['por_categoria'][$cat_key]['qtd'] ?? 0 ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><strong><?= $m['nao_renovaram']['total'] ?></strong></td>
+                            </tr>
+                            <tr style="border-top: 2px solid #333;">
+                                <td><strong>Arrecadado</strong></td>
+                                <?php foreach (['estudante', 'profissional_nacional', 'profissional_internacional'] as $cat_key): ?>
+                                    <td style="text-align: center;"><?= formatar_valor($c['categorias'][$cat_key]['total'] ?? 0) ?></td>
+                                <?php endforeach; ?>
+                                <td style="text-align: right;"><strong><?= formatar_valor((int)($stats['arrecadado'] ?? 0)) ?></strong></td>
+                            </tr>
                         </tbody>
                     </table>
                 </details>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

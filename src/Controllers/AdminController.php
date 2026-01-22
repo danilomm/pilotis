@@ -37,6 +37,25 @@ class AdminController {
     }
 
     /**
+     * Agrupa resultados de query por categoria
+     */
+    private static function agruparPorCategoria(array $rows): array {
+        $result = ['total' => 0, 'valor' => 0, 'por_categoria' => []];
+        foreach ($rows as $row) {
+            $cat = $row['categoria'] ?? 'outro';
+            $qtd = (int)($row['qtd'] ?? 0);
+            $valor = (int)($row['total'] ?? 0);
+            $result['total'] += $qtd;
+            $result['valor'] += $valor;
+            $result['por_categoria'][$cat] = [
+                'qtd' => $qtd,
+                'valor' => $valor,
+            ];
+        }
+        return $result;
+    }
+
+    /**
      * Pagina de login
      */
     public static function loginForm(): void {
@@ -122,6 +141,9 @@ class AdminController {
         $campanhas = [];
         foreach ($campanhas_db as $c) {
             $ano = $c['ano'];
+            $ano_anterior = $ano - 1;
+
+            // Estatísticas básicas
             $stats = db_fetch_one("
                 SELECT
                     COUNT(*) as total,
@@ -134,6 +156,72 @@ class AdminController {
                 FROM filiacoes
                 WHERE ano = ?
             ", [$ano]);
+
+            // Para campanhas fechadas: métricas detalhadas
+            $metricas = null;
+            if ($c['status'] === 'fechada') {
+                // Novos: pagaram este ano, nunca pagaram antes
+                $novos = db_fetch_all("
+                    SELECT f.categoria, COUNT(*) as qtd, SUM(f.valor) as total
+                    FROM filiacoes f
+                    WHERE f.ano = ? AND f.status = 'pago'
+                    AND NOT EXISTS (
+                        SELECT 1 FROM filiacoes f2
+                        WHERE f2.pessoa_id = f.pessoa_id AND f2.ano < ? AND f2.status = 'pago'
+                    )
+                    GROUP BY f.categoria
+                ", [$ano, $ano]);
+
+                // Retornaram: pagaram este ano, já pagaram antes, mas NÃO no ano anterior
+                $retornaram = db_fetch_all("
+                    SELECT f.categoria, COUNT(*) as qtd, SUM(f.valor) as total
+                    FROM filiacoes f
+                    WHERE f.ano = ? AND f.status = 'pago'
+                    AND EXISTS (
+                        SELECT 1 FROM filiacoes f2
+                        WHERE f2.pessoa_id = f.pessoa_id AND f2.ano < ? AND f2.status = 'pago'
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM filiacoes f3
+                        WHERE f3.pessoa_id = f.pessoa_id AND f3.ano = ? AND f3.status = 'pago'
+                    )
+                    GROUP BY f.categoria
+                ", [$ano, $ano, $ano_anterior]);
+
+                // Renovaram: pagaram este ano E pagaram no ano anterior
+                $renovaram = db_fetch_all("
+                    SELECT f.categoria, COUNT(*) as qtd, SUM(f.valor) as total
+                    FROM filiacoes f
+                    WHERE f.ano = ? AND f.status = 'pago'
+                    AND EXISTS (
+                        SELECT 1 FROM filiacoes f2
+                        WHERE f2.pessoa_id = f.pessoa_id AND f2.ano = ? AND f2.status = 'pago'
+                    )
+                    GROUP BY f.categoria
+                ", [$ano, $ano_anterior]);
+
+                // Não renovaram: pagaram ano anterior, NÃO pagaram este ano
+                // (usa categoria do ano anterior)
+                $nao_renovaram = db_fetch_all("
+                    SELECT f.categoria, COUNT(*) as qtd
+                    FROM filiacoes f
+                    WHERE f.ano = ? AND f.status = 'pago'
+                    AND NOT EXISTS (
+                        SELECT 1 FROM filiacoes f2
+                        WHERE f2.pessoa_id = f.pessoa_id AND f2.ano = ? AND f2.status = 'pago'
+                    )
+                    GROUP BY f.categoria
+                ", [$ano_anterior, $ano]);
+
+                // Converte para arrays indexados por categoria
+                $metricas = [
+                    'emails_enviados' => (int)($c['emails_enviados'] ?? 0),
+                    'novos' => self::agruparPorCategoria($novos),
+                    'retornaram' => self::agruparPorCategoria($retornaram),
+                    'renovaram' => self::agruparPorCategoria($renovaram),
+                    'nao_renovaram' => self::agruparPorCategoria($nao_renovaram),
+                ];
+            }
 
             // Estatísticas por categoria (apenas pagos)
             $por_categoria = db_fetch_all("
@@ -157,6 +245,7 @@ class AdminController {
                 'created_at' => $c['created_at'],
                 'stats' => $stats,
                 'categorias' => $categorias,
+                'metricas' => $metricas,
             ];
         }
 
@@ -366,6 +455,13 @@ class AdminController {
                 $erros++;
             }
         }
+
+        // Atualiza contador de emails enviados na campanha
+        db_execute("
+            UPDATE campanhas
+            SET emails_enviados = emails_enviados + ?
+            WHERE ano = ?
+        ", [$enviados, $ano]);
 
         registrar_log('campanha_enviada', null, "Campanha $ano ($tipo): $enviados enviados, $erros erros");
 
