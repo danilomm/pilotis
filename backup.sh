@@ -41,7 +41,13 @@ else
     git commit -m "$MSG
 
 Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-    git push
+    # Usa token do gh para evitar problema de credenciais
+    TOKEN=$(gh auth token 2>/dev/null)
+    if [ -n "$TOKEN" ]; then
+        git push "https://${TOKEN}@github.com/danilomm/pilotis.git" master
+    else
+        git push
+    fi
     echo "   Push realizado"
 fi
 
