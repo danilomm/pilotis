@@ -261,6 +261,19 @@ php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 # 4. Ajustar DATABASE_PATH no .env
 ```
 
+## Repositorios GitHub
+
+O projeto usa dois repositorios separados:
+
+| Repo | Visibilidade | Conteudo |
+|------|--------------|----------|
+| `danilomm/pilotis` | Publico | Codigo PHP (software generico) |
+| `docomomobr/pilotis-dados` | Privado | Dados sensiveis (banco, CSVs, DEVLOG) |
+
+A pasta `dados/` e um submodule que aponta para o repo privado.
+
+**Configuracao necessaria:** `danilomm` deve ser colaborador do repo `docomomobr/pilotis-dados` com permissao de Write.
+
 ## Backup e Commit
 
 **IMPORTANTE:** Quando o usuario pedir "backup e commit", executar o script:
@@ -269,7 +282,10 @@ php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 ./backup.sh "Descricao das mudancas"
 ```
 
-O script faz commit nos dois repos (publico e privado).
+O script:
+1. Gera dump SQL do banco (`dados/data/backup.sql`)
+2. Faz commit e push no repo privado (`docomomobr/pilotis-dados`)
+3. Faz commit e push no repo publico (`danilomm/pilotis`)
 
 Para restaurar o banco:
 ```bash
