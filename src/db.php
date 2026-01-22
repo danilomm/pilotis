@@ -100,6 +100,20 @@ function init_extra_tables(PDO $db): void {
     // Atualiza status baseado em data_pagamento
     $db->exec("UPDATE filiacoes SET status = 'pago' WHERE data_pagamento IS NOT NULL AND status IS NULL");
     $db->exec("UPDATE filiacoes SET status = 'pendente' WHERE data_pagamento IS NULL AND status IS NULL");
+
+    // View para autocomplete (valores únicos de todos os anos)
+    $db->exec("DROP VIEW IF EXISTS autocomplete_valores");
+    $db->exec("
+        CREATE VIEW autocomplete_valores AS
+        SELECT 'instituicao' as campo, instituicao as valor, COUNT(*) as qtd
+        FROM filiacoes WHERE instituicao IS NOT NULL AND instituicao <> '' GROUP BY instituicao
+        UNION ALL
+        SELECT 'cidade', cidade, COUNT(*) FROM filiacoes WHERE cidade IS NOT NULL AND cidade <> '' GROUP BY cidade
+        UNION ALL
+        SELECT 'estado', estado, COUNT(*) FROM filiacoes WHERE estado IS NOT NULL AND estado <> '' GROUP BY estado
+        UNION ALL
+        SELECT 'profissao', profissao, COUNT(*) FROM filiacoes WHERE profissao IS NOT NULL AND profissao <> '' GROUP BY profissao
+    ");
 }
 
 /**
@@ -356,52 +370,24 @@ function buscar_pagamento(int $pessoa_id, int $ano): ?array {
 
 /**
  * Retorna valores únicos para autocomplete de campos do formulário
- * Busca de todas as filiações, ordenado por frequência
+ * Usa view autocomplete_valores (criada em init_extra_tables)
  */
 function obter_autocomplete(): array {
-    // Instituições (não vazias, ordenadas por frequência)
-    $instituicoes = db_fetch_all("
-        SELECT instituicao, COUNT(*) as qtd
-        FROM filiacoes
-        WHERE instituicao IS NOT NULL AND instituicao <> ''
-        GROUP BY instituicao
-        ORDER BY qtd DESC
-        LIMIT 500
-    ");
-
-    // Cidades (não vazias, ordenadas por frequência)
-    $cidades = db_fetch_all("
-        SELECT cidade, COUNT(*) as qtd
-        FROM filiacoes
-        WHERE cidade IS NOT NULL AND cidade <> ''
-        GROUP BY cidade
-        ORDER BY qtd DESC
-        LIMIT 200
-    ");
-
-    // Estados (não vazios, ordenados por frequência)
-    $estados = db_fetch_all("
-        SELECT estado, COUNT(*) as qtd
-        FROM filiacoes
-        WHERE estado IS NOT NULL AND estado <> ''
-        GROUP BY estado
-        ORDER BY qtd DESC
-    ");
-
-    // Profissões (não vazias, ordenadas por frequência)
-    $profissoes = db_fetch_all("
-        SELECT profissao, COUNT(*) as qtd
-        FROM filiacoes
-        WHERE profissao IS NOT NULL AND profissao <> ''
-        GROUP BY profissao
-        ORDER BY qtd DESC
-        LIMIT 100
-    ");
-
-    return [
-        'instituicoes' => array_column($instituicoes, 'instituicao'),
-        'cidades' => array_column($cidades, 'cidade'),
-        'estados' => array_column($estados, 'estado'),
-        'profissoes' => array_column($profissoes, 'profissao'),
+    $campos = [
+        'instituicao' => ['chave' => 'instituicoes', 'limite' => 500],
+        'cidade'      => ['chave' => 'cidades',      'limite' => 200],
+        'estado'      => ['chave' => 'estados',      'limite' => 50],
+        'profissao'   => ['chave' => 'profissoes',   'limite' => 100],
     ];
+
+    $resultado = [];
+    foreach ($campos as $campo => $config) {
+        $valores = db_fetch_all(
+            "SELECT valor FROM autocomplete_valores WHERE campo = ? ORDER BY qtd DESC LIMIT ?",
+            [$campo, $config['limite']]
+        );
+        $resultado[$config['chave']] = array_column($valores, 'valor');
+    }
+
+    return $resultado;
 }
