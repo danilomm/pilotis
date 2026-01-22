@@ -353,3 +353,55 @@ function buscar_cadastrado_por_token(string $token): ?array {
 function buscar_pagamento(int $pessoa_id, int $ano): ?array {
     return buscar_filiacao($pessoa_id, $ano);
 }
+
+/**
+ * Retorna valores únicos para autocomplete de campos do formulário
+ * Busca de todas as filiações, ordenado por frequência
+ */
+function obter_autocomplete(): array {
+    // Instituições (não vazias, ordenadas por frequência)
+    $instituicoes = db_fetch_all("
+        SELECT instituicao, COUNT(*) as qtd
+        FROM filiacoes
+        WHERE instituicao IS NOT NULL AND instituicao <> ''
+        GROUP BY instituicao
+        ORDER BY qtd DESC
+        LIMIT 500
+    ");
+
+    // Cidades (não vazias, ordenadas por frequência)
+    $cidades = db_fetch_all("
+        SELECT cidade, COUNT(*) as qtd
+        FROM filiacoes
+        WHERE cidade IS NOT NULL AND cidade <> ''
+        GROUP BY cidade
+        ORDER BY qtd DESC
+        LIMIT 200
+    ");
+
+    // Estados (não vazios, ordenados por frequência)
+    $estados = db_fetch_all("
+        SELECT estado, COUNT(*) as qtd
+        FROM filiacoes
+        WHERE estado IS NOT NULL AND estado <> ''
+        GROUP BY estado
+        ORDER BY qtd DESC
+    ");
+
+    // Profissões (não vazias, ordenadas por frequência)
+    $profissoes = db_fetch_all("
+        SELECT profissao, COUNT(*) as qtd
+        FROM filiacoes
+        WHERE profissao IS NOT NULL AND profissao <> ''
+        GROUP BY profissao
+        ORDER BY qtd DESC
+        LIMIT 100
+    ");
+
+    return [
+        'instituicoes' => array_column($instituicoes, 'instituicao'),
+        'cidades' => array_column($cidades, 'cidade'),
+        'estados' => array_column($estados, 'estado'),
+        'profissoes' => array_column($profissoes, 'profissao'),
+    ];
+}

@@ -114,6 +114,9 @@ class FiliacaoController {
         // Verifica se já existe filiação para este ano
         $pagamento_existente = buscar_filiacao($cadastrado['id'], (int)$ano);
 
+        // Dados para autocomplete
+        $autocomplete = obter_autocomplete();
+
         registrar_log('acesso_formulario', $cadastrado['id'], "Acesso ao formulário $ano");
 
         $titulo = "Filiação $ano";

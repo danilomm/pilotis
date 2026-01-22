@@ -356,7 +356,12 @@ Cada ano tem estrutura de colunas diferente. Criar script baseado em `limpar_csv
 - `scripts/enderecos_YYYY_manual.php` - CEP/cidade/estado extraidos manualmente
 - `scripts/instituicoes_normalizadas.php` - Mapeamento de instituicoes (reutilizavel, compartilhado entre anos)
 
-**IMPORTANTE:** Preservar os arquivos CSV limpos em `public/data/` e os scripts de limpeza/importacao em `scripts/`. Sao necessarios para correcoes futuras.
+**IMPORTANTE:** Preservar os arquivos na pasta `importacao/`:
+- `importacao/originais/` - CSVs originais do Google Forms
+- `importacao/limpos/` - CSVs limpos e normalizados
+- `importacao/scripts/` - Copia dos scripts usados
+
+Esses arquivos sao necessarios para correcoes futuras e servem de template para novos anos.
 
 **Colunas de verificacao no CSV limpo:**
 - `email_existe`: SIM se email ja existe no banco

@@ -2,6 +2,82 @@
 
 ## 2026-01-22
 
+### Estrutura de Importação Consolidada ✓
+
+Criada pasta `importacao/` versionada no git para preservar memória do processo:
+
+```
+importacao/
+├── README.md              # Documentação completa do processo
+├── originais/             # CSVs originais do Google Forms
+│   ├── Ficha de Inscrição Docomomo Brasil (respostas) - 2022.csv
+│   ├── Ficha de Inscrição Docomomo Brasil (respostas) - 2023.csv
+│   ├── Docomomo Brasil Filiação 2024 (respostas) - Respostas ao formulário 1.csv
+│   └── cadastrados_docomomo_2025_consolidado.csv
+├── limpos/                # CSVs limpos e normalizados
+│   ├── filiados_2022_limpo.csv
+│   └── filiados_2023_limpo.csv
+└── scripts/               # Scripts usados na importação
+    ├── limpar_csv_2022.php
+    ├── limpar_csv_2023.php
+    ├── importar_csv_2022.php
+    ├── importar_csv_2023.php
+    ├── instituicoes_normalizadas.php
+    ├── normalizar_2024_2025.php
+    ├── atualizar_normalizacao.php
+    └── enderecos_2022_manual.php
+```
+
+**Por que preservar:** Os arquivos originais e scripts são necessários para:
+- Reprocessar dados se descobrir erros
+- Servir de template para futuros anos
+- Manter rastreabilidade das decisões tomadas
+
+### Normalização de Instituições ✓
+
+**Decisão importante:** Preservar unidades das universidades ao normalizar.
+
+| Original | Normalizado | Motivo |
+|----------|-------------|--------|
+| Faculdade de Arquitetura e Urbanismo da USP | FAU-USP | São Paulo |
+| Instituto de Arquitetura e Urbanismo da USP | IAU-USP | São Carlos (diferente!) |
+| PROPAR UFRGS | PROPAR-UFRGS | Programa de pós específico |
+| Faculdade de Arquitetura da UFBA | FAUFBA | Unidade específica |
+
+Se a pessoa informa apenas "USP" sem unidade, mantemos "USP".
+
+**Mapa de normalização:** `scripts/instituicoes_normalizadas.php` (~400 entradas)
+
+**Resultado da normalização 2024/2025:**
+- 2024: 58 instituições normalizadas
+- 2025: 269 instituições normalizadas
+
+### Formações Atualizadas ✓
+
+Adicionadas variantes "em andamento" em `src/config.php`:
+- Graduação em andamento
+- Especialização / MBA em andamento
+- Mestrado em andamento
+- Doutorado em andamento
+
+**Decisão:** Não diferenciar mestrado acadêmico de profissional.
+
+### Importação de Dados 2022 ✓
+
+**Arquivo fonte:** `importacao/originais/Ficha de Inscrição Docomomo Brasil (respostas) - 2022.csv`
+
+**Procedimento:** Mesmo das etapas 2023 (ver abaixo).
+
+**Particularidades 2022:**
+- Endereço em campo único → criado `enderecos_2022_manual.php` para extrair CEP/cidade/estado
+- Telefones múltiplos separados por vírgula → usar apenas o primeiro
+
+**Resultado 2022:**
+- 154 filiações importadas (186 no CSV - 32 duplicatas de email)
+- 57 pessoas novas criadas
+- 1 duplicata consolidada: Ademir Rodrigo Beserra Figueiredo
+- Arrecadado: R$ 24.650
+
 ### Importação de Dados 2023 ✓
 
 **Arquivo fonte:** `backup-python/desenvolvimento/Ficha de Inscrição Docomomo Brasil (respostas) - 2023.csv`

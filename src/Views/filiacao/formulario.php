@@ -48,14 +48,14 @@
                 </div>
                 <div>
                     <label for="cidade">Cidade *</label>
-                    <input type="text" id="cidade" name="cidade" value="<?= e($cadastrado['cidade'] ?? '') ?>" required>
+                    <input type="text" id="cidade" name="cidade" value="<?= e($cadastrado['cidade'] ?? '') ?>" list="cidades-list" required>
                 </div>
             </div>
 
             <div class="grid">
                 <div>
                     <label for="estado">Estado (UF) *</label>
-                    <input type="text" id="estado" name="estado" value="<?= e($cadastrado['estado'] ?? '') ?>" maxlength="2" placeholder="XX" required>
+                    <input type="text" id="estado" name="estado" value="<?= e($cadastrado['estado'] ?? '') ?>" list="estados-list" maxlength="2" placeholder="XX" required>
                 </div>
                 <div>
                     <label for="pais">País *</label>
@@ -68,7 +68,7 @@
             <legend>Dados Profissionais</legend>
 
             <label for="profissao">Profissão *</label>
-            <input type="text" id="profissao" name="profissao" value="<?= e($cadastrado['profissao'] ?? '') ?>" required>
+            <input type="text" id="profissao" name="profissao" value="<?= e($cadastrado['profissao'] ?? '') ?>" list="profissoes-list" required>
 
             <label for="formacao">Formação</label>
             <select id="formacao" name="formacao">
@@ -79,7 +79,7 @@
             </select>
 
             <label for="instituicao">Instituição</label>
-            <input type="text" id="instituicao" name="instituicao" value="<?= e($cadastrado['instituicao'] ?? '') ?>" placeholder="Se mais de uma, separe por vírgula">
+            <input type="text" id="instituicao" name="instituicao" value="<?= e($cadastrado['instituicao'] ?? '') ?>" list="instituicoes-list" placeholder="Se mais de uma, separe por vírgula">
         </fieldset>
 
         <fieldset>
@@ -103,4 +103,29 @@
         <button type="submit">Continuar para Pagamento</button>
 
     </form>
+
+    <!-- Datalists para autocomplete -->
+    <datalist id="instituicoes-list">
+        <?php foreach ($autocomplete['instituicoes'] ?? [] as $inst): ?>
+            <option value="<?= e($inst) ?>">
+        <?php endforeach; ?>
+    </datalist>
+
+    <datalist id="cidades-list">
+        <?php foreach ($autocomplete['cidades'] ?? [] as $cidade): ?>
+            <option value="<?= e($cidade) ?>">
+        <?php endforeach; ?>
+    </datalist>
+
+    <datalist id="estados-list">
+        <?php foreach ($autocomplete['estados'] ?? [] as $estado): ?>
+            <option value="<?= e($estado) ?>">
+        <?php endforeach; ?>
+    </datalist>
+
+    <datalist id="profissoes-list">
+        <?php foreach ($autocomplete['profissoes'] ?? [] as $profissao): ?>
+            <option value="<?= e($profissao) ?>">
+        <?php endforeach; ?>
+    </datalist>
 </article>
