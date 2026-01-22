@@ -524,3 +524,13 @@ DELETE FROM pessoas WHERE id = ID_DUPLICADO;
 
 O codigo Python original esta preservado em `backup-python/` para referencia.
 O banco de dados SQLite e o mesmo (compativel).
+
+## Open Source
+
+O sistema e distribuido sob licenca **GPL-3.0**.
+
+Arquivos para quem fizer fork:
+- `README.md` — Documentacao completa
+- `LICENSE` — GPL-3.0
+- `schema.sql` — Estrutura do banco
+- `scripts/install.php` — Instalacao automatica
