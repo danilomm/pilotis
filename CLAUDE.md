@@ -55,7 +55,11 @@ pilotis/
 │   ├── enviar_campanha.php
 │   ├── enviar_lembretes.php
 │   ├── admin.php          # CLI para administracao
+│   ├── verificar_emails.php   # Verifica typos e duplicados
+│   ├── revisar_nomes.php      # Lista nomes para revisao manual
+│   ├── emails_typos.php       # Mapa de typos de email
 │   ├── instituicoes_normalizadas.php  # Mapa de normalizacao
+│   ├── cidades_normalizadas.php       # Mapa de normalizacao
 │   ├── limpar_csv_*.php   # Scripts de limpeza por ano
 │   ├── importar_csv_*.php # Scripts de importacao por ano
 │   └── normalizar_*.php   # Scripts de normalizacao
@@ -130,6 +134,10 @@ php scripts/admin.php pagar 123           # Marca pagamento como pago
 php scripts/admin.php novo                # Cadastra + pagamento manual
 php scripts/admin.php exportar 2026       # Exporta filiados CSV
 php scripts/admin.php stats 2026          # Estatisticas do ano
+
+# Importacao (verificacao)
+php scripts/verificar_emails.php <csv>    # Typos e duplicados de email
+php scripts/revisar_nomes.php <csv>       # Nomes para revisao manual
 ```
 
 ## Fluxos
@@ -321,10 +329,11 @@ Processo para importar filiados de planilhas de anos anteriores (Google Forms ex
 
 1. **Receber planilha** (CSV do Google Forms)
 2. **Criar script de limpeza** (`scripts/limpar_csv_YYYY.php`)
-3. **Revisar CSV limpo** manualmente
-4. **Importar dados** (`scripts/importar_csv_YYYY.php`)
-5. **Verificar duplicatas** no banco (OBRIGATORIO)
-6. **Consolidar duplicatas** se houver
+3. **Verificar emails** - typos, duplicados, invalidos
+4. **Revisar nomes** - VERIFICAR_MANUAL, ATUALIZAR_NOME, curtos
+5. **Importar dados** (`scripts/importar_csv_YYYY.php`)
+6. **Verificar duplicatas** no banco (OBRIGATORIO)
+7. **Consolidar duplicatas** se houver
 
 ### Etapa 1: Script de Limpeza
 
@@ -386,15 +395,53 @@ Usar formato `UNIDADE-UNIVERSIDADE` para preservar informacao de localizacao:
 
 Se nao houver unidade especifica, usar apenas a sigla: USP, UFRJ, UFBA, etc.
 
-### Etapa 2: Revisao Manual
+### Etapa 2: Verificar Emails
 
-Abrir `public/data/filiados_YYYY_limpo.csv` e verificar:
-- Linhas com `acao_sugerida = VERIFICAR_MANUAL` (mesmo nome, email diferente)
-- Linhas com `acao_sugerida = ATUALIZAR_NOME` (planilha tem nome mais completo)
+Executar script de verificacao de emails:
 
-### Etapa 3: Importacao
+```bash
+php scripts/verificar_emails.php importacao/limpos/filiados_YYYY_limpo.csv
+```
 
-Criar script `scripts/importar_csv_YYYY.php` que:
+O script verifica:
+- **Typos de dominio:** gmal.com → gmail.com, hotmal.com → hotmail.com, etc.
+- **Emails duplicados:** mesmo email aparece mais de uma vez no CSV
+- **Formato invalido:** emails mal formatados
+
+Typos conhecidos estao em `scripts/emails_typos.php`. Adicionar novos conforme descobertos.
+
+Se encontrar problemas, **corrigir no CSV antes de continuar**.
+
+### Etapa 3: Revisar Nomes
+
+Executar script de revisao de nomes:
+
+```bash
+php scripts/revisar_nomes.php importacao/limpos/filiados_YYYY_limpo.csv
+```
+
+O script lista:
+- **VERIFICAR_MANUAL:** mesmo nome existe no banco com email diferente (pode ser outra pessoa ou email secundario)
+- **ATUALIZAR_NOME:** planilha tem nome mais completo que o banco
+- **Nomes curtos:** menos de 2 palavras (pode ser incompleto)
+- **Caracteres estranhos:** numeros ou simbolos no nome
+
+Para cada item, **verificar e corrigir no CSV manualmente**.
+
+### Etapa 4: Importacao
+
+Usar script generico ou criar especifico:
+
+```bash
+# Script generico (para CSVs no formato padrao)
+php importacao/scripts/importar_csv_generico.php YYYY
+php importacao/scripts/importar_csv_generico.php YYYY --dry-run  # Testar antes
+
+# Ou script especifico do ano
+php scripts/importar_csv_YYYY.php
+```
+
+O script:
 1. Cria campanha do ano como 'fechada'
 2. Para cada linha:
    - Se email existe: usa pessoa existente
@@ -410,7 +457,7 @@ Se precisar atualizar a normalizacao de dados ja importados:
 
 O script `atualizar_normalizacao.php` le os CSVs limpos e atualiza instituicao, formacao e metodo no banco.
 
-### Etapa 4: Verificacao de Duplicatas (OBRIGATORIO)
+### Etapa 5: Verificacao de Duplicatas (OBRIGATORIO)
 
 **IMPORTANTE:** Apos TODA importacao, verificar duplicatas por nome similar:
 
@@ -427,7 +474,7 @@ ORDER BY p1.nome;
 
 Essa query encontra pessoas com mesmo primeiro nome. Revisar manualmente cada par.
 
-### Etapa 5: Consolidacao de Duplicatas
+### Etapa 6: Consolidacao de Duplicatas
 
 Se encontrar duplicatas:
 1. Decidir qual nome manter (sempre o **mais completo**)
@@ -450,6 +497,12 @@ DELETE FROM pessoas WHERE id = ID_DUPLICADO;
 | 2024 | 178 | 61 | 0 | 2026-01-16 |
 | 2023 | 123 | 25 | 3 | 2026-01-22 |
 | 2022 | 154 | 57 | 1 (excluída) | 2026-01-22 |
+| 2021 | 131 | 94 | 42 (pendentes) | 2026-01-22 |
+| 2020 | 127 | 83 | - | 2026-01-22 |
+| 2019 | 158 | 120 | - | 2026-01-22 |
+| 2018 | 22 | 11 | - | 2026-01-22 |
+| 2016 | 99 | 63 | - | 2026-01-22 |
+| 2015 | 22 | 21 | - | 2026-01-22 |
 
 ## Migracao Python -> PHP
 
