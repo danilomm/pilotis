@@ -3129,4 +3129,13 @@ CREATE INDEX idx_pagamentos_status ON pagamentos(status);
 CREATE INDEX idx_pagamentos_ano ON pagamentos(ano);
 CREATE INDEX idx_cadastrados_email ON cadastrados(email);
 CREATE INDEX idx_cadastrados_token ON cadastrados(token);
+CREATE VIEW autocomplete_valores AS
+        SELECT 'instituicao' as campo, instituicao as valor, COUNT(*) as qtd
+        FROM filiacoes WHERE instituicao IS NOT NULL AND instituicao <> '' GROUP BY instituicao
+        UNION ALL
+        SELECT 'cidade', cidade, COUNT(*) FROM filiacoes WHERE cidade IS NOT NULL AND cidade <> '' GROUP BY cidade
+        UNION ALL
+        SELECT 'estado', estado, COUNT(*) FROM filiacoes WHERE estado IS NOT NULL AND estado <> '' GROUP BY estado
+        UNION ALL
+        SELECT 'profissao', profissao, COUNT(*) FROM filiacoes WHERE profissao IS NOT NULL AND profissao <> '' GROUP BY profissao;
 COMMIT;
