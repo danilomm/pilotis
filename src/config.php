@@ -94,8 +94,11 @@ define('FORMACOES', [
     'Ensino Médio',
     'Graduação em andamento',
     'Graduação',
+    'Especialização / MBA em andamento',
     'Especialização / MBA',
+    'Mestrado em andamento',
     'Mestrado',
+    'Doutorado em andamento',
     'Doutorado',
     'Pós-Doutorado',
 ]);

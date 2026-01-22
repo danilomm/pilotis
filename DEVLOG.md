@@ -1,5 +1,113 @@
 # Pilotis — Development Log
 
+## 2026-01-22
+
+### Importação de Dados 2023 ✓
+
+**Arquivo fonte:** `backup-python/desenvolvimento/Ficha de Inscrição Docomomo Brasil (respostas) - 2023.csv`
+
+**Procedimento em 4 etapas:**
+
+> **Nota:** Cada ano pode ter planilhas com colunas diferentes. Os scripts são específicos por ano e servem como template para adaptar a futuros anos.
+
+#### Etapa 1: Limpeza e verificação
+
+Criar script `scripts/limpar_csv_YYYY.php` baseado em `limpar_csv_2023.php`:
+1. Identificar colunas da planilha original (índices podem variar)
+2. Mapear categorias do ano para formato interno
+3. Adaptar valores de filiação do ano
+
+Exemplo para 2023: `scripts/limpar_csv_2023.php`
+
+```bash
+php scripts/limpar_csv_2023.php
+```
+
+Gera `public/data/filiados_2023_limpo.csv` com:
+- Dados normalizados (nomes capitalizados, telefone, CEP, cidade/estado)
+- Categorias mapeadas para formato interno
+- Colunas de verificação: `email_existe`, `nome_similar`, `acao_sugerida`
+
+**Mapeamento de categorias 2023:**
+| Original | Interno | Valor |
+|----------|---------|-------|
+| Pleno Internacional (R$ 290,00) | profissional_internacional | R$ 290 |
+| Pleno Nacional (R$ 145,00) | profissional_nacional | R$ 145 |
+| Estudante (R$ 50,00) | estudante | R$ 50 |
+
+#### Etapa 2: Revisão manual do CSV
+
+Abrir `public/data/filiados_2023_limpo.csv` e verificar:
+- Linhas com `acao_sugerida = VERIFICAR_MANUAL` (nomes similares)
+- Linhas com `acao_sugerida = ATUALIZAR_NOME` (nome no banco menos completo)
+
+#### Etapa 3: Importação
+
+Script: `scripts/importar_csv_2023.php`
+
+```bash
+php scripts/importar_csv_2023.php
+```
+
+O script:
+1. Cria campanha 2023 como 'fechada'
+2. Para cada linha do CSV limpo:
+   - Se email existe: usa pessoa existente
+   - Se nome similar: usa pessoa existente (verificado na etapa 2)
+   - Senão: cria pessoa nova
+3. Cria filiação 2023 com dados do formulário
+
+**Resultado 2023:**
+- 123 filiações importadas
+- 25 pessoas novas criadas
+- Categorias: 29 estudante, 56 nacional, 38 internacional
+- Arrecadado: R$ 27.330
+
+#### Etapa 4: Verificação pós-importação
+
+Buscar duplicatas por nome similar:
+```sql
+SELECT p1.id, p1.nome, p2.id, p2.nome
+FROM pessoas p1, pessoas p2
+WHERE p1.id < p2.id
+AND (
+  LOWER(SUBSTR(p1.nome, 1, INSTR(p1.nome || ' ', ' '))) =
+  LOWER(SUBSTR(p2.nome, 1, INSTR(p2.nome || ' ', ' ')))
+)
+ORDER BY p1.nome;
+```
+
+**3 duplicatas consolidadas:**
+- Larissa Alves Nasaré / Larissa Nasaré → **Larissa Nasaré** (usa mais no email)
+- Marcio Cotrim / Marcio Cotrim Cunha → **Marcio Cotrim Cunha** (mais completo)
+- Raquel Byrro / Raquel Elizabeth Byrro Oliveira → **Raquel Elizabeth Byrro Oliveira** (mais completo)
+
+**Consolidação:**
+```sql
+-- Mover emails e filiações para pessoa principal, depois deletar duplicata
+UPDATE emails SET pessoa_id = ? WHERE pessoa_id = ?;
+DELETE FROM filiacoes WHERE pessoa_id = ? AND ano = ?; -- se tiver duplicata
+UPDATE filiacoes SET pessoa_id = ? WHERE pessoa_id = ?;
+DELETE FROM pessoas WHERE id = ?;
+```
+
+**Resultado final:** 791 pessoas (794 - 3 consolidadas)
+
+### Métricas de Campanhas Fechadas ✓
+
+Adicionadas métricas detalhadas para campanhas fechadas:
+- **Emails enviados**: armazenado na tabela `campanhas`
+- **Novos**: primeira filiação da pessoa
+- **Retornaram**: filiação anterior, mas não no ano imediatamente anterior
+- **Renovaram**: filiação no ano anterior
+- **Não renovaram**: filiação no ano anterior, sem filiação no ano atual
+
+Percentuais:
+- Novos/Retornaram/Renovaram: % do total de filiados do ano
+- Não renovaram: % dos filiados do ano anterior
+
+---
+
 ## 2026-01-20
 
 ### Testes do Fluxo de Pagamento ✓

@@ -147,12 +147,20 @@
 
             <?php else: ?>
                 <!-- Campanha fechada: mostra resumo final com métricas detalhadas -->
-                <?php $m = $c['metricas'] ?? null; ?>
+                <?php
+                    $m = $c['metricas'] ?? null;
+                    $emails_env = $m ? $m['emails_enviados'] : 0;
+                    $nao_renov = $m ? $m['nao_renovaram']['total'] : 0;
+                    $renovaram = $m ? $m['renovaram']['total'] : 0;
+                    // Base = filiados do ano anterior (renovaram + não renovaram)
+                    $base_ano_anterior = $renovaram + $nao_renov;
+                    $pct_nao_renov = $base_ano_anterior > 0 ? round(100 * $nao_renov / $base_ano_anterior) : 0;
+                ?>
 
                 <!-- Resumo principal -->
                 <div class="grid" style="margin-bottom: 15px;">
                     <div style="background: #17a2b8; padding: 10px; border-radius: 8px; text-align: center;">
-                        <strong style="color: white; font-size: 1.3em;"><?= $m ? $m['emails_enviados'] : 0 ?></strong>
+                        <strong style="color: white; font-size: 1.3em;"><?= $emails_env ?></strong>
                         <br><small style="color: white;">Emails Enviados</small>
                     </div>
                     <div style="background: #28a745; padding: 10px; border-radius: 8px; text-align: center;">
@@ -160,7 +168,8 @@
                         <br><small style="color: white;">Filiados</small>
                     </div>
                     <div style="background: #dc3545; padding: 10px; border-radius: 8px; text-align: center;">
-                        <strong style="color: white; font-size: 1.3em;"><?= $m ? $m['nao_renovaram']['total'] : 0 ?></strong>
+                        <strong style="color: white; font-size: 1.3em;"><?= $nao_renov ?></strong>
+                        <span style="color: white; font-size: 0.85em;">(<?= $pct_nao_renov ?>% de <?= $ano - 1 ?>)</span>
                         <br><small style="color: white;">Não Renovaram</small>
                     </div>
                     <div style="background: #d4edda; padding: 10px; border-radius: 8px; text-align: center;">
@@ -170,18 +179,28 @@
                 </div>
 
                 <?php if ($m): ?>
+                <?php
+                    // Calcula percentuais (em relação ao total de filiados do ano)
+                    $total_filiados = (int)($stats['pagos'] ?? 0);
+                    $pct_novos = $total_filiados > 0 ? round(100 * $m['novos']['total'] / $total_filiados) : 0;
+                    $pct_retornaram = $total_filiados > 0 ? round(100 * $m['retornaram']['total'] / $total_filiados) : 0;
+                    $pct_renovaram = $total_filiados > 0 ? round(100 * $m['renovaram']['total'] / $total_filiados) : 0;
+                ?>
                 <!-- Composição dos filiados -->
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
                     <div style="flex: 1; min-width: 120px; background: #e3f2fd; padding: 10px; border-radius: 8px; text-align: center;">
                         <strong style="color: #1565c0;"><?= $m['novos']['total'] ?></strong>
+                        <span style="color: #1565c0; font-size: 0.85em;">(<?= $pct_novos ?>%)</span>
                         <br><small style="color: #1565c0;">🆕 Novos</small>
                     </div>
                     <div style="flex: 1; min-width: 120px; background: #fff3e0; padding: 10px; border-radius: 8px; text-align: center;">
                         <strong style="color: #e65100;"><?= $m['retornaram']['total'] ?></strong>
+                        <span style="color: #e65100; font-size: 0.85em;">(<?= $pct_retornaram ?>%)</span>
                         <br><small style="color: #e65100;">🔄 Retornaram</small>
                     </div>
                     <div style="flex: 1; min-width: 120px; background: #e8f5e9; padding: 10px; border-radius: 8px; text-align: center;">
                         <strong style="color: #2e7d32;"><?= $m['renovaram']['total'] ?></strong>
+                        <span style="color: #2e7d32; font-size: 0.85em;">(<?= $pct_renovaram ?>%)</span>
                         <br><small style="color: #2e7d32;">✅ Renovaram</small>
                     </div>
                 </div>

@@ -54,7 +54,16 @@ pilotis/
 ├── scripts/
 │   ├── enviar_campanha.php
 │   ├── enviar_lembretes.php
-│   └── admin.php          # CLI para administracao
+│   ├── admin.php          # CLI para administracao
+│   ├── instituicoes_normalizadas.php  # Mapa de normalizacao
+│   ├── limpar_csv_*.php   # Scripts de limpeza por ano
+│   ├── importar_csv_*.php # Scripts de importacao por ano
+│   └── normalizar_*.php   # Scripts de normalizacao
+├── importacao/            # Arquivos de importacao (versionado)
+│   ├── originais/         # CSVs originais do Google Forms
+│   ├── limpos/            # CSVs limpos e normalizados
+│   ├── scripts/           # Copia dos scripts de importacao
+│   └── README.md          # Documentacao de importacao
 ├── data/
 │   ├── pilotis.db         # Banco SQLite
 │   └── backup.sql         # Versionado no git
@@ -296,6 +305,146 @@ curl -X POST -u "admindocomomo:psXb P4X2 VOOe rQF6 UPcp KZSZ" \
   -d '{"title":"Filiados 2025","content":"...","status":"publish"}' \
   "https://docomomobrasil.com/wp-json/wp/v2/pages"
 ```
+
+## Importacao de Dados de Anos Anteriores
+
+Processo para importar filiados de planilhas de anos anteriores (Google Forms exportados).
+
+**Documentacao completa:** `importacao/README.md`
+
+**Arquivos preservados:**
+- `importacao/originais/` - CSVs originais do Google Forms
+- `importacao/limpos/` - CSVs limpos e normalizados
+- `importacao/scripts/` - Scripts usados na importacao
+
+### Visao Geral
+
+1. **Receber planilha** (CSV do Google Forms)
+2. **Criar script de limpeza** (`scripts/limpar_csv_YYYY.php`)
+3. **Revisar CSV limpo** manualmente
+4. **Importar dados** (`scripts/importar_csv_YYYY.php`)
+5. **Verificar duplicatas** no banco (OBRIGATORIO)
+6. **Consolidar duplicatas** se houver
+
+### Etapa 1: Script de Limpeza
+
+Cada ano tem estrutura de colunas diferente. Criar script baseado em `limpar_csv_2022.php`:
+
+**Normalizacoes obrigatorias:**
+- **Nomes:** Capitalizar corretamente (preposicoes minusculas: de, da, do, das, dos, e)
+- **Emails:** Lowercase, trim
+- **Telefones:** Formato `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX`. Se houver multiplos numeros, usar apenas o primeiro.
+- **CEP:** Formato `XXXXX-XXX` (extrair manualmente se endereco em campo unico)
+- **Cidade/Estado:** Extrair manualmente se endereco em campo unico
+- **Categorias:** Mapear para `profissional_internacional`, `profissional_nacional`, `estudante`
+- **Valores:** Em centavos (29000, 14500, 5000 para 2022-2023)
+- **Instituicoes:** Normalizar preservando unidades (ex: FAU-USP, IAU-USP, PROPAR-UFRGS) - ver `instituicoes_normalizadas.php`
+- **Formacao:** Mapear para valores do sistema:
+  - Ensino Medio
+  - Graduacao em andamento
+  - Graduacao
+  - Especializacao / MBA em andamento
+  - Especializacao / MBA
+  - Mestrado em andamento
+  - Mestrado
+  - Doutorado em andamento
+  - Doutorado
+  - Pos-Doutorado
+- **Metodo pagamento:** PIX, Deposito, Boleto, Cartao
+
+**Arquivos de mapeamento:**
+- `scripts/enderecos_YYYY_manual.php` - CEP/cidade/estado extraidos manualmente
+- `scripts/instituicoes_normalizadas.php` - Mapeamento de instituicoes (reutilizavel, compartilhado entre anos)
+
+**IMPORTANTE:** Preservar os arquivos CSV limpos em `public/data/` e os scripts de limpeza/importacao em `scripts/`. Sao necessarios para correcoes futuras.
+
+**Colunas de verificacao no CSV limpo:**
+- `email_existe`: SIM se email ja existe no banco
+- `pessoa_id_email`: ID da pessoa se email existe
+- `nome_banco_email`: Nome no banco (para comparar)
+- `nome_similar`: EXATO ou PARCIAL se nome similar existe
+- `pessoa_id_nome`: ID da pessoa se nome similar
+- `nome_banco_similar`: Nome no banco
+- `acao_sugerida`: USAR_EXISTENTE, ATUALIZAR_NOME, VERIFICAR_MANUAL, CRIAR_NOVO
+
+### Normalizacao de Instituicoes
+
+Usar formato `UNIDADE-UNIVERSIDADE` para preservar informacao de localizacao:
+
+| Original | Normalizado | Local |
+|----------|-------------|-------|
+| Faculdade de Arquitetura e Urbanismo da USP | FAU-USP | Sao Paulo |
+| Instituto de Arquitetura e Urbanismo da USP | IAU-USP | Sao Carlos |
+| PROPAR UFRGS | PROPAR-UFRGS | Porto Alegre |
+| Faculdade de Arquitetura da UFBA | FAUFBA | Salvador |
+| PROARQ UFRJ | PROARQ-UFRJ | Rio de Janeiro |
+
+Se nao houver unidade especifica, usar apenas a sigla: USP, UFRJ, UFBA, etc.
+
+### Etapa 2: Revisao Manual
+
+Abrir `public/data/filiados_YYYY_limpo.csv` e verificar:
+- Linhas com `acao_sugerida = VERIFICAR_MANUAL` (mesmo nome, email diferente)
+- Linhas com `acao_sugerida = ATUALIZAR_NOME` (planilha tem nome mais completo)
+
+### Etapa 3: Importacao
+
+Criar script `scripts/importar_csv_YYYY.php` que:
+1. Cria campanha do ano como 'fechada'
+2. Para cada linha:
+   - Se email existe: usa pessoa existente
+   - Se nome similar: usa pessoa existente (apos verificacao manual)
+   - Senao: cria pessoa nova
+3. Cria filiacao com status 'pago'
+
+### Corrigir Normalizacao Apos Importacao
+
+Se precisar atualizar a normalizacao de dados ja importados:
+1. Regenerar CSV limpo: `php scripts/limpar_csv_YYYY.php`
+2. Atualizar banco: `php scripts/atualizar_normalizacao.php`
+
+O script `atualizar_normalizacao.php` le os CSVs limpos e atualiza instituicao, formacao e metodo no banco.
+
+### Etapa 4: Verificacao de Duplicatas (OBRIGATORIO)
+
+**IMPORTANTE:** Apos TODA importacao, verificar duplicatas por nome similar:
+
+```sql
+SELECT p1.id, p1.nome, p2.id, p2.nome
+FROM pessoas p1, pessoas p2
+WHERE p1.id < p2.id
+AND (
+  LOWER(SUBSTR(p1.nome, 1, INSTR(p1.nome || ' ', ' '))) =
+  LOWER(SUBSTR(p2.nome, 1, INSTR(p2.nome || ' ', ' ')))
+)
+ORDER BY p1.nome;
+```
+
+Essa query encontra pessoas com mesmo primeiro nome. Revisar manualmente cada par.
+
+### Etapa 5: Consolidacao de Duplicatas
+
+Se encontrar duplicatas:
+1. Decidir qual nome manter (sempre o **mais completo**)
+2. Mover emails para pessoa principal
+3. Mover filiacoes para pessoa principal (cuidado com UNIQUE constraint)
+4. Deletar pessoa duplicada
+
+```sql
+-- Exemplo de consolidacao
+UPDATE emails SET pessoa_id = ID_PRINCIPAL WHERE pessoa_id = ID_DUPLICADO;
+DELETE FROM filiacoes WHERE pessoa_id = ID_DUPLICADO AND ano = ANO; -- se duplicado
+UPDATE filiacoes SET pessoa_id = ID_PRINCIPAL WHERE pessoa_id = ID_DUPLICADO;
+DELETE FROM pessoas WHERE id = ID_DUPLICADO;
+```
+
+### Historico de Importacoes
+
+| Ano | Registros | Novos | Duplicatas | Data |
+|-----|-----------|-------|------------|------|
+| 2024 | 178 | 61 | 0 | 2026-01-16 |
+| 2023 | 123 | 25 | 3 | 2026-01-22 |
+| 2022 | 154 | 57 | 1 (excluída) | 2026-01-22 |
 
 ## Migracao Python -> PHP
 

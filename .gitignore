@@ -19,7 +19,10 @@ data/*.db-journal
 # Backups e arquivos de desenvolvimento (dados sensíveis)
 backups/
 desenvolvimento/*.csv
+
+# CSVs gerais (exceto importacao/)
 *.csv
+!importacao/**/*.csv
 
 # Deploy (gerado pelo script preparar_deploy.sh)
 deploy/upload/
