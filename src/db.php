@@ -54,6 +54,24 @@ function init_extra_tables(PDO $db): void {
         );
     ");
 
+    // Tabela de campanhas
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS campanhas (
+            ano INTEGER PRIMARY KEY,
+            status TEXT DEFAULT 'aberta',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    ");
+
+    // Cria campanhas para anos que já têm filiações (se não existirem)
+    $db->exec("
+        INSERT OR IGNORE INTO campanhas (ano, status)
+        SELECT DISTINCT ano,
+            CASE WHEN ano < strftime('%Y', 'now') THEN 'fechada' ELSE 'aberta' END
+        FROM filiacoes
+        WHERE ano IS NOT NULL
+    ");
+
     // Adiciona colunas extras na filiacoes se não existirem
     try {
         $db->exec("ALTER TABLE filiacoes ADD COLUMN status TEXT DEFAULT 'pendente'");
@@ -135,7 +153,7 @@ function registrar_log(string $tipo, ?int $pessoa_id = null, string $mensagem = 
 
 /**
  * Busca pessoa por email
- * Retorna dados da pessoa com email principal
+ * Dados cadastrais são buscados da última filiação que tenha dados preenchidos
  */
 function buscar_pessoa_por_email(string $email): ?array {
     $email = strtolower(trim($email));
@@ -149,12 +167,15 @@ function buscar_pessoa_por_email(string $email): ?array {
     ", [$email]);
 
     if ($result) {
-        // Busca última filiação para pegar dados extras
+        // Busca última filiação COM dados cadastrais preenchidos
+        // (evita herdar de registros vazios criados pelo envio de campanha)
         $filiacao = db_fetch_one("
             SELECT telefone, endereco, cep, cidade, estado, pais,
                    profissao, formacao, instituicao, categoria
             FROM filiacoes
             WHERE pessoa_id = ?
+            AND (telefone IS NOT NULL OR endereco IS NOT NULL OR cidade IS NOT NULL
+                 OR profissao IS NOT NULL OR instituicao IS NOT NULL)
             ORDER BY ano DESC
             LIMIT 1
         ", [$result['id']]);
@@ -169,6 +190,7 @@ function buscar_pessoa_por_email(string $email): ?array {
 
 /**
  * Busca pessoa por token
+ * Dados cadastrais são buscados da última filiação que tenha dados preenchidos
  */
 function buscar_pessoa_por_token(string $token): ?array {
     $result = db_fetch_one("
@@ -185,12 +207,15 @@ function buscar_pessoa_por_token(string $token): ?array {
             $result['email'] = $email['email'] ?? '';
         }
 
-        // Busca última filiação para pegar dados extras
+        // Busca última filiação COM dados cadastrais preenchidos
+        // (evita herdar de registros vazios criados pelo envio de campanha)
         $filiacao = db_fetch_one("
             SELECT telefone, endereco, cep, cidade, estado, pais,
                    profissao, formacao, instituicao, categoria
             FROM filiacoes
             WHERE pessoa_id = ?
+            AND (telefone IS NOT NULL OR endereco IS NOT NULL OR cidade IS NOT NULL
+                 OR profissao IS NOT NULL OR instituicao IS NOT NULL)
             ORDER BY ano DESC
             LIMIT 1
         ", [$result['id']]);

@@ -94,6 +94,14 @@ pilotis/
 | profissional_nacional | Filiado Pleno Brasil | R$ 230 |
 | estudante | Filiado Estudante Brasil | R$ 115 |
 
+**Categoria default:** `profissional_internacional` (Internacional) - a mais cara. Esta ordem é intencional.
+
+## Heranca de Dados Cadastrais
+
+Ao abrir o formulario de filiacao, os dados cadastrais sao buscados da **ultima filiacao que tenha dados preenchidos**, nao necessariamente a mais recente. Isso evita herdar de registros vazios criados pelo envio de campanha.
+
+Registros de filiacao criados pelo envio de email so contem: `pessoa_id`, `ano`, `status='enviado'`. Os dados cadastrais sao preenchidos quando a pessoa acessa e preenche o formulario.
+
 ## Scripts CLI
 
 ```bash

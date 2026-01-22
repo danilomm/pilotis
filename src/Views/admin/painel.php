@@ -15,9 +15,9 @@
         <div>
             <label for="ano">Ano:</label>
             <select name="ano" id="ano" onchange="this.form.submit()" style="width: auto; display: inline-block;">
-                <?php for ($a = date('Y') + 1; $a >= 2020; $a--): ?>
+                <?php foreach ($anos_disponiveis as $a): ?>
                     <option value="<?= $a ?>" <?= $a == $ano ? 'selected' : '' ?>><?= $a ?></option>
-                <?php endfor; ?>
+                <?php endforeach; ?>
             </select>
         </div>
         <div>

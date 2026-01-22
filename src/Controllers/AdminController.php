@@ -108,39 +108,70 @@ class AdminController {
     }
 
     /**
-     * Gestão de Campanha
+     * Gestão de Campanhas
      */
     public static function campanha(): void {
         self::exigirLogin();
 
-        $ano_atual = (int)date('Y');
-        $ano_campanha = $ano_atual; // Campanha do ano em curso
+        // Lista todas as campanhas ordenadas por ano (mais recente primeiro)
+        $campanhas_db = db_fetch_all("
+            SELECT * FROM campanhas ORDER BY ano DESC
+        ");
 
-        // Estatísticas do ano anterior
-        $ano_anterior = $ano_campanha - 1;
-        $stats_anterior = db_fetch_one("
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos
-            FROM filiacoes
-            WHERE ano = ? AND categoria <> 'nao_filiado'
-        ", [$ano_anterior]);
+        // Monta array de campanhas com estatísticas
+        $campanhas = [];
+        foreach ($campanhas_db as $c) {
+            $ano = $c['ano'];
+            $stats = db_fetch_one("
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'enviado' THEN 1 ELSE 0 END) as enviados,
+                    SUM(CASE WHEN status = 'acesso' THEN 1 ELSE 0 END) as acessos,
+                    SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
+                    SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos,
+                    SUM(CASE WHEN status = 'nao_pago' THEN 1 ELSE 0 END) as nao_pagos,
+                    SUM(CASE WHEN status = 'pago' THEN valor ELSE 0 END) as arrecadado
+                FROM filiacoes
+                WHERE ano = ?
+            ", [$ano]);
 
-        // Estatísticas do ano atual
-        $stats_atual = db_fetch_one("
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'enviado' THEN 1 ELSE 0 END) as enviados,
-                SUM(CASE WHEN status = 'acesso' THEN 1 ELSE 0 END) as acessos,
-                SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) as pendentes,
-                SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) as pagos,
-                SUM(CASE WHEN status = 'nao_pago' THEN 1 ELSE 0 END) as nao_pagos
-            FROM filiacoes
-            WHERE ano = ?
-        ", [$ano_campanha]);
+            // Estatísticas por categoria (apenas pagos)
+            $por_categoria = db_fetch_all("
+                SELECT categoria, COUNT(*) as qtd, SUM(valor) as total
+                FROM filiacoes
+                WHERE ano = ? AND status = 'pago' AND categoria NOT IN ('nao_filiado', '')
+                GROUP BY categoria
+            ", [$ano]);
 
-        // Contatos totais (para envio)
-        $total_contatos = db_fetch_one("SELECT COUNT(*) as total FROM pessoas")['total'];
+            $categorias = [];
+            foreach ($por_categoria as $cat) {
+                $categorias[$cat['categoria']] = [
+                    'qtd' => (int)$cat['qtd'],
+                    'total' => (int)$cat['total'],
+                ];
+            }
+
+            $campanhas[] = [
+                'ano' => $ano,
+                'status' => $c['status'],
+                'created_at' => $c['created_at'],
+                'stats' => $stats,
+                'categorias' => $categorias,
+            ];
+        }
+
+        // Próximo ano disponível para criar campanha
+        $ultimo_ano = !empty($campanhas) ? $campanhas[0]['ano'] : (int)date('Y') - 1;
+        $proximo_ano = $ultimo_ano + 1;
+
+        // Anos disponíveis para nova campanha (próximos 2 anos)
+        $anos_disponiveis = [];
+        for ($a = $proximo_ano; $a <= $proximo_ano + 1; $a++) {
+            $existe = db_fetch_one("SELECT 1 FROM campanhas WHERE ano = ?", [$a]);
+            if (!$existe) {
+                $anos_disponiveis[] = $a;
+            }
+        }
 
         // Valores atuais
         $valores = [
@@ -149,7 +180,7 @@ class AdminController {
             'profissional_internacional' => VALOR_INTERNACIONAL,
         ];
 
-        $titulo = "Admin - Campanha $ano_campanha";
+        $titulo = "Admin - Campanhas";
 
         ob_start();
         require SRC_DIR . '/Views/admin/campanha.php';
@@ -158,97 +189,95 @@ class AdminController {
     }
 
     /**
-     * Prepara campanha criando registros vazios para pagos do ano anterior
-     * (Dados serão herdados automaticamente no formulário ou ao fechar)
+     * Cria nova campanha
      */
-    public static function prepararCampanha(): void {
+    public static function criarCampanha(): void {
         self::exigirLogin();
 
-        $ano_atual = (int)date('Y');
-        $ano_anterior = $ano_atual - 1;
+        $ano = (int)($_POST['ano'] ?? 0);
 
-        // Busca pessoas PAGAS do ano anterior que não têm registro no ano atual
-        $pessoas_sem_registro = db_fetch_all("
-            SELECT f.pessoa_id
-            FROM filiacoes f
-            WHERE f.ano = ? AND f.status = 'pago' AND f.categoria <> 'nao_filiado'
-            AND NOT EXISTS (
-                SELECT 1 FROM filiacoes f2
-                WHERE f2.pessoa_id = f.pessoa_id AND f2.ano = ?
-            )
-        ", [$ano_anterior, $ano_atual]);
-
-        $criados = 0;
-        foreach ($pessoas_sem_registro as $p) {
-            // Cria registro apenas com pessoa_id, ano e status (sem dados)
-            db_insert("
-                INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
-                VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
-            ", [$p['pessoa_id'], $ano_atual]);
-            $criados++;
+        if ($ano < 2020 || $ano > 2100) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
         }
 
-        registrar_log('campanha_preparada', null, "Campanha $ano_atual: $criados registros criados a partir de $ano_anterior");
+        // Verifica se já existe
+        $existe = db_fetch_one("SELECT 1 FROM campanhas WHERE ano = ?", [$ano]);
+        if ($existe) {
+            flash('error', "Campanha $ano já existe.");
+            redirect('/admin/campanha');
+            return;
+        }
 
-        flash('success', "Campanha preparada: $criados registros criados.");
+        // Cria a campanha
+        db_execute("INSERT INTO campanhas (ano, status) VALUES (?, 'aberta')", [$ano]);
+
+        registrar_log('campanha_criada', null, "Campanha $ano criada");
+
+        flash('success', "Campanha $ano criada.");
         redirect('/admin/campanha');
     }
 
     /**
-     * Fecha campanha: marca não pagos e herda dados do ano anterior (só campos vazios)
+     * Exclui campanha (apenas se não tiver filiações)
+     */
+    public static function excluirCampanha(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? 0);
+
+        if ($ano < 2020) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        // Verifica se tem filiações
+        $tem_filiacoes = db_fetch_one("SELECT COUNT(*) as qtd FROM filiacoes WHERE ano = ?", [$ano]);
+        if ($tem_filiacoes && $tem_filiacoes['qtd'] > 0) {
+            flash('error', "Não é possível excluir campanha $ano: existem {$tem_filiacoes['qtd']} filiações associadas.");
+            redirect('/admin/campanha');
+            return;
+        }
+
+        // Exclui a campanha
+        db_execute("DELETE FROM campanhas WHERE ano = ?", [$ano]);
+
+        registrar_log('campanha_excluida', null, "Campanha $ano excluída");
+
+        flash('success', "Campanha $ano excluída.");
+        redirect('/admin/campanha');
+    }
+
+    /**
+     * Fecha campanha: marca registros não pagos
+     * (Não copia dados - dados cadastrais são buscados dinamicamente no formulário)
      */
     public static function fecharCampanha(): void {
         self::exigirLogin();
 
-        $ano_atual = (int)date('Y');
-        $ano_anterior = $ano_atual - 1;
+        $ano = (int)($_POST['ano'] ?? 0);
 
-        // Busca filiações do ano atual que não estão pagas (com dados atuais)
-        $nao_pagos = db_fetch_all("
-            SELECT f.*
-            FROM filiacoes f
-            WHERE f.ano = ? AND f.status <> 'pago'
-        ", [$ano_atual]);
-
-        $fechados = 0;
-        foreach ($nao_pagos as $np) {
-            // Busca dados do ano anterior
-            $anterior = db_fetch_one("
-                SELECT telefone, endereco, cep, cidade, estado, pais,
-                       profissao, formacao, instituicao
-                FROM filiacoes
-                WHERE pessoa_id = ? AND ano = ?
-            ", [$np['pessoa_id'], $ano_anterior]);
-
-            // Usa dados atuais se existirem, senão herda do ano anterior
-            $telefone = $np['telefone'] ?: ($anterior['telefone'] ?? null);
-            $endereco = $np['endereco'] ?: ($anterior['endereco'] ?? null);
-            $cep = $np['cep'] ?: ($anterior['cep'] ?? null);
-            $cidade = $np['cidade'] ?: ($anterior['cidade'] ?? null);
-            $estado = $np['estado'] ?: ($anterior['estado'] ?? null);
-            $pais = $np['pais'] ?: ($anterior['pais'] ?? null);
-            $profissao = $np['profissao'] ?: ($anterior['profissao'] ?? null);
-            $formacao = $np['formacao'] ?: ($anterior['formacao'] ?? null);
-            $instituicao = $np['instituicao'] ?: ($anterior['instituicao'] ?? null);
-
-            db_execute("
-                UPDATE filiacoes SET
-                    status = 'nao_pago',
-                    categoria = 'nao_filiado',
-                    telefone = ?, endereco = ?, cep = ?, cidade = ?, estado = ?, pais = ?,
-                    profissao = ?, formacao = ?, instituicao = ?
-                WHERE id = ?
-            ", [
-                $telefone, $endereco, $cep, $cidade, $estado, $pais,
-                $profissao, $formacao, $instituicao,
-                $np['id']
-            ]);
-            $fechados++;
+        if ($ano < 2020) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
         }
 
-        registrar_log('campanha_fechada', null, "Campanha $ano_atual fechada: $fechados registros marcados como não pago");
+        // Marca todos os não pagos como 'nao_pago'
+        $result = db_execute("
+            UPDATE filiacoes
+            SET status = 'nao_pago'
+            WHERE ano = ? AND status <> 'pago'
+        ", [$ano]);
 
-        flash('success', "Campanha fechada: $fechados registros marcados como não pago.");
+        // Marca campanha como fechada
+        db_execute("UPDATE campanhas SET status = 'fechada' WHERE ano = ?", [$ano]);
+
+        registrar_log('campanha_fechada', null, "Campanha $ano fechada: $result registros marcados como não pago");
+
+        flash('success', "Campanha $ano fechada: $result registros marcados como não pago.");
         redirect('/admin/campanha');
     }
 
@@ -259,7 +288,24 @@ class AdminController {
         self::exigirLogin();
 
         $tipo = $_POST['tipo'] ?? 'todos';
-        $ano = (int)date('Y');
+        $ano = (int)($_POST['ano'] ?? date('Y'));
+        $senha = $_POST['senha'] ?? '';
+
+        // Verifica senha de administrador
+        $senha_correta = false;
+        if (strpos(ADMIN_PASSWORD, 'sha256:') === 0) {
+            $hash_esperado = substr(ADMIN_PASSWORD, 7);
+            $hash_fornecido = hash('sha256', $senha);
+            $senha_correta = hash_equals($hash_esperado, $hash_fornecido);
+        } else {
+            $senha_correta = hash_equals(ADMIN_PASSWORD, $senha);
+        }
+
+        if (!$senha_correta) {
+            flash('error', 'Senha incorreta. Envio cancelado.');
+            redirect('/admin/campanha');
+            return;
+        }
 
         require_once SRC_DIR . '/Services/BrevoService.php';
 
@@ -304,10 +350,17 @@ class AdminController {
                     [$d['id'], $ano]
                 );
                 if (!$filiacao) {
+                    // Cria registro com categoria default (será atualizada no formulário)
                     db_insert("
                         INSERT INTO filiacoes (pessoa_id, ano, categoria, status, created_at)
-                        VALUES (?, ?, 'profissional_nacional', 'enviado', CURRENT_TIMESTAMP)
+                        VALUES (?, ?, 'profissional_internacional', 'enviado', CURRENT_TIMESTAMP)
                     ", [$d['id'], $ano]);
+                } else if ($filiacao) {
+                    // Atualiza status para 'enviado' se ainda não foi enviado
+                    db_execute("
+                        UPDATE filiacoes SET status = 'enviado'
+                        WHERE id = ? AND status IS NULL
+                    ", [$filiacao['id']]);
                 }
             } else {
                 $erros++;
@@ -329,6 +382,16 @@ class AdminController {
         $ano = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
         $ordem = $_GET['ordem'] ?? 'data';
         $status = $_GET['status'] ?? '';
+
+        // Anos disponíveis: anos com filiações + ano atual + próximo ano
+        $anos_db = db_fetch_all("SELECT DISTINCT ano FROM filiacoes ORDER BY ano DESC");
+        $anos_existentes = array_column($anos_db, 'ano');
+        $ano_atual = (int)date('Y');
+        $anos_disponiveis = array_unique(array_merge(
+            [$ano_atual + 1, $ano_atual],
+            $anos_existentes
+        ));
+        rsort($anos_disponiveis);
 
         // Estatisticas (exclui nao_filiado)
         $stats = db_fetch_one("

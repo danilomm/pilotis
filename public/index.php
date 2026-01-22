@@ -62,7 +62,8 @@ post('/webhook/pagbank', function() {
 // === Admin ===
 get('/admin', 'AdminController::painel');
 get('/admin/campanha', 'AdminController::campanha');
-post('/admin/campanha/preparar', 'AdminController::prepararCampanha');
+post('/admin/campanha/criar', 'AdminController::criarCampanha');
+post('/admin/campanha/excluir', 'AdminController::excluirCampanha');
 post('/admin/campanha/fechar', 'AdminController::fecharCampanha');
 post('/admin/campanha/enviar', 'AdminController::enviarCampanha');
 get('/admin/login', 'AdminController::loginForm');
