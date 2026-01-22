@@ -35,3 +35,4 @@ data/.~lock.*
 # Logs
 *.log
 public/data/
+importacao/temp/
