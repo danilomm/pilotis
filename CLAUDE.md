@@ -289,6 +289,12 @@ sqlite3 data/pilotis.db < data/backup.sql
 - **Nomes duplicados:** Sempre usar o nome mais completo ao consolidar registros
 - **Emails:** Manter todos os emails da pessoa (principal + secundarios)
 - **Filiacoes:** Preservar historico de todos os anos
+- **Cidades estrangeiras:** Usar grafia do pais de origem (New York, Milano), nao traduzir
+- **Telefones internacionais:** Manter formato internacional (+1, +351, etc). Verificar endereco quando numero parecer estranho
+- **Prioridade para correcao de dados:** Ao encontrar dados inconsistentes ou faltantes:
+  1. Primeiro: buscar em outros anos da mesma pessoa
+  2. Segundo: verificar no CSV original (importacao/originais/)
+  3. Ultimo: usar metodos dedutivos (inferir do CEP, endereco, etc)
 
 ## WordPress (Site Principal)
 
@@ -345,6 +351,7 @@ Cada ano tem estrutura de colunas diferente. Criar script baseado em `limpar_csv
 - **Telefones:** Formato `(XX) XXXXX-XXXX` ou `(XX) XXXX-XXXX`. Se houver multiplos numeros, usar apenas o primeiro.
 - **CEP:** Formato `XXXXX-XXX` (extrair manualmente se endereco em campo unico)
 - **Cidade/Estado:** Extrair manualmente se endereco em campo unico
+- **Cidades estrangeiras:** Usar grafia do pais de origem (New York, Milano), nao traduzir
 - **Categorias:** Mapear para `profissional_internacional`, `profissional_nacional`, `estudante`
 - **Valores:** Em centavos (29000, 14500, 5000 para 2022-2023)
 - **Instituicoes:** Normalizar preservando unidades (ex: FAU-USP, IAU-USP, PROPAR-UFRGS) - ver `instituicoes_normalizadas.php`
