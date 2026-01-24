@@ -153,7 +153,9 @@ ORG_SITE_URL=https://www.minhaassociacao.org
 ORG_INSTAGRAM=minhaassociacao
 ```
 
-Coloque sua logo em `public/assets/img/` (PNG para web, JPG para PDF sem transparencia).
+Coloque sua logo em `public/assets/img/` (recomendado: 300-600px de largura).
+Na web, a logo e exibida com no maximo 300px de largura. No PDF, com 80mm.
+Use JPG para compatibilidade com o PDF (PNG com transparencia pode gerar fundo branco).
 
 ### Categorias de filiacao
 
