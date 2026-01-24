@@ -58,9 +58,11 @@ CREATE TABLE IF NOT EXISTS filiacoes (
 CREATE TABLE IF NOT EXISTS campanhas (
     ano INTEGER PRIMARY KEY,
     status TEXT DEFAULT 'aberta',
+    data_fim DATE,
     valor_estudante INTEGER,
     valor_profissional INTEGER,
     valor_internacional INTEGER,
+    emails_enviados INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

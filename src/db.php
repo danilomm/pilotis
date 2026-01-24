@@ -531,6 +531,19 @@ function seed_email_templates(PDO $db): void {
             ),
         ],
         [
+            'tipo' => 'ultima_chance',
+            'assunto' => 'Última chance! Filiação ' . ORG_NOME . ' {{ano}} encerra em {{dias}} dias',
+            'descricao' => 'Lembrete final antes do encerramento da campanha',
+            'variaveis' => 'nome, ano, dias, data_fim, link',
+            'html' => $wrap('Última Chance!',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>A campanha de filiação ao <strong>" . ORG_NOME . "</strong> para {{ano}} encerra em <strong>{{dias}} dias</strong> ({{data_fim}}).</p>" .
+                "<p>Não perca a oportunidade de fazer parte da nossa rede!</p>" .
+                $btn('Filiar-se Agora', 'link') .
+                "<p><small>Se já realizou sua filiação, por favor desconsidere este email.</small></p>"
+            ),
+        ],
+        [
             'tipo' => 'renovacao',
             'assunto' => 'Renove sua Filiação - ' . ORG_NOME . ' {{ano}}',
             'descricao' => 'Campanha para filiados de anos anteriores',

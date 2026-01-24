@@ -66,6 +66,7 @@ post('/admin/campanha/criar', 'AdminController::criarCampanha');
 post('/admin/campanha/excluir', 'AdminController::excluirCampanha');
 post('/admin/campanha/fechar', 'AdminController::fecharCampanha');
 post('/admin/campanha/valores', 'AdminController::salvarValores');
+post('/admin/campanha/data-fim', 'AdminController::salvarDataFim');
 post('/admin/campanha/enviar', 'AdminController::enviarCampanha');
 post('/admin/campanha/grupo-teste', 'AdminController::salvarGrupoTeste');
 post('/admin/campanha/enviar-teste', 'AdminController::enviarGrupoTeste');

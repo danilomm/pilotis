@@ -99,6 +99,29 @@
                     </form>
                 </details>
 
+                <!-- Data de término -->
+                <form method="POST" action="/admin/campanha/data-fim" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="hidden" name="ano" value="<?= $ano ?>">
+                    <label style="margin: 0; font-size: 0.9em;"><strong>Término da campanha:</strong></label>
+                    <input type="date" name="data_fim" value="<?= e($c['data_fim'] ?? '') ?>" style="width: auto; padding: 4px 8px;">
+                    <button type="submit" style="background: #17a2b8; color: white; border: none; padding: 6px 12px; font-size: 13px;">Salvar</button>
+                    <?php if (!empty($c['data_fim'])): ?>
+                        <?php
+                        $dias_restantes = (int)((strtotime($c['data_fim']) - strtotime('today')) / 86400);
+                        $cor_dias = $dias_restantes <= 3 ? '#dc3545' : ($dias_restantes <= 7 ? '#ffc107' : '#28a745');
+                        ?>
+                        <small style="color: <?= $cor_dias ?>;">
+                            <?php if ($dias_restantes > 0): ?>
+                                (<?= $dias_restantes ?> dia<?= $dias_restantes > 1 ? 's' : '' ?> restante<?= $dias_restantes > 1 ? 's' : '' ?>)
+                            <?php elseif ($dias_restantes === 0): ?>
+                                (encerra hoje)
+                            <?php else: ?>
+                                (encerrada há <?= abs($dias_restantes) ?> dia<?= abs($dias_restantes) > 1 ? 's' : '' ?>)
+                            <?php endif; ?>
+                        </small>
+                    <?php endif; ?>
+                </form>
+
                 <!-- Funil -->
                 <div class="grid" style="margin-bottom: 15px;">
                     <div style="background: #17a2b8; padding: 10px; border-radius: 8px; text-align: center;">

@@ -135,3 +135,90 @@ foreach ($pendentes as $p) {
 
 echo "\n" . str_repeat('-', 50) . "\n";
 echo "Enviados: $enviados | Erros: $erros | Pulados: $pulados\n";
+
+// --- Lembrete "última chance" (3 dias antes do fim da campanha) ---
+$campanha_aberta = db_fetch_one("
+    SELECT ano, data_fim FROM campanhas
+    WHERE status = 'aberta' AND data_fim IS NOT NULL
+    ORDER BY ano DESC LIMIT 1
+");
+
+if ($campanha_aberta) {
+    $ano = (int)$campanha_aberta['ano'];
+    $data_fim = $campanha_aberta['data_fim'];
+    $dias_para_fim = (int)((strtotime($data_fim) - strtotime($hoje)) / 86400);
+
+    if ($dias_para_fim === 3) {
+        echo "\n=== Última Chance (campanha $ano encerra em 3 dias) ===\n";
+
+        // Pessoas que receberam a campanha mas não pagaram
+        $nao_pagaram = db_fetch_all("
+            SELECT f.pessoa_id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM filiacoes f
+            JOIN pessoas p ON p.id = f.pessoa_id
+            WHERE f.ano = ?
+            AND f.status IN ('enviado', 'acesso', 'pendente')
+            AND p.ativo = 1
+        ", [$ano]);
+
+        echo "Destinatários: " . count($nao_pagaram) . "\n\n";
+
+        $uc_enviados = 0;
+        $uc_erros = 0;
+        $data_fim_formatada = date('d/m/Y', strtotime($data_fim));
+
+        foreach ($nao_pagaram as $pessoa) {
+            if (!$pessoa['email']) continue;
+
+            $token = $pessoa['token'];
+            if (!$token) {
+                $token = gerar_token();
+                db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $pessoa['pessoa_id']]);
+            }
+
+            $link = BASE_URL . "/filiacao/$ano/$token";
+
+            echo "{$pessoa['nome']} <{$pessoa['email']}> ... ";
+
+            if ($dry_run) {
+                echo "[DRY-RUN]\n";
+                $uc_enviados++;
+                continue;
+            }
+
+            try {
+                $template = carregar_template('ultima_chance', [
+                    'nome' => $pessoa['nome'],
+                    'ano' => $ano,
+                    'dias' => '3',
+                    'data_fim' => $data_fim_formatada,
+                    'link' => $link,
+                ]);
+
+                $enviado = BrevoService::enviarEmail(
+                    $pessoa['email'],
+                    $template['assunto'],
+                    $template['html']
+                );
+
+                if ($enviado) {
+                    echo "OK\n";
+                    $uc_enviados++;
+                } else {
+                    echo "ERRO\n";
+                    $uc_erros++;
+                }
+            } catch (Exception $e) {
+                echo "ERRO: " . $e->getMessage() . "\n";
+                $uc_erros++;
+            }
+
+            usleep(100000); // 100ms
+        }
+
+        echo "\nÚltima chance - Enviados: $uc_enviados | Erros: $uc_erros\n";
+    } elseif ($dias_para_fim >= 0 && $dias_para_fim < 3) {
+        echo "\nCampanha $ano encerra em $dias_para_fim dia(s). Lembrete 'última chance' já foi enviado.\n";
+    }
+}

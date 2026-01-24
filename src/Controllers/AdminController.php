@@ -327,6 +327,32 @@ class AdminController {
     }
 
     /**
+     * Salva data de término da campanha
+     */
+    public static function salvarDataFim(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? 0);
+        $data_fim = trim($_POST['data_fim'] ?? '');
+
+        if ($ano < 2020 || $ano > 2100) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        // Permite limpar a data
+        $data_fim = $data_fim ?: null;
+
+        db_execute("UPDATE campanhas SET data_fim = ? WHERE ano = ?", [$data_fim, $ano]);
+
+        flash('success', $data_fim
+            ? "Término da campanha $ano definido para " . date('d/m/Y', strtotime($data_fim)) . "."
+            : "Data de término da campanha $ano removida.");
+        redirect('/admin/campanha');
+    }
+
+    /**
      * Cria nova campanha
      */
     public static function criarCampanha(): void {
