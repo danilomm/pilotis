@@ -165,7 +165,7 @@ if ($dry_run) {
 }
 
 // Envia relatório para a tesouraria
-$email_destino = getenv('EMAIL_FROM') ?: ($_ENV['EMAIL_FROM'] ?? 'tesouraria@docomomobrasil.com');
+$email_destino = ORG_EMAIL_CONTATO ?: (getenv('EMAIL_FROM') ?: 'admin@localhost');
 $assunto = "Relatório de Bounces - Pilotis ($data_inicio a $data_fim)";
 
 $enviado = BrevoService::enviarEmail($email_destino, $assunto, $html);

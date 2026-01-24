@@ -68,7 +68,7 @@ class PdfService {
             "devidamente quitada.</p>" .
             "<p style='margin-top: 60px; text-align: center;'>" .
             "<strong>Marta Peixoto</strong><br>" .
-            "Coordenadora do Docomomo Brasil<br>" .
+            "Coordenadora do " . ORG_NOME . "<br>" .
             "Gestão 2026-2027</p>";
     }
 

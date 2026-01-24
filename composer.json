@@ -1,6 +1,6 @@
 {
-    "name": "docomomo/pilotis",
-    "description": "Sistema de gestao de filiados do Docomomo Brasil",
+    "name": "pilotis/pilotis",
+    "description": "Sistema de gestao de filiados para organizacoes",
     "type": "project",
     "license": "proprietary",
     "require": {
