@@ -93,16 +93,18 @@ if ($dry_run) {
 // --- Git commit e push ---
 echo "Verificando git...\n";
 
-// Verifica se é um repo git
-$is_git = shell_exec("cd " . escapeshellarg($dados_dir) . " && git rev-parse --is-inside-work-tree 2>&1");
-if (trim($is_git) !== 'true') {
-    echo "ERRO: $dados_dir não é um repositório git.\n";
-    echo "Inicialize com: cd $dados_dir && git init && git remote add origin <url>\n";
+// Encontra a raiz do repo git (pode estar acima do diretório do banco)
+$git_root = trim(shell_exec("cd " . escapeshellarg($dados_dir) . " && git rev-parse --show-toplevel 2>&1") ?? '');
+if (empty($git_root) || (!is_dir($git_root . '/.git') && !is_file($git_root . '/.git'))) {
+    echo "ERRO: Não encontrou repositório git a partir de $dados_dir\n";
+    echo "Inicialize com: cd <raiz_dados> && git init && git remote add origin <url>\n";
     exit(1);
 }
 
+echo "Repo git: $git_root\n";
+
 // Verifica se há mudanças
-$status = shell_exec("cd " . escapeshellarg($dados_dir) . " && git status --porcelain 2>&1");
+$status = shell_exec("cd " . escapeshellarg($git_root) . " && git status --porcelain 2>&1");
 if (empty(trim($status))) {
     echo "Nenhuma alteração no banco. Nada a fazer.\n";
     exit(0);
@@ -117,7 +119,7 @@ $cmds = [
 ];
 
 foreach ($cmds as $cmd) {
-    $full_cmd = "cd " . escapeshellarg($dados_dir) . " && $cmd 2>&1";
+    $full_cmd = "cd " . escapeshellarg($git_root) . " && $cmd 2>&1";
     echo "$ $cmd\n";
     $output = shell_exec($full_cmd);
     echo $output;

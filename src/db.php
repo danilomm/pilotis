@@ -329,7 +329,7 @@ function buscar_filiacao(int $pessoa_id, int $ano): ?array {
  */
 function listar_filiados(int $ano): array {
     return db_fetch_all("
-        SELECT p.nome, f.categoria, f.cidade, f.estado
+        SELECT p.nome, f.categoria, f.instituicao
         FROM pessoas p
         JOIN filiacoes f ON p.id = f.pessoa_id
         WHERE f.ano = ? AND (f.data_pagamento IS NOT NULL OR f.status = 'pago')

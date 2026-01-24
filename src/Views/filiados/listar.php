@@ -13,8 +13,8 @@
                 <?php foreach ($por_categoria['profissional_internacional'] as $f): ?>
                     <li>
                         <?= e($f['nome']) ?>
-                        <?php if ($f['cidade'] || $f['estado']): ?>
-                            <small>(<?= e(trim($f['cidade'] . ', ' . $f['estado'], ', ')) ?>)</small>
+                        <?php if (!empty($f['instituicao'])): ?>
+                            <small>(<?= e($f['instituicao']) ?>)</small>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -27,8 +27,8 @@
                 <?php foreach ($por_categoria['profissional_nacional'] as $f): ?>
                     <li>
                         <?= e($f['nome']) ?>
-                        <?php if ($f['cidade'] || $f['estado']): ?>
-                            <small>(<?= e(trim($f['cidade'] . ', ' . $f['estado'], ', ')) ?>)</small>
+                        <?php if (!empty($f['instituicao'])): ?>
+                            <small>(<?= e($f['instituicao']) ?>)</small>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -41,8 +41,8 @@
                 <?php foreach ($por_categoria['estudante'] as $f): ?>
                     <li>
                         <?= e($f['nome']) ?>
-                        <?php if ($f['cidade'] || $f['estado']): ?>
-                            <small>(<?= e(trim($f['cidade'] . ', ' . $f['estado'], ', ')) ?>)</small>
+                        <?php if (!empty($f['instituicao'])): ?>
+                            <small>(<?= e($f['instituicao']) ?>)</small>
                         <?php endif; ?>
                     </li>
                 <?php endforeach; ?>
@@ -55,4 +55,9 @@
     <p class="text-center">
         <a href="/filiacao/<?= e($ano) ?>">Filiar-se</a>
     </p>
+    <?php if ($ultima_atualizacao): ?>
+        <p class="text-center" style="color: #999; font-size: 0.8rem;">
+            Atualizado em <?= (new DateTime($ultima_atualizacao, new DateTimeZone('America/Sao_Paulo')))->format('d/m/Y \à\s H:i') ?>
+        </p>
+    <?php endif; ?>
 </article>

@@ -30,6 +30,13 @@ class FiliadosController {
         $titulo = "Filiados $ano";
         $total = count($filiados);
 
+        // Data da última alteração na lista
+        $ultima_atualizacao = db_fetch_one("
+            SELECT MAX(created_at) as dt
+            FROM filiacoes
+            WHERE ano = ? AND (data_pagamento IS NOT NULL OR status = 'pago')
+        ", [$ano])['dt'] ?? null;
+
         ob_start();
         require SRC_DIR . '/Views/filiados/listar.php';
         $content = ob_get_clean();
