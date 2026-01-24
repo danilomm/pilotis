@@ -1,17 +1,17 @@
 # Pilotis
 
-Sistema de gestao de filiados para associacoes e organizacoes sem fins lucrativos.
+Sistema de gestão de filiados para associações e organizações sem fins lucrativos.
 
 ## Funcionalidades
 
-- **Formulario de filiacao** com pre-preenchimento de dados
-- **Pagamento online** via PagBank (PIX, Boleto, Cartao)
-- **Confirmacao automatica** via webhook
-- **Email de confirmacao** com PDF de declaracao
-- **Lista publica** de filiados por ano
-- **Painel administrativo** com busca, edicao, relatorios
-- **Campanhas de email** (renovacao, convites)
-- **Lembretes automaticos** de pagamento pendente
+- **Formulário de filiação** com pré-preenchimento de dados
+- **Pagamento online** via PagBank (PIX, Boleto, Cartão)
+- **Confirmação automática** via webhook
+- **Email de confirmação** com PDF de declaração
+- **Lista pública** de filiados por ano
+- **Painel administrativo** com busca, edição, relatórios
+- **Campanhas de email** (renovação, convites)
+- **Lembretes automáticos** de pagamento pendente
 
 ## Requisitos
 
@@ -21,17 +21,17 @@ Sistema de gestao de filiados para associacoes e organizacoes sem fins lucrativo
 - Conta PagBank (para pagamentos)
 - Conta Brevo (para emails)
 
-## Instalacao
+## Instalação
 
-### 1. Clone o repositorio
+### 1. Clone o repositório
 
 ```bash
 git clone https://github.com/danilomm/pilotis.git
 cd pilotis
 ```
 
-> **Nota**: O repositorio contem um submodule `dados/` que aponta para um repo privado.
-> Se voce esta fazendo fork para uso proprio, ignore o submodule e crie a estrutura manualmente.
+> **Nota**: O repositório contém um submodule `dados/` que aponta para um repo privado.
+> Se você está fazendo fork para uso próprio, ignore o submodule e crie a estrutura manualmente.
 
 ### 2. Crie a estrutura de dados
 
@@ -52,11 +52,11 @@ Isso cria o banco SQLite vazio em `dados/data/pilotis.db`.
 cp .env.example .env
 ```
 
-Edite `.env` com os dados da sua organizacao:
+Edite `.env` com os dados da sua organização:
 
 ```env
-# Organizacao
-ORG_NOME=Minha Associacao
+# Organização
+ORG_NOME=Minha Associação
 ORG_SIGLA=MA
 ORG_LOGO=logo.png
 ORG_COR_PRIMARIA=#4a8c4a
@@ -65,8 +65,8 @@ ORG_EMAIL_CONTATO=contato@minhaassociacao.org
 ORG_SITE_URL=https://www.minhaassociacao.org
 ORG_INSTAGRAM=minhaassociacao
 
-# Categorias de filiacao
-# Formato: chave:label:valor_centavos (separados por virgula)
+# Categorias de filiação
+# Formato: chave:label:valor_centavos (separados por vírgula)
 CATEGORIAS=pleno:Pleno:30000,estudante:Estudante:15000
 
 # Banco de dados
@@ -86,13 +86,13 @@ SECRET_KEY=chave_secreta_aleatoria
 ADMIN_PASSWORD=sua_senha_admin
 ```
 
-### 4. Instale dependencias (opcional)
+### 4. Instale dependências (opcional)
 
 ```bash
 composer install
 ```
 
-Isso instala TCPDF para geracao de PDFs mais bonitos. Sem ele, o sistema usa um fallback simples.
+Isso instala TCPDF para geração de PDFs mais elaborados. Sem ele, o sistema usa um fallback simples.
 
 ### 5. Inicie o servidor
 
@@ -112,52 +112,52 @@ pilotis/
 │   ├── .htaccess          # URL rewriting (Apache)
 │   └── assets/            # CSS, imagens
 ├── src/
-│   ├── config.php         # Configuracoes
-│   ├── db.php             # Conexao SQLite
+│   ├── config.php         # Configurações
+│   ├── db.php             # Conexão SQLite
 │   ├── routes.php         # Rotas
-│   ├── Controllers/       # Logica de negocio
+│   ├── Controllers/       # Lógica de negócio
 │   ├── Services/          # PagBank, Brevo, PDF
 │   └── Views/             # Templates HTML
-├── scripts/               # CLI e utilitarios
+├── scripts/               # CLI e utilitários
 ├── dados/                 # Dados (criar manualmente)
 │   └── data/
 │       └── pilotis.db     # Banco SQLite
-├── .env                   # Credenciais (nao versionar!)
+├── .env                   # Credenciais (não versionar!)
 └── .env.example           # Template de credenciais
 ```
 
 ## Rotas
 
-| Rota | Descricao |
+| Rota | Descrição |
 |------|-----------|
-| `GET /filiacao/{ano}` | Formulario de entrada (email) |
-| `GET /filiacao/{ano}/{token}` | Formulario de filiacao |
+| `GET /filiacao/{ano}` | Formulário de entrada (email) |
+| `GET /filiacao/{ano}/{token}` | Formulário de filiação |
 | `GET /filiacao/{ano}/{token}/pagamento` | Tela de pagamento |
-| `POST /webhook/pagbank` | Webhook de confirmacao |
-| `GET /filiados/{ano}` | Lista publica de filiados |
+| `POST /webhook/pagbank` | Webhook de confirmação |
+| `GET /filiados/{ano}` | Lista pública de filiados |
 | `GET /admin` | Painel administrativo |
 
-## Personalizacao
+## Personalização
 
-Toda a personalizacao e feita via `.env`, sem editar codigo.
+Toda a personalização é feita via `.env`, sem editar código.
 
 ### Identidade visual
 
 ```env
-ORG_NOME=Minha Associacao
+ORG_NOME=Minha Associação
 ORG_SIGLA=MA
 ORG_LOGO=logo.png            # arquivo em public/assets/img/
-ORG_COR_PRIMARIA=#4a8c4a     # cor principal (header, botoes)
+ORG_COR_PRIMARIA=#4a8c4a     # cor principal (header, botões)
 ORG_COR_SECUNDARIA=#7ab648   # cor de destaque
 ORG_SITE_URL=https://www.minhaassociacao.org
 ORG_INSTAGRAM=minhaassociacao
 ```
 
 Coloque sua logo em `public/assets/img/` (recomendado: 300-600px de largura).
-Na web, a logo e exibida com no maximo 300px de largura. No PDF, com 80mm.
-Use JPG para compatibilidade com o PDF (PNG com transparencia pode gerar fundo branco).
+Na web, a logo é exibida com no máximo 300px de largura. No PDF, com 80mm.
+Use JPG para compatibilidade com o PDF (PNG com transparência pode gerar fundo branco).
 
-### Categorias de filiacao
+### Categorias de filiação
 
 Defina as categorias no `.env` no formato `chave:label:valor_centavos`:
 
@@ -171,36 +171,40 @@ CATEGORIAS=associado:Associado:12000
 
 ### Templates de email
 
-Os templates de email sao editaveis pelo painel admin em `/admin/campanha`.
-Na primeira execucao, o sistema cria templates padrao que podem ser personalizados.
+Os templates de email são editáveis pelo painel admin em `/admin/campanha`.
+Na primeira execução, o sistema cria templates padrão que podem ser personalizados.
 
 ## Scripts CLI
 
 ```bash
-# Enviar campanha de emails
-php scripts/enviar_campanha.php --ano 2026 --dry-run
-php scripts/enviar_campanha.php --ano 2026 --tipo renovacao
+# Campanha (detecta campanha aberta, envia por grupos, limite 290/dia)
+php scripts/enviar_campanha.php --dry-run
+php scripts/enviar_campanha.php
 
-# Enviar lembretes (rodar via cron)
+# Lembretes (rodar via cron diariamente)
 php scripts/enviar_lembretes.php
+php scripts/enviar_lembretes.php --dry-run
 
-# Administracao
+# Backup do banco para GitHub
+php scripts/backup_servidor.php
+
+# Administração
 php scripts/admin.php pendentes
 php scripts/admin.php buscar "email@exemplo.com"
 php scripts/admin.php pagar 123
 php scripts/admin.php exportar 2026
 ```
 
-## Deploy em Producao
+## Deploy em Produção
 
-### Seguranca
+### Segurança
 
-1. **Banco fora do document root**: Coloque `pilotis.db` em diretorio nao acessivel pela web
+1. **Banco fora do document root**: Coloque `pilotis.db` em diretório não acessível pela web
 2. **Senha admin forte**: Use hash SHA256 no `.env`:
    ```bash
    php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
    ```
-3. **HTTPS obrigatorio**: Configure SSL no servidor
+3. **HTTPS obrigatório**: Configure SSL no servidor
 
 ### Apache
 
@@ -223,14 +227,29 @@ Configure a URL de webhook no painel PagBank:
 https://filiacao.suaorganizacao.com/webhook/pagbank
 ```
 
-## Licenca
+### Cron
+
+```bash
+# Campanha diária às 9h (detecta campanha aberta, envia até 290/dia)
+0 12 * * * php /caminho/para/scripts/enviar_campanha.php >> /tmp/campanha.log 2>&1
+
+# Lembretes diários às 8h (pendentes + "última chance" 3 dias antes do fim)
+0 11 * * * php /caminho/para/scripts/enviar_lembretes.php >> /tmp/lembretes.log 2>&1
+
+# Backup diário às 3h
+0 6 * * * php /caminho/para/scripts/backup_servidor.php >> /tmp/backup.log 2>&1
+```
+
+Nota: horários em UTC. Para Brasília (UTC-3), 12h UTC = 9h BRT.
+
+## Licença
 
 GPL-3.0 - veja [LICENSE](LICENSE) para detalhes.
 
-## Creditos
+## Créditos
 
 Desenvolvido para o [Docomomo Brasil](https://docomomobrasil.com) por Danilo Matoso Macedo.
 
 ---
 
-*Pilotis: porque toda boa arquitetura precisa de uma base solida.*
+*Pilotis: porque toda boa arquitetura precisa de uma base sólida.*
