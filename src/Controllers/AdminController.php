@@ -731,6 +731,7 @@ class AdminController {
         self::exigirLogin();
 
         $ordem = $_GET['ordem'] ?? 'nome';
+        $filtro = $_GET['filtro'] ?? 'ativos';
 
         // Ordenação
         $order_by = match($ordem) {
@@ -738,14 +739,26 @@ class AdminController {
             default => 'p.nome ASC'
         };
 
+        // Filtro por ativo
+        $where = match($filtro) {
+            'inativos' => 'WHERE p.ativo = 0',
+            'todos' => '',
+            default => 'WHERE p.ativo = 1',
+        };
+
+        // Contagem por status
+        $total_ativos = (int)(db_fetch_one("SELECT COUNT(*) as t FROM pessoas WHERE ativo = 1")['t'] ?? 0);
+        $total_inativos = (int)(db_fetch_one("SELECT COUNT(*) as t FROM pessoas WHERE ativo = 0")['t'] ?? 0);
+
         // Todos os contatos com última filiação paga
         $contatos = db_fetch_all("
-            SELECT p.id, p.nome,
+            SELECT p.id, p.nome, p.ativo,
                    (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email,
                    (SELECT MAX(f.ano) FROM filiacoes f
                     WHERE f.pessoa_id = p.id AND f.status = 'pago' AND f.categoria <> 'nao_filiado'
                    ) as ultima_filiacao
             FROM pessoas p
+            $where
             ORDER BY $order_by
         ");
 
