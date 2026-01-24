@@ -4,8 +4,8 @@
  * Script para envio de campanhas de filiacao
  *
  * Uso:
- *   php scripts/enviar_campanha.php --ano 2026 --dry-run
- *   php scripts/enviar_campanha.php --ano 2026
+ *   php scripts/enviar_campanha.php --dry-run
+ *   php scripts/enviar_campanha.php
  *   php scripts/enviar_campanha.php --ano 2026 --limite 300
  *
  * Processa grupos em ordem de prioridade:
@@ -35,9 +35,20 @@ if (isset($options['help'])) {
     exit(0);
 }
 
-$ano = (int)($options['ano'] ?? date('Y'));
 $limite = (int)($options['limite'] ?? 290);
 $dry_run = isset($options['dry-run']);
+
+// Detecta ano: argumento --ano ou campanha aberta no banco
+if (isset($options['ano'])) {
+    $ano = (int)$options['ano'];
+} else {
+    $campanha_aberta = db_fetch_one("SELECT ano FROM campanhas WHERE status = 'aberta' ORDER BY ano DESC LIMIT 1");
+    if (!$campanha_aberta) {
+        echo "Nenhuma campanha aberta encontrada. Use --ano YYYY ou crie uma campanha no admin.\n";
+        exit(0);
+    }
+    $ano = (int)$campanha_aberta['ano'];
+}
 
 echo "Campanha de filiação $ano (limite: $limite emails)\n";
 if ($dry_run) {
