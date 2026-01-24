@@ -8,9 +8,9 @@
  *   php scripts/enviar_lembretes.php --dry-run
  *
  * Envia lembretes para:
- *   - Pagamentos que vencem hoje
- *   - Pagamentos vencidos (semanal, domingos)
- *   - Formulários incompletos (semanal, domingos)
+ *   - Pagamentos que vencem amanhã
+ *   - Pagamentos vencidos (quinzenal, domingos, máx 3)
+ *   - Formulários incompletos (quinzenal, domingos, máx 3)
  *   - "Última chance" (3 dias antes do fim da campanha)
  *
  * Ideal para rodar via cron diariamente.
@@ -38,6 +38,7 @@ if ($dry_run) {
 echo str_repeat('-', 50) . "\n";
 
 $hoje = date('Y-m-d');
+$domingo_quinzenal = (date('N') == 7 && date('W') % 2 == 0);
 
 // Busca filiações pendentes
 $pendentes = db_fetch_all("
@@ -63,7 +64,7 @@ foreach ($pendentes as $p) {
 
     // Critérios para envio:
     // 1. Vence amanhã (dias_restantes = 1) - lembrete preventivo
-    // 2. Venceu e é domingo - aviso de expiração (gere novo)
+    // 2. Venceu e é domingo de semana par - aviso de expiração (quinzenal, máx 3)
     $enviar = false;
     $motivo = '';
     $tipo_lembrete = 'lembrete'; // template padrão
@@ -71,11 +72,20 @@ foreach ($pendentes as $p) {
     if ($dias_restantes >= 1 && $dias_restantes < 2) {
         $enviar = true;
         $motivo = 'vence amanhã';
-    } elseif ($dias_restantes < 0 && date('N') == 7) {
-        // Domingo - aviso de expiração
-        $enviar = true;
-        $motivo = 'vencido (gerar novo)';
-        $tipo_lembrete = 'lembrete_vencido';
+    } elseif ($dias_restantes < 0 && $domingo_quinzenal) {
+        // Verificar limite de 3 lembretes
+        $total_lembretes = db_fetch_one("
+            SELECT COUNT(*) as total FROM log
+            WHERE tipo = 'lembrete_enviado'
+            AND cadastrado_id = ?
+            AND mensagem LIKE ?
+        ", [$p['pessoa_id'], "%{$p['ano']}%"]);
+
+        if (($total_lembretes['total'] ?? 0) < 3) {
+            $enviar = true;
+            $motivo = 'vencido (gerar novo)';
+            $tipo_lembrete = 'lembrete_vencido';
+        }
     }
 
     if (!$enviar) {
@@ -148,8 +158,8 @@ foreach ($pendentes as $p) {
 echo "\n" . str_repeat('-', 50) . "\n";
 echo "Enviados: $enviados | Erros: $erros | Pulados: $pulados\n";
 
-// --- Lembrete para quem acessou mas não concluiu (domingos) ---
-if (date('N') == 7) {
+// --- Lembrete para quem acessou mas não concluiu (quinzenal, máx 3) ---
+if ($domingo_quinzenal) {
     $campanha_para_acesso = db_fetch_one("
         SELECT ano FROM campanhas WHERE status = 'aberta' ORDER BY ano DESC LIMIT 1
     ");
@@ -176,6 +186,18 @@ if (date('N') == 7) {
 
         foreach ($com_acesso as $pessoa) {
             if (!$pessoa['email']) continue;
+
+            // Verificar limite de 3 lembretes
+            $total_lembretes = db_fetch_one("
+                SELECT COUNT(*) as total FROM log
+                WHERE tipo = 'lembrete_acesso_enviado'
+                AND cadastrado_id = ?
+                AND mensagem LIKE ?
+            ", [$pessoa['pessoa_id'], "%$ano_acesso%"]);
+
+            if (($total_lembretes['total'] ?? 0) >= 3) {
+                continue;
+            }
 
             $token = $pessoa['token'];
             if (!$token) {
