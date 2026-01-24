@@ -120,6 +120,14 @@ class FiliacaoController {
         // Verifica se já existe filiação para este ano
         $pagamento_existente = buscar_filiacao($cadastrado['id'], (int)$ano);
 
+        // Atualiza status para 'acesso' se ainda estava como 'enviado'
+        if ($pagamento_existente && $pagamento_existente['status'] === 'enviado') {
+            db_execute(
+                "UPDATE filiacoes SET status = 'acesso' WHERE pessoa_id = ? AND ano = ?",
+                [$cadastrado['id'], (int)$ano]
+            );
+        }
+
         // Dados para autocomplete
         $autocomplete = obter_autocomplete();
 

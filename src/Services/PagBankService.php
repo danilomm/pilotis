@@ -132,7 +132,7 @@ class PagBankService {
         ?string $cpf,
         int $valor_centavos,
         array $endereco,
-        int $dias_vencimento = 3
+        int $dias_vencimento = 7
     ): array {
         $reference_id = "PILOTIS-$cadastrado_id-$ano";
         $due_date = date('Y-m-d', strtotime("+$dias_vencimento days"));

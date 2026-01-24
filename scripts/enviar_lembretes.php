@@ -9,7 +9,9 @@
  *
  * Envia lembretes para:
  *   - Pagamentos que vencem hoje
- *   - Pagamentos vencidos há mais de 7 dias (semanal)
+ *   - Pagamentos vencidos (semanal, domingos)
+ *   - Formulários incompletos (semanal, domingos)
+ *   - "Última chance" (3 dias antes do fim da campanha)
  *
  * Ideal para rodar via cron diariamente.
  */
@@ -60,18 +62,20 @@ foreach ($pendentes as $p) {
     $dias_restantes = (strtotime($vencimento) - strtotime($hoje)) / 86400;
 
     // Critérios para envio:
-    // 1. Vence hoje (dias_restantes = 0)
-    // 2. Venceu e é domingo (lembrete semanal)
+    // 1. Vence amanhã (dias_restantes = 1) - lembrete preventivo
+    // 2. Venceu e é domingo - aviso de expiração (gere novo)
     $enviar = false;
     $motivo = '';
+    $tipo_lembrete = 'lembrete'; // template padrão
 
-    if ($dias_restantes <= 0 && $dias_restantes > -1) {
+    if ($dias_restantes >= 1 && $dias_restantes < 2) {
         $enviar = true;
-        $motivo = 'vence hoje';
+        $motivo = 'vence amanhã';
     } elseif ($dias_restantes < 0 && date('N') == 7) {
-        // Domingo - lembrete semanal para vencidos
+        // Domingo - aviso de expiração
         $enviar = true;
-        $motivo = 'vencido (lembrete semanal)';
+        $motivo = 'vencido (gerar novo)';
+        $tipo_lembrete = 'lembrete_vencido';
     }
 
     if (!$enviar) {
@@ -108,19 +112,27 @@ foreach ($pendentes as $p) {
     }
 
     try {
-        $enviado = BrevoService::enviarLembretePagamento(
+        $link = BASE_URL . "/filiacao/{$p['ano']}/$token/pagamento";
+
+        $template = carregar_template($tipo_lembrete, [
+            'nome' => $p['nome'],
+            'ano' => $p['ano'],
+            'valor' => formatar_valor((int)$p['valor']),
+            'link' => $link,
+            'urgencia' => '',
+            'dias_info' => 'Seu pagamento vence amanhã.',
+        ]);
+
+        $enviado = BrevoService::enviarEmail(
             $email,
-            $p['nome'],
-            $p['ano'],
-            $token,
-            (int)$dias_restantes,
-            (int)$p['valor']
+            $template['assunto'],
+            $template['html']
         );
 
         if ($enviado) {
             echo "OK\n";
             $enviados++;
-            registrar_log('lembrete_enviado', $p['pessoa_id'], "Lembrete {$p['ano']} enviado");
+            registrar_log('lembrete_enviado', $p['pessoa_id'], "Lembrete {$p['ano']} ($tipo_lembrete)");
         } else {
             echo "ERRO\n";
             $erros++;
@@ -135,6 +147,84 @@ foreach ($pendentes as $p) {
 
 echo "\n" . str_repeat('-', 50) . "\n";
 echo "Enviados: $enviados | Erros: $erros | Pulados: $pulados\n";
+
+// --- Lembrete para quem acessou mas não concluiu (domingos) ---
+if (date('N') == 7) {
+    $campanha_para_acesso = db_fetch_one("
+        SELECT ano FROM campanhas WHERE status = 'aberta' ORDER BY ano DESC LIMIT 1
+    ");
+
+    if ($campanha_para_acesso) {
+        $ano_acesso = (int)$campanha_para_acesso['ano'];
+
+        echo "\n=== Lembretes de formulário incompleto (campanha $ano_acesso) ===\n";
+
+        $com_acesso = db_fetch_all("
+            SELECT f.pessoa_id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM filiacoes f
+            JOIN pessoas p ON p.id = f.pessoa_id
+            WHERE f.ano = ?
+            AND f.status = 'acesso'
+            AND p.ativo = 1
+        ", [$ano_acesso]);
+
+        echo "Formulários incompletos: " . count($com_acesso) . "\n\n";
+
+        $ac_enviados = 0;
+        $ac_erros = 0;
+
+        foreach ($com_acesso as $pessoa) {
+            if (!$pessoa['email']) continue;
+
+            $token = $pessoa['token'];
+            if (!$token) {
+                $token = gerar_token();
+                db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $pessoa['pessoa_id']]);
+            }
+
+            $link = BASE_URL . "/filiacao/$ano_acesso/$token";
+
+            echo "{$pessoa['nome']} <{$pessoa['email']}> ... ";
+
+            if ($dry_run) {
+                echo "[DRY-RUN]\n";
+                $ac_enviados++;
+                continue;
+            }
+
+            try {
+                $template = carregar_template('lembrete_acesso', [
+                    'nome' => $pessoa['nome'],
+                    'ano' => $ano_acesso,
+                    'link' => $link,
+                ]);
+
+                $enviado = BrevoService::enviarEmail(
+                    $pessoa['email'],
+                    $template['assunto'],
+                    $template['html']
+                );
+
+                if ($enviado) {
+                    echo "OK\n";
+                    $ac_enviados++;
+                    registrar_log('lembrete_acesso_enviado', $pessoa['pessoa_id'], "Lembrete acesso $ano_acesso");
+                } else {
+                    echo "ERRO\n";
+                    $ac_erros++;
+                }
+            } catch (Exception $e) {
+                echo "ERRO: " . $e->getMessage() . "\n";
+                $ac_erros++;
+            }
+
+            usleep(100000); // 100ms
+        }
+
+        echo "\nFormulários incompletos - Enviados: $ac_enviados | Erros: $ac_erros\n";
+    }
+}
 
 // --- Lembrete "última chance" (3 dias antes do fim da campanha) ---
 $campanha_aberta = db_fetch_one("

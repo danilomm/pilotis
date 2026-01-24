@@ -531,6 +531,20 @@ function seed_email_templates(PDO $db): void {
             ),
         ],
         [
+            'tipo' => 'lembrete_vencido',
+            'assunto' => 'Filiação ' . ORG_NOME . ' {{ano}} - Pagamento Expirado',
+            'descricao' => 'Aviso de que boleto/PIX expirou e precisa gerar novo',
+            'variaveis' => 'nome, ano, valor, link',
+            'html' => $wrap('Pagamento Expirado',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>O prazo do seu pagamento (boleto ou PIX) para a filiação ao <strong>" . ORG_NOME . "</strong> {{ano}} expirou.</p>" .
+                "<p>Não se preocupe — basta acessar o link abaixo e gerar um novo pagamento:</p>" .
+                "<p><strong>Valor:</strong> {{valor}}</p>" .
+                $btn('Gerar Novo Pagamento', 'link') .
+                "<p><small>Se já realizou o pagamento por outro meio, por favor desconsidere este email.</small></p>"
+            ),
+        ],
+        [
             'tipo' => 'ultima_chance',
             'assunto' => 'Última chance! Filiação ' . ORG_NOME . ' {{ano}} encerra em {{dias}} dias',
             'descricao' => 'Lembrete final antes do encerramento da campanha',
@@ -541,6 +555,19 @@ function seed_email_templates(PDO $db): void {
                 "<p>Não perca a oportunidade de fazer parte da nossa rede!</p>" .
                 $btn('Filiar-se Agora', 'link') .
                 "<p><small>Se já realizou sua filiação, por favor desconsidere este email.</small></p>"
+            ),
+        ],
+        [
+            'tipo' => 'lembrete_acesso',
+            'assunto' => 'Complete sua filiação - ' . ORG_NOME . ' {{ano}}',
+            'descricao' => 'Lembrete para quem acessou o formulário mas não concluiu',
+            'variaveis' => 'nome, ano, link',
+            'html' => $wrap('Complete sua Filiação',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Notamos que você iniciou sua filiação ao <strong>" . ORG_NOME . "</strong> para {{ano}}, mas ainda não concluiu o processo.</p>" .
+                "<p>Leva apenas alguns minutos para preencher o formulário e escolher a forma de pagamento.</p>" .
+                $btn('Continuar Filiação', 'link') .
+                "<p><small>Se já concluiu sua filiação, por favor desconsidere este email.</small></p>"
             ),
         ],
         [
