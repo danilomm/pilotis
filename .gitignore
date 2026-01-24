@@ -54,6 +54,7 @@ deploy/upload/
 .vscode/
 .idea/
 data/.~lock.*
+.~lock.*
 
 # Logs
 *.log
