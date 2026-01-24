@@ -36,8 +36,13 @@
             </div>
         </div>
 
+        <div style="border: 1px solid #bcbfc3; border-radius: 4px; padding: 10px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="ativo" name="ativo" value="1" <?= ($pessoa['ativo'] ?? 1) ? 'checked' : '' ?> style="margin: 0; width: 18px; height: 18px;">
+            <label for="ativo" style="margin: 0; cursor: pointer;">Ativo <small style="color: #666;">(pessoas inativas não recebem emails de campanha)</small></label>
+        </div>
+
         <label for="notas">Notas (admin)</label>
-        <textarea id="notas" name="notas" rows="2"><?= e($pessoa['notas'] ?? '') ?></textarea>
+        <textarea id="notas" name="notas" rows="2" placeholder="Ex: Falecido em 2025, Pediu para não receber mais emails, etc."><?= e($pessoa['notas'] ?? '') ?></textarea>
 
         <button type="submit">Salvar</button>
     </form>

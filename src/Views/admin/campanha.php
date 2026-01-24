@@ -3,6 +3,7 @@
         <h2>Campanhas</h2>
         <div>
             <a href="/admin" role="button" class="outline">Painel</a>
+            <a href="/admin/templates" role="button" class="outline">Templates</a>
             <a href="/admin/contatos" role="button" class="outline">Contatos</a>
             <a href="/admin/logout" role="button" class="secondary outline">Sair</a>
         </div>
@@ -37,8 +38,7 @@
                 Criar Campanha
             </button>
         </form>
-        <p style="margin-bottom: 0; margin-top: 15px;"><small>Valores: Estudante <?= formatar_valor($valores['estudante']) ?> | Nacional <?= formatar_valor($valores['profissional_nacional']) ?> | Internacional <?= formatar_valor($valores['profissional_internacional']) ?></small></p>
-        <p style="margin-bottom: 0;"><small>Para alterar valores, edite o arquivo <code>.env</code></small></p>
+        <p style="margin-bottom: 0; margin-top: 15px;"><small>Valores iniciais: Estudante <?= formatar_valor($valores['estudante']) ?> | Nacional <?= formatar_valor($valores['profissional_nacional']) ?> | Internacional <?= formatar_valor($valores['profissional_internacional']) ?> (editaveis apos criar)</small></p>
     </div>
     <?php endif; ?>
 
@@ -71,14 +71,33 @@
 
             <!-- Estatísticas -->
             <?php if ($is_aberta): ?>
-                <!-- Valores e configuração -->
-                <p style="margin-bottom: 10px;">
-                    <strong>Valores:</strong>
-                    Estudante <?= formatar_valor($valores['estudante']) ?> |
-                    Nacional <?= formatar_valor($valores['profissional_nacional']) ?> |
-                    Internacional <?= formatar_valor($valores['profissional_internacional']) ?>
-                    <br><small style="color: #6c757d;">Para alterar valores, edite o arquivo <code>.env</code></small>
-                </p>
+                <!-- Valores editáveis -->
+                <?php $cv = $c['valores']; ?>
+                <details style="margin-bottom: 15px; background: #f8f9fa; padding: 12px 15px; border-radius: 8px; border: 1px solid #dee2e6;">
+                    <summary style="cursor: pointer; font-size: 0.95em; list-style: none;">
+                        <strong>Valores:</strong>
+                        Estudante <?= formatar_valor($cv['valor_estudante']) ?> |
+                        Nacional <?= formatar_valor($cv['valor_profissional']) ?> |
+                        Internacional <?= formatar_valor($cv['valor_internacional']) ?>
+                        <span style="float: right; color: #17a2b8; font-size: 13px;">&#9998; Editar</span>
+                    </summary>
+                    <form method="POST" action="/admin/campanha/valores" style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                        <input type="hidden" name="ano" value="<?= $ano ?>">
+                        <div>
+                            <label style="font-size: 12px;">Estudante (R$)</label>
+                            <input type="text" name="valor_estudante" value="<?= number_format($cv['valor_estudante'] / 100, 2, ',', '') ?>" style="width: 100px; padding: 4px 8px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px;">Nacional (R$)</label>
+                            <input type="text" name="valor_profissional" value="<?= number_format($cv['valor_profissional'] / 100, 2, ',', '') ?>" style="width: 100px; padding: 4px 8px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px;">Internacional (R$)</label>
+                            <input type="text" name="valor_internacional" value="<?= number_format($cv['valor_internacional'] / 100, 2, ',', '') ?>" style="width: 100px; padding: 4px 8px;">
+                        </div>
+                        <button type="submit" style="background: #17a2b8; color: white; border: none; padding: 6px 12px; font-size: 13px;">Salvar</button>
+                    </form>
+                </details>
 
                 <!-- Funil -->
                 <div class="grid" style="margin-bottom: 15px;">
@@ -104,10 +123,32 @@
                     </div>
                 </div>
 
+                <!-- Grupo de teste -->
+                <details style="margin-bottom: 15px; background: #fff8e1; padding: 12px 15px; border-radius: 8px; border: 1px solid #ffe082;">
+                    <summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        <strong>Grupo de teste</strong>
+                        <span style="color: #f57c00; font-size: 13px;">Editar</span>
+                    </summary>
+                    <form method="POST" action="/admin/campanha/grupo-teste" style="margin-top: 10px;">
+                        <textarea name="grupo_teste" rows="3" style="font-size: 13px; font-family: monospace;" placeholder="Um email por linha"><?= e(str_replace(',', "\n", $grupo_teste)) ?></textarea>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="submit" style="background: #f57c00; color: white; border: none; padding: 6px 12px; font-size: 13px;">Salvar lista</button>
+                            <small style="color: #666;"><?= count(array_filter(explode(',', $grupo_teste))) ?> emails</small>
+                        </div>
+                    </form>
+                    <form method="POST" action="/admin/campanha/enviar-teste" style="margin-top: 10px;">
+                        <input type="hidden" name="ano" value="<?= $ano ?>">
+                        <button type="submit" style="background: #28a745; color: white; border: none; padding: 8px 16px; font-size: 14px;"
+                                onclick="return confirm('Enviar emails para o grupo de teste (<?= count(array_filter(explode(',', $grupo_teste))) ?> pessoas)?')">
+                            Enviar para grupo de teste
+                        </button>
+                    </form>
+                </details>
+
                 <!-- Ações -->
                 <?php
                     // Total de contatos para envio
-                    $total_contatos = db_fetch_one("SELECT COUNT(*) as total FROM pessoas WHERE EXISTS (SELECT 1 FROM emails WHERE pessoa_id = pessoas.id)")['total'] ?? 0;
+                    $total_contatos = db_fetch_one("SELECT COUNT(*) as total FROM pessoas WHERE ativo = 1 AND EXISTS (SELECT 1 FROM emails WHERE pessoa_id = pessoas.id)")['total'] ?? 0;
                 ?>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button type="button" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; font-size: 14px;"
@@ -266,6 +307,30 @@
                     </table>
                 </details>
                 <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- Histórico de envios -->
+            <?php if (!empty($c['envios'])): ?>
+            <details style="margin-top: 15px; background: #e8f4f8; padding: 10px 15px; border-radius: 8px; border: 1px solid #bee5eb;">
+                <summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                    <strong style="color: #17a2b8;">Envios (<?= count($c['envios']) ?>)</strong>
+                    <span style="color: #17a2b8; font-size: 13px;">Ver historico</span>
+                </summary>
+                <div style="margin-top: 10px;">
+                    <?php foreach ($c['envios'] as $envio): ?>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #d1ecf1; flex-wrap: wrap; gap: 5px;">
+                        <div>
+                            <strong><?= e(ucfirst($envio['tipo'])) ?></strong>
+                            <span style="color: #666; margin-left: 8px;"><?= $envio['total_sucesso'] ?> enviados<?php if ($envio['total_falha'] > 0): ?>, <span style="color: #dc3545;"><?= $envio['total_falha'] ?> falhas</span><?php endif; ?></span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <small style="color: #888;"><?= date('d/m/Y H:i', strtotime($envio['created_at'])) ?></small>
+                            <a href="/admin/envio/<?= $envio['id'] ?>" style="font-size: 0.8em; padding: 3px 8px; background: #17a2b8; color: white; border-radius: 4px; text-decoration: none;">Ver</a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </details>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

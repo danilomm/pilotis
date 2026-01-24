@@ -3,6 +3,7 @@
         <h2>Painel Admin - <?= e($ano) ?></h2>
         <div>
             <a href="/admin/campanha" role="button" class="outline">Campanha</a>
+            <a href="/admin/templates" role="button" class="outline">Templates</a>
             <a href="/admin/contatos" role="button" class="outline">Contatos</a>
             <a href="/admin/buscar" role="button" class="outline">Buscar</a>
             <a href="/admin/novo" role="button" class="outline">+ Novo</a>

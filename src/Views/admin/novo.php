@@ -15,10 +15,17 @@
         <input type="email" id="email" name="email" required>
 
         <label for="categoria">Categoria *</label>
+        <?php
+            $map_val = [
+                'profissional_internacional' => $valores_ano['valor_internacional'],
+                'profissional_nacional' => $valores_ano['valor_profissional'],
+                'estudante' => $valores_ano['valor_estudante'],
+            ];
+        ?>
         <select id="categoria" name="categoria" required>
             <option value="">-- Selecione --</option>
             <?php foreach (CATEGORIAS_FILIACAO as $val => $info): ?>
-                <option value="<?= e($val) ?>"><?= e($info['nome']) ?> - <?= formatar_valor($info['valor']) ?></option>
+                <option value="<?= e($val) ?>"><?= e($info['nome']) ?> - <?= formatar_valor($map_val[$val] ?? $info['valor']) ?></option>
             <?php endforeach; ?>
         </select>
 

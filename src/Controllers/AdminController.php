@@ -239,6 +239,14 @@ class AdminController {
                 ];
             }
 
+            // Histórico de envios
+            $envios = db_fetch_all("
+                SELECT id, created_at, tipo, total_enviados, total_sucesso, total_falha
+                FROM envios_lotes
+                WHERE ano = ?
+                ORDER BY created_at DESC
+            ", [$ano]);
+
             $campanhas[] = [
                 'ano' => $ano,
                 'status' => $c['status'],
@@ -246,6 +254,8 @@ class AdminController {
                 'stats' => $stats,
                 'categorias' => $categorias,
                 'metricas' => $metricas,
+                'valores' => valores_campanha($ano),
+                'envios' => $envios,
             ];
         }
 
@@ -269,12 +279,51 @@ class AdminController {
             'profissional_internacional' => VALOR_INTERNACIONAL,
         ];
 
+        // Grupo de teste
+        $grupo_teste_config = db_fetch_one("SELECT valor FROM configuracoes WHERE chave = 'grupo_teste'");
+        $grupo_teste = $grupo_teste_config ? $grupo_teste_config['valor'] : '';
+
         $titulo = "Admin - Campanhas";
 
         ob_start();
         require SRC_DIR . '/Views/admin/campanha.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Salva valores de filiação de uma campanha
+     */
+    public static function salvarValores(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? 0);
+        $valor_estudante = (int)(floatval(str_replace(',', '.', $_POST['valor_estudante'] ?? '0')) * 100);
+        $valor_profissional = (int)(floatval(str_replace(',', '.', $_POST['valor_profissional'] ?? '0')) * 100);
+        $valor_internacional = (int)(floatval(str_replace(',', '.', $_POST['valor_internacional'] ?? '0')) * 100);
+
+        if ($ano < 2020 || $ano > 2100) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        if ($valor_estudante <= 0 || $valor_profissional <= 0 || $valor_internacional <= 0) {
+            flash('error', 'Valores devem ser maiores que zero.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        db_execute("
+            UPDATE campanhas
+            SET valor_estudante = ?, valor_profissional = ?, valor_internacional = ?
+            WHERE ano = ?
+        ", [$valor_estudante, $valor_profissional, $valor_internacional, $ano]);
+
+        registrar_log('valores_atualizados', null, "Valores campanha $ano: E=$valor_estudante P=$valor_profissional I=$valor_internacional");
+
+        flash('success', "Valores da campanha $ano atualizados.");
+        redirect('/admin/campanha');
     }
 
     /**
@@ -299,8 +348,11 @@ class AdminController {
             return;
         }
 
-        // Cria a campanha
-        db_execute("INSERT INTO campanhas (ano, status) VALUES (?, 'aberta')", [$ano]);
+        // Cria a campanha com valores atuais do .env
+        db_execute("
+            INSERT INTO campanhas (ano, status, valor_estudante, valor_profissional, valor_internacional)
+            VALUES (?, 'aberta', ?, ?, ?)
+        ", [$ano, VALOR_ESTUDANTE, VALOR_PROFISSIONAL, VALOR_INTERNACIONAL]);
 
         registrar_log('campanha_criada', null, "Campanha $ano criada");
 
@@ -371,6 +423,118 @@ class AdminController {
     }
 
     /**
+     * Salva grupo de teste
+     */
+    public static function salvarGrupoTeste(): void {
+        self::exigirLogin();
+
+        $emails = trim($_POST['grupo_teste'] ?? '');
+        // Normaliza: um email por linha ou vírgula
+        $emails = preg_replace('/[\s,]+/', ',', $emails);
+        $emails = implode(',', array_filter(array_map('trim', explode(',', $emails))));
+
+        db_execute("UPDATE configuracoes SET valor = ?, updated_at = CURRENT_TIMESTAMP WHERE chave = 'grupo_teste'", [$emails]);
+
+        flash('success', 'Grupo de teste atualizado.');
+        redirect('/admin/campanha');
+    }
+
+    /**
+     * Envia campanha para o grupo de teste
+     */
+    public static function enviarGrupoTeste(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? date('Y'));
+
+        require_once SRC_DIR . '/Services/BrevoService.php';
+
+        // Carrega grupo de teste
+        $config = db_fetch_one("SELECT valor FROM configuracoes WHERE chave = 'grupo_teste'");
+        $emails_teste = $config ? array_filter(array_map('trim', explode(',', $config['valor']))) : [];
+
+        if (empty($emails_teste)) {
+            flash('error', 'Grupo de teste vazio.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        // Busca pessoas do grupo de teste
+        $placeholders = implode(',', array_fill(0, count($emails_teste), '?'));
+        $destinatarios = db_fetch_all("
+            SELECT DISTINCT p.id, p.nome, p.token, e.email
+            FROM pessoas p
+            JOIN emails e ON e.pessoa_id = p.id
+            WHERE e.email IN ($placeholders)
+        ", $emails_teste);
+
+        $enviados = 0;
+        $erros = 0;
+        $log_destinatarios = [];
+
+        foreach ($destinatarios as $d) {
+            if (empty($d['email'])) continue;
+
+            // Gera token se não tiver
+            $token = $d['token'];
+            if (!$token) {
+                $token = gerar_token();
+                db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $d['id']]);
+            }
+
+            $resultado = BrevoService::enviarCampanhaRenovacao(
+                $d['email'],
+                $d['nome'] ?? 'Associado',
+                $ano,
+                $token
+            );
+
+            $log_destinatarios[] = [
+                'email' => $d['email'],
+                'nome' => $d['nome'] ?? '',
+                'sucesso' => (bool)$resultado,
+            ];
+
+            if ($resultado) {
+                $enviados++;
+                // Cria filiação com status 'enviado'
+                $filiacao = db_fetch_one(
+                    "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+                    [$d['id'], $ano]
+                );
+                if (!$filiacao) {
+                    db_insert("
+                        INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
+                        VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
+                    ", [$d['id'], $ano]);
+                }
+            } else {
+                $erros++;
+            }
+        }
+
+        // Grava lote
+        if (!empty($log_destinatarios)) {
+            $tpl_snapshot = carregar_template('renovacao', [
+                'nome' => '(grupo de teste)',
+                'ano' => $ano,
+                'link' => BASE_URL . "/filiacao/$ano/TOKEN",
+            ]);
+            registrar_envio_lote(
+                'grupo_teste',
+                $ano,
+                $tpl_snapshot['assunto'] ?? "Grupo de teste $ano",
+                $tpl_snapshot['html'] ?? '',
+                $log_destinatarios
+            );
+        }
+
+        registrar_log('grupo_teste_enviado', null, "Grupo de teste $ano: $enviados enviados, $erros erros");
+        flash('success', "Grupo de teste: $enviados enviados, $erros erros.");
+        redirect('/admin/campanha');
+    }
+
+    /**
      * Envia emails da campanha
      */
     public static function enviarCampanha(): void {
@@ -400,26 +564,35 @@ class AdminController {
 
         // Busca destinatários baseado no tipo
         if ($tipo === 'todos') {
-            // Todos os contatos
+            // Todos os contatos ativos
             $destinatarios = db_fetch_all("
                 SELECT p.id, p.nome, p.token,
                        (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
                 FROM pessoas p
-                WHERE EXISTS (SELECT 1 FROM emails WHERE pessoa_id = p.id)
+                WHERE p.ativo = 1
+                AND EXISTS (SELECT 1 FROM emails WHERE pessoa_id = p.id)
             ");
         } else {
-            // Apenas filiados do ano com status específico
+            // Apenas filiados ativos do ano com status específico
             $destinatarios = db_fetch_all("
                 SELECT p.id, p.nome, p.token,
                        (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
                 FROM pessoas p
                 JOIN filiacoes f ON f.pessoa_id = p.id
-                WHERE f.ano = ? AND f.status = ? AND f.categoria <> 'nao_filiado'
+                WHERE p.ativo = 1 AND f.ano = ? AND f.status = ? AND f.categoria <> 'nao_filiado'
             ", [$ano, $tipo]);
         }
 
+        // Snapshot do template para o log
+        $tpl_snapshot = carregar_template('renovacao', [
+            'nome' => '(destinatário)',
+            'ano' => $ano,
+            'link' => BASE_URL . "/filiacao/$ano/TOKEN",
+        ]);
+
         $enviados = 0;
         $erros = 0;
+        $log_destinatarios = [];
 
         foreach ($destinatarios as $d) {
             if (empty($d['email'])) continue;
@@ -431,6 +604,12 @@ class AdminController {
                 $d['token']
             );
 
+            $log_destinatarios[] = [
+                'email' => $d['email'],
+                'nome' => $d['nome'] ?? '',
+                'sucesso' => (bool)$resultado,
+            ];
+
             if ($resultado) {
                 $enviados++;
                 // Atualiza ou cria registro de filiação
@@ -439,13 +618,11 @@ class AdminController {
                     [$d['id'], $ano]
                 );
                 if (!$filiacao) {
-                    // Cria registro com categoria default (será atualizada no formulário)
                     db_insert("
                         INSERT INTO filiacoes (pessoa_id, ano, categoria, status, created_at)
                         VALUES (?, ?, 'profissional_internacional', 'enviado', CURRENT_TIMESTAMP)
                     ", [$d['id'], $ano]);
                 } else if ($filiacao) {
-                    // Atualiza status para 'enviado' se ainda não foi enviado
                     db_execute("
                         UPDATE filiacoes SET status = 'enviado'
                         WHERE id = ? AND status IS NULL
@@ -456,12 +633,16 @@ class AdminController {
             }
         }
 
-        // Atualiza contador de emails enviados na campanha
-        db_execute("
-            UPDATE campanhas
-            SET emails_enviados = emails_enviados + ?
-            WHERE ano = ?
-        ", [$enviados, $ano]);
+        // Grava lote de envio
+        if (!empty($log_destinatarios)) {
+            registrar_envio_lote(
+                'renovacao',
+                $ano,
+                $tpl_snapshot['assunto'] ?? "Campanha $ano",
+                $tpl_snapshot['html'] ?? '',
+                $log_destinatarios
+            );
+        }
 
         registrar_log('campanha_enviada', null, "Campanha $ano ($tipo): $enviados enviados, $erros erros");
 
@@ -670,14 +851,15 @@ class AdminController {
         $email = strtolower(trim($_POST['email'] ?? ''));
         $cpf = trim($_POST['cpf'] ?? '') ?: null;
         $notas = trim($_POST['notas'] ?? '') ?: null;
+        $ativo = isset($_POST['ativo']) ? 1 : 0;
 
         // Atualiza pessoa
         db_execute("
             UPDATE pessoas SET
-                nome = ?, cpf = ?, notas = ?,
+                nome = ?, cpf = ?, notas = ?, ativo = ?,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        ", [$nome, $cpf, $notas, (int)$id]);
+        ", [$nome, $cpf, $notas, $ativo, (int)$id]);
 
         // Atualiza email principal
         if ($email) {
@@ -785,6 +967,7 @@ class AdminController {
         self::exigirLogin();
 
         $ano = (int)date('Y');
+        $valores_ano = valores_campanha($ano);
         $titulo = "Admin - Novo Cadastro";
 
         ob_start();
@@ -847,7 +1030,7 @@ class AdminController {
             ", [$categoria, $filiacao_existe['id']]);
         } else {
             // Cria filiação
-            $valor = valor_por_categoria($categoria);
+            $valor = valor_por_categoria($categoria, $ano);
             db_insert("
                 INSERT INTO filiacoes (pessoa_id, ano, categoria, valor, status, metodo, data_pagamento, created_at)
                 VALUES (?, ?, ?, ?, 'pago', 'manual', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -993,6 +1176,115 @@ class AdminController {
     /**
      * Download do arquivo do banco de dados
      */
+    /**
+     * Mostra detalhes de um envio (email enviado + destinatários)
+     */
+    public static function verEnvio(): void {
+        self::exigirLogin();
+
+        $id = (int)($_GET['id'] ?? 0);
+        $lote = db_fetch_one("SELECT * FROM envios_lotes WHERE id = ?", [$id]);
+
+        if (!$lote) {
+            flash('error', 'Envio não encontrado.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        $destinatarios = db_fetch_all(
+            "SELECT * FROM envios_destinatarios WHERE lote_id = ? ORDER BY nome",
+            [$id]
+        );
+
+        $titulo = "Admin - Envio #$id";
+
+        ob_start();
+        require SRC_DIR . '/Views/admin/envio.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Lista templates de email para edição
+     */
+    public static function templates(): void {
+        self::exigirLogin();
+
+        $templates = db_fetch_all("SELECT * FROM email_templates ORDER BY tipo");
+
+        $descricoes = [
+            'confirmacao' => 'Confirmação de pagamento',
+            'lembrete' => 'Lembrete de pagamento pendente',
+            'renovacao' => 'Campanha de renovação',
+            'convite' => 'Campanha para novos contatos',
+            'seminario' => 'Campanha para participantes do seminário',
+            'acesso' => 'Link de acesso ao formulário',
+            'declaracao' => 'Texto da declaração PDF',
+        ];
+
+        $titulo = "Admin - Templates de Email";
+
+        ob_start();
+        require SRC_DIR . '/Views/admin/templates.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Salva alterações em um template de email
+     */
+    public static function salvarTemplate(): void {
+        self::exigirLogin();
+
+        $tipo = $_POST['tipo'] ?? '';
+        $assunto = trim($_POST['assunto'] ?? '');
+        $html = $_POST['html'] ?? '';
+
+        if (!$tipo || !$assunto || !$html) {
+            flash('error', 'Preencha todos os campos.');
+            redirect('/admin/templates');
+            return;
+        }
+
+        // Verifica se template existe
+        $existente = db_fetch_one("SELECT tipo FROM email_templates WHERE tipo = ?", [$tipo]);
+        if (!$existente) {
+            flash('error', 'Template não encontrado.');
+            redirect('/admin/templates');
+            return;
+        }
+
+        db_execute(
+            "UPDATE email_templates SET assunto = ?, html = ?, updated_at = ? WHERE tipo = ?",
+            [$assunto, $html, date('Y-m-d H:i:s'), $tipo]
+        );
+
+        flash('success', "Template \"$tipo\" atualizado.");
+        redirect('/admin/templates');
+    }
+
+    /**
+     * Reseta um template para o valor padrão (seed)
+     */
+    public static function resetarTemplate(): void {
+        self::exigirLogin();
+
+        $tipo = $_POST['tipo'] ?? '';
+        if (!$tipo) {
+            redirect('/admin/templates');
+            return;
+        }
+
+        // Remove e re-seeds o template específico
+        db_execute("DELETE FROM email_templates WHERE tipo = ?", [$tipo]);
+
+        // Re-seed todos (INSERT OR IGNORE só insere os que faltam)
+        seed_email_templates(get_db());
+
+        flash('success', "Template \"$tipo\" restaurado ao padrão.");
+        redirect('/admin/templates');
+    }
+
     public static function downloadBanco(): void {
         self::exigirLogin();
 

@@ -94,15 +94,21 @@ class FiliacaoController {
             return;
         }
 
-        // Monta lista de categorias (Internacional primeiro como default)
+        // Monta lista de categorias com valores da campanha (Internacional primeiro como default)
+        $valores_ano = valores_campanha((int)$ano);
         $categorias = [];
         $tem_selecionada = false;
+        $map_valores = [
+            'profissional_internacional' => $valores_ano['valor_internacional'],
+            'profissional_nacional' => $valores_ano['valor_profissional'],
+            'estudante' => $valores_ano['valor_estudante'],
+        ];
         foreach (CATEGORIAS_FILIACAO as $valor => $info) {
             $selecionada = ($cadastrado['categoria'] ?? '') === $valor;
             if ($selecionada) $tem_selecionada = true;
             $categorias[] = [
                 'valor' => $valor,
-                'label' => $info['nome'] . ' - ' . formatar_valor($info['valor']),
+                'label' => $info['nome'] . ' - ' . formatar_valor($map_valores[$valor] ?? $info['valor']),
                 'selecionada' => $selecionada,
             ];
         }
@@ -180,7 +186,7 @@ class FiliacaoController {
             return;
         }
 
-        $valor = valor_por_categoria($categoria);
+        $valor = valor_por_categoria($categoria, (int)$ano);
 
         // Atualiza pessoa e filiação
         atualizar_pessoa_filiacao($cadastrado['id'], (int)$ano, [

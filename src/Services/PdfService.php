@@ -10,8 +10,17 @@
 
 class PdfService {
 
-    // Cor verde do Docomomo
-    const VERDE_DOCOMOMO = [74, 140, 74];
+    /**
+     * Retorna a cor primária da organização como array RGB
+     */
+    private static function corPrimaria(): array {
+        $hex = ltrim(ORG_COR_PRIMARIA, '#');
+        return [
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2)),
+        ];
+    }
 
     /**
      * Gera PDF da declaracao de filiacao
@@ -23,20 +32,44 @@ class PdfService {
         string $email,
         string $categoria,
         int $ano,
-        int $valor_centavos,
-        string $coordenadora = 'Marta Peixoto',
-        string $gestao = '2026-2027'
+        int $valor_centavos
     ): string {
+        $categoria_nome = CATEGORIAS_DISPLAY[$categoria] ?? $categoria;
+        $valor_formatado = formatar_valor($valor_centavos);
+
+        // Carrega template do banco (coordenadora/gestão estão no texto do template)
+        $tpl = carregar_template('declaracao', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'categoria' => $categoria_nome,
+            'valor' => $valor_formatado,
+        ]);
+
+        $html_corpo = $tpl ? $tpl['html'] : self::textoDeclaracaoPadrao($nome, $categoria_nome, $valor_formatado, $ano);
+
         // Tenta usar TCPDF se disponivel
         $tcpdf_path = BASE_DIR . '/vendor/tecnickcom/tcpdf/tcpdf.php';
         if (file_exists($tcpdf_path)) {
             require_once $tcpdf_path;
-            return self::gerarComTcpdf($nome, $email, $categoria, $ano, $valor_centavos, $coordenadora, $gestao);
+            return self::gerarComTcpdf($nome, $email, $ano, $html_corpo);
         }
 
-        // Fallback: gera PDF simples usando HTML-to-PDF nativo do navegador
-        // (na pratica, retorna HTML que pode ser convertido pelo sistema de email)
-        return self::gerarPdfSimples($nome, $email, $categoria, $ano, $valor_centavos, $coordenadora, $gestao);
+        // Fallback: PDF simples com texto
+        return self::gerarPdfSimples($nome, $email, $html_corpo);
+    }
+
+    /**
+     * Texto padrão da declaração (fallback se template não existir)
+     */
+    private static function textoDeclaracaoPadrao(string $nome, string $categoria, string $valor, int $ano): string {
+        return "<p>Declaramos para os devidos fins que <strong>$nome</strong> " .
+            "é filiado(a) ao <strong>" . ORG_NOME . "</strong> na categoria <strong>$categoria</strong>, " .
+            "com anuidade de <strong>$valor</strong> referente ao ano de <strong>$ano</strong>, " .
+            "devidamente quitada.</p>" .
+            "<p style='margin-top: 60px; text-align: center;'>" .
+            "<strong>Marta Peixoto</strong><br>" .
+            "Coordenadora do Docomomo Brasil<br>" .
+            "Gestão 2026-2027</p>";
     }
 
     /**
@@ -45,17 +78,14 @@ class PdfService {
     private static function gerarComTcpdf(
         string $nome,
         string $email,
-        string $categoria,
         int $ano,
-        int $valor_centavos,
-        string $coordenadora,
-        string $gestao
+        string $html_corpo
     ): string {
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
 
         // Configuracoes
-        $pdf->SetCreator('Pilotis - Docomomo Brasil');
-        $pdf->SetAuthor('Docomomo Brasil');
+        $pdf->SetCreator('Pilotis - ' . ORG_NOME);
+        $pdf->SetAuthor(ORG_NOME);
         $pdf->SetTitle("Declaracao de Filiacao - $nome");
         $pdf->SetMargins(25, 25, 25);
         $pdf->SetAutoPageBreak(true, 25);
@@ -67,9 +97,10 @@ class PdfService {
         $pdf->AddPage();
 
         // Logo
-        $logo_path = PUBLIC_DIR . '/assets/img/logo-docomomo.jpg';
+        $logo_path = PUBLIC_DIR . '/assets/img/' . ORG_LOGO;
         if (file_exists($logo_path)) {
-            $pdf->Image($logo_path, 65, 20, 80, 0, 'JPG', '', '', false, 300);
+            $ext = strtoupper(pathinfo($logo_path, PATHINFO_EXTENSION));
+            $pdf->Image($logo_path, 65, 20, 80, 0, $ext, '', '', false, 300);
         }
 
         // Titulo
@@ -77,28 +108,10 @@ class PdfService {
         $pdf->SetFont('helvetica', 'B', 16);
         $pdf->Cell(0, 10, 'DECLARAÇÃO', 0, 1, 'C');
 
-        // Texto da declaracao
-        $categoria_nome = CATEGORIAS_DISPLAY[$categoria] ?? $categoria;
-        $valor_formatado = formatar_valor($valor_centavos);
-
-        $texto = "Declaramos para os devidos fins que $nome é filiada/o ao " .
-                 "Docomomo Brasil na modalidade $categoria_nome [Anuidade: $valor_formatado] " .
-                 "para o período de janeiro a dezembro de $ano.";
-
+        // Corpo da declaração (do template)
         $pdf->SetY(75);
         $pdf->SetFont('helvetica', '', 12);
-        $pdf->MultiCell(0, 8, $texto, 0, 'J', false, 1, '', '', true);
-
-        // Assinatura
-        $pdf->SetY(130);
-        $pdf->SetFont('helvetica', 'B', 12);
-        $pdf->Cell(0, 6, $coordenadora, 0, 1, 'L');
-
-        $pdf->SetFont('helvetica', '', 11);
-        $pdf->Cell(0, 5, 'Coordenadora do Docomomo Brasil', 0, 1, 'L');
-        $pdf->Cell(0, 5, 'Associação de Colaboradores do Docomomo Brasil', 0, 1, 'L');
-        $pdf->Cell(0, 5, "Gestão $gestao", 0, 1, 'L');
-        $pdf->Cell(0, 5, '@docomomobrasil', 0, 1, 'L');
+        $pdf->writeHTML($html_corpo, true, false, true, false, 'J');
 
         // Dados do filiado no rodape
         $pdf->SetY(190);
@@ -116,25 +129,13 @@ class PdfService {
     private static function gerarPdfSimples(
         string $nome,
         string $email,
-        string $categoria,
-        int $ano,
-        int $valor_centavos,
-        string $coordenadora,
-        string $gestao
+        string $html_corpo
     ): string {
-        $categoria_nome = CATEGORIAS_DISPLAY[$categoria] ?? $categoria;
-        $valor_formatado = formatar_valor($valor_centavos);
-
-        // Gera PDF minimo valido usando especificacao PDF 1.4
-        $content = "Declaramos para os devidos fins que $nome e filiada/o ao " .
-                   "Docomomo Brasil na modalidade $categoria_nome [Anuidade: $valor_formatado] " .
-                   "para o periodo de janeiro a dezembro de $ano.\n\n" .
-                   "$coordenadora\n" .
-                   "Coordenadora do Docomomo Brasil\n" .
-                   "Associacao de Colaboradores do Docomomo Brasil\n" .
-                   "Gestao $gestao\n" .
-                   "@docomomobrasil\n\n" .
-                   "$nome\n$email";
+        // Converte HTML para texto simples
+        $content = strip_tags(str_replace(['<br>', '<br/>', '<br />', '</p>'], "\n", $html_corpo));
+        $content = html_entity_decode($content, ENT_QUOTES, 'UTF-8');
+        $content = preg_replace('/\n{3,}/', "\n\n", trim($content));
+        $content .= "\n\n$nome\n$email";
 
         // PDF simples com texto
         $pdf = "%PDF-1.4\n";

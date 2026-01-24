@@ -89,7 +89,7 @@ class PagBankService {
             ],
             'items' => [[
                 'reference_id' => "filiacao-$ano",
-                'name' => "Filiacao Docomomo Brasil $ano",
+                'name' => "Filiacao " . ORG_NOME . " $ano",
                 'quantity' => 1,
                 'unit_amount' => $valor_centavos,
             ]],
@@ -145,13 +145,13 @@ class PagBankService {
             ],
             'items' => [[
                 'reference_id' => "filiacao-$ano",
-                'name' => "Filiacao Docomomo Brasil $ano",
+                'name' => "Filiacao " . ORG_NOME . " $ano",
                 'quantity' => 1,
                 'unit_amount' => $valor_centavos,
             ]],
             'charges' => [[
                 'reference_id' => $reference_id,
-                'description' => "Filiacao Docomomo Brasil $ano",
+                'description' => "Filiacao " . ORG_NOME . " $ano",
                 'amount' => [
                     'value' => $valor_centavos,
                     'currency' => 'BRL',
@@ -161,7 +161,7 @@ class PagBankService {
                     'boleto' => [
                         'due_date' => $due_date,
                         'instruction_lines' => [
-                            'line_1' => 'Filiacao Docomomo Brasil',
+                            'line_1' => 'Filiacao ' . ORG_NOME,
                             'line_2' => "Ano: $ano",
                         ],
                         'holder' => [
@@ -241,13 +241,13 @@ class PagBankService {
             ],
             'items' => [[
                 'reference_id' => "filiacao-$ano",
-                'name' => "Filiacao Docomomo Brasil $ano",
+                'name' => "Filiacao " . ORG_NOME . " $ano",
                 'quantity' => 1,
                 'unit_amount' => $valor_centavos,
             ]],
             'charges' => [[
                 'reference_id' => $reference_id,
-                'description' => "Filiacao Docomomo Brasil $ano",
+                'description' => "Filiacao " . ORG_NOME . " $ano",
                 'amount' => [
                     'value' => $valor_centavos,
                     'currency' => 'BRL',

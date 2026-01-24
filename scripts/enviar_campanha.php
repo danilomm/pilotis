@@ -4,14 +4,19 @@
  * Script para envio de campanhas de filiacao
  *
  * Uso:
- *   php scripts/enviar_campanha.php --ano 2026 --tipo renovacao --dry-run
- *   php scripts/enviar_campanha.php --ano 2026 --tipo seminario
- *   php scripts/enviar_campanha.php --ano 2026 --tipo convite
+ *   php scripts/enviar_campanha.php --ano 2026 --dry-run
+ *   php scripts/enviar_campanha.php --ano 2026
+ *   php scripts/enviar_campanha.php --ano 2026 --limite 300
  *
- * Tipos:
- *   renovacao - Filiados do ano anterior
- *   seminario - Participantes do seminario nao filiados
- *   convite   - Outros cadastrados
+ * Processa grupos em ordem de prioridade:
+ *   1. Adimplentes do ano anterior (template: renovacao)
+ *   2. Participantes do seminário (template: seminario)
+ *   3. Ex-filiados de qualquer ano (template: renovacao)
+ *   4. Contatos sem filiação (template: convite)
+ *   5. Contatos pendentes - nunca pagaram (template: convite)
+ *
+ * Pula pessoas que já foram contatadas para o ano (status 'enviado', 'pendente' ou 'pago').
+ * Para após atingir o limite diário (padrão: 290).
  */
 
 require_once __DIR__ . '/../src/config.php';
@@ -19,129 +24,235 @@ require_once __DIR__ . '/../src/db.php';
 require_once __DIR__ . '/../src/Services/BrevoService.php';
 
 // Processa argumentos
-$options = getopt('', ['ano:', 'tipo:', 'dry-run', 'help']);
+$options = getopt('', ['ano:', 'limite:', 'dry-run', 'help']);
 
 if (isset($options['help'])) {
-    echo "Uso: php scripts/enviar_campanha.php --ano YYYY --tipo [renovacao|seminario|convite] [--dry-run]\n";
+    echo "Uso: php scripts/enviar_campanha.php --ano YYYY [--limite N] [--dry-run]\n\n";
+    echo "Opções:\n";
+    echo "  --ano YYYY    Ano da campanha (padrão: ano atual)\n";
+    echo "  --limite N    Máximo de emails por execução (padrão: 290)\n";
+    echo "  --dry-run     Simula sem enviar emails\n";
     exit(0);
 }
 
 $ano = (int)($options['ano'] ?? date('Y'));
-$tipo = $options['tipo'] ?? 'renovacao';
+$limite = (int)($options['limite'] ?? 290);
 $dry_run = isset($options['dry-run']);
 
-echo "Campanha de filiacao $ano - Tipo: $tipo\n";
+echo "Campanha de filiação $ano (limite: $limite emails)\n";
 if ($dry_run) {
-    echo "[DRY-RUN] Nenhum email sera enviado\n";
+    echo "[DRY-RUN] Nenhum email será enviado\n";
 }
-echo str_repeat('-', 50) . "\n";
+echo str_repeat('-', 50) . "\n\n";
 
-// Busca destinatarios conforme tipo
-$destinatarios = [];
+// Define os 4 grupos em ordem de prioridade
+$ano_anterior = $ano - 1;
 
-switch ($tipo) {
-    case 'renovacao':
-        // Filiados do ano anterior
-        $ano_anterior = $ano - 1;
-        $destinatarios = db_fetch_all("
-            SELECT c.id, c.nome, c.email, c.token
-            FROM cadastrados c
-            JOIN pagamentos p ON p.cadastrado_id = c.id
-            WHERE p.ano = ? AND p.status = 'pago'
-            AND c.id NOT IN (
-                SELECT cadastrado_id FROM pagamentos WHERE ano = ?
+$grupos = [
+    [
+        'nome' => 'Adimplentes ' . $ano_anterior,
+        'template' => 'renovacao',
+        'query' => "
+            SELECT DISTINCT p.id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM pessoas p
+            JOIN filiacoes f ON f.pessoa_id = p.id
+            WHERE p.ativo = 1
+            AND f.ano = ? AND f.status = 'pago'
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ?
             )
-        ", [$ano_anterior, $ano]);
-        break;
-
-    case 'seminario':
-        // Participantes do seminario nao filiados
-        $destinatarios = db_fetch_all("
-            SELECT c.id, c.nome, c.email, c.token
-            FROM cadastrados c
-            WHERE c.seminario_2025 = 1
-            AND c.id NOT IN (
-                SELECT cadastrado_id FROM pagamentos WHERE ano = ? AND status = 'pago'
+        ",
+        'params' => [$ano_anterior, $ano],
+    ],
+    [
+        'nome' => 'Participantes seminário',
+        'template' => 'seminario',
+        'query' => "
+            SELECT DISTINCT p.id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM pessoas p
+            JOIN filiacoes f ON f.pessoa_id = p.id
+            WHERE p.ativo = 1
+            AND f.seminario = 1
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'pago'
             )
-        ", [$ano]);
-        break;
-
-    case 'convite':
-        // Outros cadastrados nao filiados
-        $destinatarios = db_fetch_all("
-            SELECT c.id, c.nome, c.email, c.token
-            FROM cadastrados c
-            WHERE c.id NOT IN (
-                SELECT cadastrado_id FROM pagamentos WHERE ano = ?
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
             )
-            AND c.seminario_2025 = 0
-            AND c.id NOT IN (
-                SELECT cadastrado_id FROM pagamentos WHERE status = 'pago'
+        ",
+        'params' => [$ano, $ano],
+    ],
+    [
+        'nome' => 'Ex-filiados',
+        'template' => 'renovacao',
+        'query' => "
+            SELECT DISTINCT p.id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM pessoas p
+            JOIN filiacoes f ON f.pessoa_id = p.id
+            WHERE p.ativo = 1
+            AND f.status = 'pago'
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'pago'
             )
-        ", [$ano]);
-        break;
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
+            )
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE seminario = 1
+            )
+        ",
+        'params' => [$ano, $ano],
+    ],
+    [
+        'nome' => 'Contatos sem filiação',
+        'template' => 'convite',
+        'query' => "
+            SELECT p.id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM pessoas p
+            WHERE p.ativo = 1
+            AND p.id NOT IN (SELECT pessoa_id FROM filiacoes)
+        ",
+        'params' => [],
+    ],
+    [
+        'nome' => 'Contatos pendentes',
+        'template' => 'convite',
+        'query' => "
+            SELECT DISTINCT p.id, p.nome, p.token,
+                   (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+            FROM pessoas p
+            JOIN filiacoes f ON f.pessoa_id = p.id
+            WHERE p.ativo = 1
+            AND p.id NOT IN (SELECT pessoa_id FROM filiacoes WHERE status = 'pago')
+            AND p.id NOT IN (SELECT pessoa_id FROM filiacoes WHERE seminario = 1)
+            AND p.id NOT IN (
+                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
+            )
+        ",
+        'params' => [$ano],
+    ],
+];
 
-    default:
-        echo "Tipo invalido: $tipo\n";
-        exit(1);
-}
+$total_enviados = 0;
+$total_erros = 0;
+$log_destinatarios = [];
+$template_usado = null;
 
-echo "Total de destinatarios: " . count($destinatarios) . "\n\n";
+foreach ($grupos as $grupo) {
+    if ($total_enviados >= $limite) break;
 
-if (empty($destinatarios)) {
-    echo "Nenhum destinatario encontrado.\n";
-    exit(0);
-}
+    $destinatarios = db_fetch_all($grupo['query'], $grupo['params']);
 
-$enviados = 0;
-$erros = 0;
+    // Filtra sem email
+    $destinatarios = array_filter($destinatarios, fn($d) => !empty($d['email']));
+    $destinatarios = array_values($destinatarios);
 
-foreach ($destinatarios as $d) {
-    // Gera token se nao tiver
-    $token = $d['token'];
-    if (!$token) {
-        $token = gerar_token();
-        db_execute("UPDATE cadastrados SET token = ? WHERE id = ?", [$token, $d['id']]);
-    }
-
-    echo "{$d['nome']} <{$d['email']}> ... ";
-
-    if ($dry_run) {
-        echo "[DRY-RUN]\n";
-        $enviados++;
+    if (empty($destinatarios)) {
+        echo "[{$grupo['nome']}] Nenhum destinatário\n";
         continue;
     }
 
-    try {
-        $enviado = false;
-        switch ($tipo) {
-            case 'renovacao':
-                $enviado = BrevoService::enviarCampanhaRenovacao($d['email'], $d['nome'], $ano, $token);
-                break;
-            case 'seminario':
-                $enviado = BrevoService::enviarCampanhaSeminario($d['email'], $d['nome'], $ano, $token);
-                break;
-            case 'convite':
-                $enviado = BrevoService::enviarCampanhaConvite($d['email'], $d['nome'], $ano, $token);
-                break;
-        }
+    $restante = $limite - $total_enviados;
+    $enviar_agora = array_slice($destinatarios, 0, $restante);
 
-        if ($enviado) {
-            echo "OK\n";
-            $enviados++;
-            registrar_log('campanha_enviada', $d['id'], "Campanha $tipo $ano enviada");
-        } else {
-            echo "ERRO\n";
-            $erros++;
-        }
-    } catch (Exception $e) {
-        echo "ERRO: " . $e->getMessage() . "\n";
-        $erros++;
+    echo "[{$grupo['nome']}] " . count($enviar_agora) . " de " . count($destinatarios) . " destinatários\n";
+
+    // Snapshot do template (para log)
+    $tpl_snapshot = carregar_template($grupo['template'], [
+        'nome' => '(destinatário)',
+        'ano' => $ano,
+        'link' => BASE_URL . "/filiacao/$ano/TOKEN",
+    ]);
+    if (!$template_usado) {
+        $template_usado = $tpl_snapshot;
     }
 
-    // Pausa para evitar rate limit (300/dia no plano gratuito)
-    usleep(100000); // 100ms
+    foreach ($enviar_agora as $d) {
+        // Gera token se não tiver
+        $token = $d['token'];
+        if (!$token) {
+            $token = gerar_token();
+            db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $d['id']]);
+        }
+
+        echo "  {$d['nome']} <{$d['email']}> ... ";
+
+        if ($dry_run) {
+            echo "[DRY-RUN]\n";
+            $total_enviados++;
+            $log_destinatarios[] = ['email' => $d['email'], 'nome' => $d['nome'] ?? '', 'sucesso' => true];
+            continue;
+        }
+
+        try {
+            $enviado = false;
+            switch ($grupo['template']) {
+                case 'renovacao':
+                    $enviado = BrevoService::enviarCampanhaRenovacao($d['email'], $d['nome'], $ano, $token);
+                    break;
+                case 'seminario':
+                    $enviado = BrevoService::enviarCampanhaSeminario($d['email'], $d['nome'], $ano, $token);
+                    break;
+                case 'convite':
+                    $enviado = BrevoService::enviarCampanhaConvite($d['email'], $d['nome'], $ano, $token);
+                    break;
+            }
+
+            $log_destinatarios[] = ['email' => $d['email'], 'nome' => $d['nome'] ?? '', 'sucesso' => (bool)$enviado];
+
+            if ($enviado) {
+                echo "OK\n";
+                $total_enviados++;
+
+                // Cria filiação com status 'enviado' para não reenviar
+                $filiacao = db_fetch_one(
+                    "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+                    [$d['id'], $ano]
+                );
+                if (!$filiacao) {
+                    db_insert("
+                        INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
+                        VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
+                    ", [$d['id'], $ano]);
+                }
+            } else {
+                echo "ERRO\n";
+                $total_erros++;
+            }
+        } catch (Exception $e) {
+            echo "ERRO: " . $e->getMessage() . "\n";
+            $total_erros++;
+            $log_destinatarios[] = ['email' => $d['email'], 'nome' => $d['nome'] ?? '', 'sucesso' => false];
+        }
+
+        usleep(100000); // 100ms entre envios
+    }
+
+    echo "\n";
 }
 
-echo "\n" . str_repeat('-', 50) . "\n";
-echo "Enviados: $enviados | Erros: $erros\n";
+// Grava lote de envio (exceto em dry-run)
+if (!$dry_run && !empty($log_destinatarios)) {
+    registrar_envio_lote(
+        'campanha',
+        $ano,
+        $template_usado['assunto'] ?? "Campanha $ano",
+        $template_usado['html'] ?? '',
+        $log_destinatarios
+    );
+}
+
+echo str_repeat('-', 50) . "\n";
+echo "Enviados: $total_enviados | Erros: $total_erros\n";
+
+if ($total_enviados >= $limite) {
+    echo "\nLimite de $limite atingido. Execute novamente amanhã para continuar.\n";
+} elseif ($total_enviados === 0 && !$dry_run) {
+    // Campanha encerrada — roda verificação de bounces
+    echo "\nCampanha encerrada. Verificando bounces...\n\n";
+    passthru('php ' . escapeshellarg(__DIR__ . '/verificar_bounces.php'));
+}

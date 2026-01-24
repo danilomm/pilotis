@@ -1,5 +1,5 @@
 <article>
-    <h2>Filiados Docomomo Brasil - <?= e($ano) ?></h2>
+    <h2>Filiados <?= e(ORG_NOME) ?> - <?= e($ano) ?></h2>
 
     <p>Total: <strong><?= e($total) ?></strong> filiado(s) adimplente(s)</p>
 
@@ -53,6 +53,6 @@
 
     <hr>
     <p class="text-center">
-        <a href="/filiacao/<?= e($ano) ?>">Filiar-se ao Docomomo Brasil</a>
+        <a href="/filiacao/<?= e($ano) ?>">Filiar-se</a>
     </p>
 </article>

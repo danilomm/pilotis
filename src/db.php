@@ -72,6 +72,78 @@ function init_extra_tables(PDO $db): void {
         WHERE ano IS NOT NULL
     ");
 
+    // Tabela de templates de email
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS email_templates (
+            tipo TEXT PRIMARY KEY,
+            assunto TEXT NOT NULL,
+            html TEXT NOT NULL,
+            descricao TEXT,
+            variaveis TEXT,
+            updated_at DATETIME
+        );
+    ");
+
+    // Seed de templates padrão (insere os que faltam)
+    seed_email_templates($db);
+
+    // Tabela de lotes de envio (um registro por batch)
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS envios_lotes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            tipo TEXT NOT NULL,
+            ano INTEGER NOT NULL,
+            assunto_snapshot TEXT,
+            html_snapshot TEXT,
+            total_enviados INTEGER DEFAULT 0,
+            total_sucesso INTEGER DEFAULT 0,
+            total_falha INTEGER DEFAULT 0
+        );
+    ");
+
+    // Tabela de destinatários por lote
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS envios_destinatarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lote_id INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            nome TEXT,
+            sucesso INTEGER DEFAULT 1,
+            FOREIGN KEY (lote_id) REFERENCES envios_lotes(id) ON DELETE CASCADE
+        );
+    ");
+
+    // Tabela de configurações (chave-valor)
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS configuracoes (
+            chave TEXT PRIMARY KEY,
+            valor TEXT,
+            updated_at DATETIME
+        );
+    ");
+
+    // Seed grupo de teste
+    $db->exec("
+        INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES (
+            'grupo_teste',
+            'marta@martapeixoto.com.br,mcereto@ufam.edu.br,jcnery19@yahoo.com.br,manuella.andrade@fau.ufal.br,ivogiroto@usp.br,suelypuppi@uol.com.br,correio@danilo.arq.br'
+        )
+    ");
+
+    // Adiciona colunas de valores por campanha
+    try {
+        $db->exec("ALTER TABLE campanhas ADD COLUMN valor_estudante INTEGER");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE campanhas ADD COLUMN valor_profissional INTEGER");
+    } catch (PDOException $e) {}
+
+    try {
+        $db->exec("ALTER TABLE campanhas ADD COLUMN valor_internacional INTEGER");
+    } catch (PDOException $e) {}
+
     // Adiciona colunas extras na filiacoes se não existirem
     try {
         $db->exec("ALTER TABLE filiacoes ADD COLUMN status TEXT DEFAULT 'pendente'");
@@ -390,4 +462,170 @@ function obter_autocomplete(): array {
     }
 
     return $resultado;
+}
+
+/**
+ * Carrega template de email do banco
+ * Substitui variáveis no formato {{variavel}}
+ */
+function carregar_template(string $tipo, array $vars = []): ?array {
+    $tpl = db_fetch_one("SELECT assunto, html FROM email_templates WHERE tipo = ?", [$tipo]);
+    if (!$tpl) return null;
+
+    $assunto = $tpl['assunto'];
+    $html = $tpl['html'];
+
+    foreach ($vars as $key => $val) {
+        $assunto = str_replace('{{' . $key . '}}', $val, $assunto);
+        $html = str_replace('{{' . $key . '}}', $val, $html);
+    }
+
+    return ['assunto' => $assunto, 'html' => $html];
+}
+
+/**
+ * Seed de templates padrão
+ */
+function seed_email_templates(PDO $db): void {
+    $header = "<div style='background-color: " . ORG_COR_PRIMARIA . "; padding: 20px; text-align: center;'><h1 style='color: white; margin: 0;'>{{titulo}}</h1></div>";
+    $footer_links = '';
+    if (ORG_SITE_URL) {
+        $site_display = preg_replace('#^https?://(www\.)?#', '', ORG_SITE_URL);
+        $footer_links .= "<a href='" . ORG_SITE_URL . "' style='color: white;'>$site_display</a>";
+    }
+    if (ORG_INSTAGRAM) {
+        if ($footer_links) $footer_links .= ' · ';
+        $footer_links .= "<a href='https://www.instagram.com/" . ORG_INSTAGRAM . "' style='color: white;'>@" . ORG_INSTAGRAM . "</a>";
+    }
+    $footer_content = ORG_NOME . ($footer_links ? "<br>$footer_links" : '');
+    $footer = "<div style='padding: 15px; background-color: " . ORG_COR_PRIMARIA . "; color: white; text-align: center; font-size: 12px;'>$footer_content</div>";
+    $wrap = fn($titulo, $body) => "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>" . str_replace('{{titulo}}', $titulo, $header) . "<div style='padding: 20px; background-color: #f9f9f9;'>$body</div>$footer</div>";
+    $btn = fn($texto, $var) => "<p style='text-align: center; margin: 30px 0;'><a href='{{" . $var . "}}' style='background-color: " . ORG_COR_PRIMARIA . "; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>$texto</a></p>";
+
+    $templates = [
+        [
+            'tipo' => 'confirmacao',
+            'assunto' => 'Filiação ' . ORG_NOME . ' {{ano}} - Confirmada!',
+            'descricao' => 'Enviado após confirmação de pagamento',
+            'variaveis' => 'nome, ano, categoria, valor',
+            'html' => $wrap('Filiação Confirmada!',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Sua filiação ao <strong>" . ORG_NOME . "</strong> para o ano de <strong>{{ano}}</strong> está confirmada!</p>" .
+                "<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'><tr><td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Categoria:</strong></td><td style='padding: 10px; border-bottom: 1px solid #ddd;'>{{categoria}}</td></tr><tr><td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Valor:</strong></td><td style='padding: 10px; border-bottom: 1px solid #ddd;'>{{valor}}</td></tr></table>" .
+                "<p>Em anexo, enviamos sua declaração de filiação.</p>" .
+                "<p>Obrigado por fazer parte do " . ORG_NOME . "!</p>"
+            ),
+        ],
+        [
+            'tipo' => 'lembrete',
+            'assunto' => '{{urgencia}}Filiação ' . ORG_NOME . ' {{ano}} - Pagamento Pendente',
+            'descricao' => 'Lembrete de pagamento pendente',
+            'variaveis' => 'nome, ano, valor, link, urgencia, dias_info',
+            'html' => $wrap('{{urgencia}}Lembrete de Pagamento',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Identificamos que sua filiação ao " . ORG_NOME . " para {{ano}} ainda está pendente de pagamento.</p>" .
+                "<p><strong>Valor:</strong> {{valor}}</p>" .
+                "<p>{{dias_info}}</p>" .
+                $btn('Realizar Pagamento', 'link') .
+                "<p><small>Se já realizou o pagamento, por favor desconsidere este email.</small></p>"
+            ),
+        ],
+        [
+            'tipo' => 'renovacao',
+            'assunto' => 'Renove sua Filiação - ' . ORG_NOME . ' {{ano}}',
+            'descricao' => 'Campanha para filiados de anos anteriores',
+            'variaveis' => 'nome, ano, link',
+            'html' => $wrap('Renove sua Filiação',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>É hora de renovar sua filiação ao " . ORG_NOME . "!</p>" .
+                "<p><strong>Benefícios da filiação:</strong></p>" .
+                "<ul><li>Descontos em eventos do " . ORG_NOME . " e núcleos regionais</li><li>Acesso à rede de profissionais e pesquisadores</li><li>Para internacional: " . ORG_SIGLA . " Journal, Member Card, descontos em museus</li></ul>" .
+                $btn('Renovar Filiação', 'link')
+            ),
+        ],
+        [
+            'tipo' => 'convite',
+            'assunto' => 'Convite para Filiação - ' . ORG_NOME . ' {{ano}}',
+            'descricao' => 'Campanha para novos contatos',
+            'variaveis' => 'nome, ano, link',
+            'html' => $wrap('Convite para Filiação',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Gostaríamos de convidar você a se filiar ao <strong>" . ORG_NOME . "</strong>!</p>" .
+                "<p>O " . ORG_NOME . " é uma organização dedicada à documentação e conservação do patrimônio moderno.</p>" .
+                "<p><strong>Benefícios da filiação:</strong></p>" .
+                "<ul><li>Descontos em eventos do " . ORG_NOME . " e núcleos regionais</li><li>Acesso à rede de profissionais e pesquisadores</li><li>Participação nas atividades e publicações</li></ul>" .
+                $btn('Filiar-se Agora', 'link')
+            ),
+        ],
+        [
+            'tipo' => 'seminario',
+            'assunto' => 'Filiação ' . ORG_NOME . ' {{ano}} - Participante do Seminário',
+            'descricao' => 'Campanha para participantes do seminário',
+            'variaveis' => 'nome, ano, link',
+            'html' => $wrap('Filiação ' . ORG_NOME,
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Obrigado por sua participação no <strong>seminário do " . ORG_NOME . "</strong>!</p>" .
+                "<p>Convidamos você a se filiar ao " . ORG_NOME . " e fortalecer nossa rede de documentação e conservação da arquitetura, urbanismo e paisagismo modernos.</p>" .
+                $btn('Filiar-se Agora', 'link')
+            ),
+        ],
+        [
+            'tipo' => 'acesso',
+            'assunto' => 'Acesso à Filiação ' . ORG_NOME . ' {{ano}}',
+            'descricao' => 'Link de acesso ao formulário (segurança)',
+            'variaveis' => 'nome, ano, link',
+            'html' => $wrap('Acesso à Filiação',
+                "<p>Olá <strong>{{nome}}</strong>,</p>" .
+                "<p>Você solicitou acesso ao formulário de filiação do <strong>" . ORG_NOME . "</strong> para o ano de <strong>{{ano}}</strong>.</p>" .
+                "<p>Clique no botão abaixo para acessar seu formulário:</p>" .
+                $btn('Acessar Formulário', 'link') .
+                "<p><small>Se você não solicitou este acesso, ignore este email.</small></p>" .
+                "<p><small>Este link é pessoal e intransferível.</small></p>"
+            ),
+        ],
+    ];
+
+    // Template da declaração PDF
+    $templates[] = [
+        'tipo' => 'declaracao',
+        'assunto' => 'Declaração de Filiação {{ano}}',
+        'descricao' => 'Texto da declaração PDF enviada ao filiado',
+        'variaveis' => 'nome, ano, categoria, valor',
+        'html' => "<p>Declaramos para os devidos fins que <strong>{{nome}}</strong> " .
+            "é filiado(a) ao <strong>" . ORG_NOME . "</strong> na categoria <strong>{{categoria}}</strong>, " .
+            "com anuidade de <strong>{{valor}}</strong> referente ao ano de <strong>{{ano}}</strong>, " .
+            "devidamente quitada.</p>" .
+            "<p>O " . ORG_NOME . " é uma organização dedicada à documentação e conservação do patrimônio moderno.</p>" .
+            "<p style='margin-top: 60px; text-align: center;'>" .
+            "<strong>Marta Peixoto</strong><br>" .
+            "Coordenadora do " . ORG_NOME . "<br>" .
+            "Gestão 2026-2027</p>",
+    ];
+
+    $stmt = $db->prepare("INSERT OR IGNORE INTO email_templates (tipo, assunto, html, descricao, variaveis) VALUES (?, ?, ?, ?, ?)");
+    foreach ($templates as $t) {
+        $stmt->execute([$t['tipo'], $t['assunto'], $t['html'], $t['descricao'], $t['variaveis']]);
+    }
+}
+
+/**
+ * Registra um lote de envio de emails
+ * Retorna o ID do lote criado
+ */
+function registrar_envio_lote(string $tipo, int $ano, string $assunto, string $html, array $destinatarios): int {
+    $total = count($destinatarios);
+    $sucesso = count(array_filter($destinatarios, fn($d) => $d['sucesso']));
+    $falha = $total - $sucesso;
+
+    $lote_id = db_insert(
+        "INSERT INTO envios_lotes (tipo, ano, assunto_snapshot, html_snapshot, total_enviados, total_sucesso, total_falha) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [$tipo, $ano, $assunto, $html, $total, $sucesso, $falha]
+    );
+
+    $stmt = get_db()->prepare("INSERT INTO envios_destinatarios (lote_id, email, nome, sucesso) VALUES (?, ?, ?, ?)");
+    foreach ($destinatarios as $d) {
+        $stmt->execute([$lote_id, $d['email'], $d['nome'] ?? '', $d['sucesso'] ? 1 : 0]);
+    }
+
+    return $lote_id;
 }

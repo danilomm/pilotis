@@ -34,7 +34,7 @@
         <fieldset>
             <legend>Endereço para Correspondência *</legend>
             <small style="display: block; margin-bottom: 1rem; color: var(--muted-color);">
-                Informe o endereço onde você deseja receber revistas, livros e outras publicações do Docomomo.
+                Informe o endereço onde você deseja receber revistas, livros e outras publicações da <?= e(ORG_SIGLA) ?>.
                 Se você mora em local sem portaria ou com horário restrito, considere informar um endereço alternativo.
             </small>
 

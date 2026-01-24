@@ -46,6 +46,7 @@ $pendentes = db_fetch_all("
     LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
     WHERE f.status = 'pendente'
     AND f.data_vencimento IS NOT NULL
+    AND p.ativo = 1
 ");
 
 echo "Pagamentos pendentes encontrados: " . count($pendentes) . "\n\n";

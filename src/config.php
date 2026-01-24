@@ -49,10 +49,20 @@ define('PAGBANK_API_URL', PAGBANK_SANDBOX
     ? 'https://sandbox.api.pagseguro.com'
     : 'https://api.pagseguro.com');
 
+// Organização
+define('ORG_NOME', env('ORG_NOME', 'Minha Organização'));
+define('ORG_SIGLA', env('ORG_SIGLA', 'ORG'));
+define('ORG_LOGO', env('ORG_LOGO', 'logo.png'));
+define('ORG_COR_PRIMARIA', env('ORG_COR_PRIMARIA', '#4a8c4a'));
+define('ORG_COR_SECUNDARIA', env('ORG_COR_SECUNDARIA', '#7ab648'));
+define('ORG_EMAIL_CONTATO', env('ORG_EMAIL_CONTATO', ''));
+define('ORG_SITE_URL', env('ORG_SITE_URL', ''));
+define('ORG_INSTAGRAM', env('ORG_INSTAGRAM', ''));
+
 // Brevo (Email)
 define('BREVO_API_KEY', env('BREVO_API_KEY', ''));
-define('EMAIL_FROM', env('EMAIL_FROM', 'tesouraria@docomomobrasil.com'));
-define('EMAIL_FROM_NAME', 'Docomomo Brasil');
+define('EMAIL_FROM', env('EMAIL_FROM', ORG_EMAIL_CONTATO));
+define('EMAIL_FROM_NAME', ORG_NOME);
 
 // App
 define('BASE_URL', env('BASE_URL', 'http://localhost:8000'));
@@ -61,33 +71,36 @@ define('SECRET_KEY', env('SECRET_KEY', 'chave_secreta_padrao'));
 // Admin
 define('ADMIN_PASSWORD', env('ADMIN_PASSWORD', ''));
 
-// Valores de filiação (em centavos)
-define('VALOR_ESTUDANTE', (int) env('VALOR_ESTUDANTE', 11500));
-define('VALOR_PROFISSIONAL', (int) env('VALOR_PROFISSIONAL', 23000));
-define('VALOR_INTERNACIONAL', (int) env('VALOR_INTERNACIONAL', 46000));
+// Categorias de filiação (parseadas do .env)
+// Formato: chave:label:valor_centavos,chave:label:valor,...
+$_categorias_env = env('CATEGORIAS', 'profissional_internacional:Pleno Internacional+Brasil:46000,profissional_nacional:Pleno Brasil:23000,estudante:Estudante:11500');
+$_categorias_filiacao = [];
+$_categorias_display = [];
+$_valores = [];
 
-// Categorias de filiação
-define('CATEGORIAS_FILIACAO', [
-    'profissional_internacional' => [
-        'nome' => 'Docomomo. Filiado Pleno Internacional + Brasil',
-        'valor' => VALOR_INTERNACIONAL
-    ],
-    'profissional_nacional' => [
-        'nome' => 'Docomomo. Filiado Pleno Brasil',
-        'valor' => VALOR_PROFISSIONAL
-    ],
-    'estudante' => [
-        'nome' => 'Docomomo. Filiado Estudante (Graduacao/Pos) Brasil',
-        'valor' => VALOR_ESTUDANTE
-    ],
-]);
+foreach (explode(',', $_categorias_env) as $cat_str) {
+    $parts = explode(':', trim($cat_str), 3);
+    if (count($parts) === 3) {
+        $key = trim($parts[0]);
+        $label = trim($parts[1]);
+        $valor = (int) trim($parts[2]);
+        $_categorias_filiacao[$key] = [
+            'nome' => ORG_SIGLA . '. ' . $label,
+            'valor' => $valor,
+        ];
+        $_categorias_display[$key] = $label;
+        $_valores[$key] = $valor;
+    }
+}
 
-// Nomes de categorias para exibição
-define('CATEGORIAS_DISPLAY', [
-    'profissional_internacional' => 'Filiação Plena Docomomo Internacional+Brasil',
-    'profissional_nacional' => 'Filiação Plena Docomomo Brasil',
-    'estudante' => 'Filiação Estudante Docomomo Brasil',
-]);
+define('CATEGORIAS_FILIACAO', $_categorias_filiacao);
+define('CATEGORIAS_DISPLAY', $_categorias_display);
+
+// Valores legados (compatibilidade) — usa primeiro, segundo e terceiro da lista
+$_vals = array_values($_valores);
+define('VALOR_ESTUDANTE', $_vals[2] ?? $_vals[0] ?? 11500);
+define('VALOR_PROFISSIONAL', $_vals[1] ?? $_vals[0] ?? 23000);
+define('VALOR_INTERNACIONAL', $_vals[0] ?? 46000);
 
 // Opções de formação acadêmica
 define('FORMACOES', [
@@ -105,9 +118,38 @@ define('FORMACOES', [
 
 /**
  * Retorna valor da filiação por categoria (em centavos)
+ * Se o ano for informado, busca valores específicos da campanha
  */
-function valor_por_categoria(string $categoria): int {
+function valor_por_categoria(string $categoria, ?int $ano = null): int {
+    if ($ano) {
+        $valores = valores_campanha($ano);
+        if ($valores) {
+            return match($categoria) {
+                'estudante' => $valores['valor_estudante'],
+                'profissional_nacional' => $valores['valor_profissional'],
+                'profissional_internacional' => $valores['valor_internacional'],
+                default => $valores['valor_internacional'],
+            };
+        }
+    }
     return CATEGORIAS_FILIACAO[$categoria]['valor'] ?? VALOR_PROFISSIONAL;
+}
+
+/**
+ * Retorna valores de filiação para um ano específico
+ * Busca na tabela campanhas; se não definidos, usa valores do .env
+ */
+function valores_campanha(int $ano): array {
+    $campanha = db_fetch_one(
+        "SELECT valor_estudante, valor_profissional, valor_internacional FROM campanhas WHERE ano = ?",
+        [$ano]
+    );
+
+    return [
+        'valor_estudante' => (int)($campanha['valor_estudante'] ?? VALOR_ESTUDANTE),
+        'valor_profissional' => (int)($campanha['valor_profissional'] ?? VALOR_PROFISSIONAL),
+        'valor_internacional' => (int)($campanha['valor_internacional'] ?? VALOR_INTERNACIONAL),
+    ];
 }
 
 /**

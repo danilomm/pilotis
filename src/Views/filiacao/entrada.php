@@ -1,6 +1,6 @@
 <article>
     <h2>Filiação <?= e($ano) ?></h2>
-    <p>Para iniciar ou renovar sua filiação ao <strong>Docomomo Brasil</strong>, informe seu email.</p>
+    <p>Para iniciar ou renovar sua filiação ao <strong><?= e(ORG_NOME) ?></strong>, informe seu email.</p>
 
     <form method="POST" action="/filiacao/<?= e($ano) ?>">
         <label for="email">Email</label>

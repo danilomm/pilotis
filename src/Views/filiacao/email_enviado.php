@@ -12,7 +12,7 @@
             <p style="font-size: 1.2em; margin-bottom: 0;">
                 Enviamos um link de acesso para:
             </p>
-            <p style="font-size: 1.3em; font-weight: bold; color: #4a8c4a;">
+            <p style="font-size: 1.3em; font-weight: bold; color: <?= ORG_COR_PRIMARIA ?>;">
                 <?= e($email) ?>
             </p>
         </div>
@@ -37,7 +37,7 @@
         <p style="color: #666;">
             <small>
                 Se ainda assim não receber, entre em contato:<br>
-                <strong>tesouraria.docomomobr@gmail.com</strong>
+                <strong><?= e(ORG_EMAIL_CONTATO) ?></strong>
             </small>
         </p>
 

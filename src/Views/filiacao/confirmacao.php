@@ -1,6 +1,6 @@
 <article>
     <div class="text-center">
-        <h2 style="color: #4a8c4a;">Filiação Confirmada!</h2>
+        <h2 style="color: <?= ORG_COR_PRIMARIA ?>;">Filiação Confirmada!</h2>
 
         <p style="font-size: 1.2em;"><?= e($mensagem ?? 'Sua filiação está confirmada.') ?></p>
 

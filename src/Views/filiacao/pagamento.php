@@ -28,7 +28,7 @@ $extra_head = '<script src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/d
     <style>
         .tabs input[type="radio"] { display: none; }
         .tabs label { display: inline-block; background: #f5f5f5; }
-        .tabs input:checked + label { background: #4a8c4a; color: white; }
+        .tabs input:checked + label { background: <?= ORG_COR_PRIMARIA ?>; color: white; }
         .tab-content { display: none; padding: 20px; border: 1px solid #ddd; margin-top: -1px; }
         #tab-pix:checked ~ #content-pix,
         #tab-boleto:checked ~ #content-boleto,

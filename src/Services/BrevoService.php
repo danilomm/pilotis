@@ -101,44 +101,24 @@ class BrevoService {
         $categoria_nome = CATEGORIAS_DISPLAY[$categoria] ?? $categoria;
         $valor_formatado = formatar_valor($valor_centavos);
 
-        // Template HTML
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Filiação Confirmada!</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome</strong>,</p>
-                <p>Sua filiação ao <strong>Docomomo Brasil</strong> para o ano de <strong>$ano</strong> está confirmada!</p>
-                <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
-                    <tr>
-                        <td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Categoria:</strong></td>
-                        <td style='padding: 10px; border-bottom: 1px solid #ddd;'>$categoria_nome</td>
-                    </tr>
-                    <tr>
-                        <td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Valor:</strong></td>
-                        <td style='padding: 10px; border-bottom: 1px solid #ddd;'>$valor_formatado</td>
-                    </tr>
-                </table>
-                <p>Em anexo, enviamos sua declaração de filiação.</p>
-                <p>Obrigado por fazer parte do Docomomo Brasil!</p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('confirmacao', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'categoria' => $categoria_nome,
+            'valor' => $valor_formatado,
+        ]);
+
+        if (!$tpl) return false;
 
         $anexos = [];
         if ($pdf_declaracao) {
-            $anexos[] = self::prepararAnexoPdf("declaracao_docomomo_$ano.pdf", $pdf_declaracao);
+            $anexos[] = self::prepararAnexoPdf("declaracao_" . strtolower(str_replace(' ', '_', ORG_SIGLA)) . "_$ano.pdf", $pdf_declaracao);
         }
 
         return self::enviarEmail(
             $email,
-            "Filiação Docomomo Brasil $ano - Confirmada!",
-            $html,
+            $tpl['assunto'],
+            $tpl['html'],
             $anexos ?: null
         );
     }
@@ -157,32 +137,22 @@ class BrevoService {
         $valor_formatado = formatar_valor($valor_centavos);
         $link = BASE_URL . "/filiacao/$ano/$token/pagamento";
         $urgencia = $dias_restantes <= 0 ? 'ÚLTIMO AVISO: ' : '';
+        $dias_info = $dias_restantes <= 0
+            ? "<span style='color: red;'><strong>Seu PIX expira hoje!</strong></span>"
+            : "Restam $dias_restantes dias para o vencimento.";
 
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #f0ad4e; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>{$urgencia}Lembrete de Pagamento</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome</strong>,</p>
-                <p>Identificamos que sua filiação ao Docomomo Brasil para $ano ainda está pendente de pagamento.</p>
-                <p><strong>Valor:</strong> $valor_formatado</p>
-                " . ($dias_restantes <= 0 ? "<p style='color: red;'><strong>Seu PIX expira hoje!</strong></p>" : "<p>Restam $dias_restantes dias para o vencimento.</p>") . "
-                <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Realizar Pagamento</a>
-                </p>
-                <p><small>Se já realizou o pagamento, por favor desconsidere este email.</small></p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('lembrete', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'valor' => $valor_formatado,
+            'link' => $link,
+            'urgencia' => $urgencia,
+            'dias_info' => $dias_info,
+        ]);
 
-        $assunto = "{$urgencia}Filiação Docomomo Brasil $ano - Pagamento Pendente";
+        if (!$tpl) return false;
 
-        return self::enviarEmail($email, $assunto, $html);
+        return self::enviarEmail($email, $tpl['assunto'], $tpl['html']);
     }
 
     /**
@@ -196,32 +166,15 @@ class BrevoService {
     ): bool {
         $link = BASE_URL . "/filiacao/$ano/$token";
 
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Renove sua Filiação</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome</strong>,</p>
-                <p>É hora de renovar sua filiação ao Docomomo Brasil!</p>
-                <p><strong>Benefícios da filiação:</strong></p>
-                <ul>
-                    <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
-                    <li>Acesso à rede de profissionais e pesquisadores</li>
-                    <li>Para internacional: Docomomo Journal, Member Card, descontos em museus</li>
-                </ul>
-                <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Renovar Filiação</a>
-                </p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('renovacao', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'link' => $link,
+        ]);
 
-        return self::enviarEmail($email, "Renove sua Filiação - Docomomo Brasil $ano", $html);
+        if (!$tpl) return false;
+
+        return self::enviarEmail($email, $tpl['assunto'], $tpl['html']);
     }
 
     /**
@@ -235,35 +188,15 @@ class BrevoService {
     ): bool {
         $link = BASE_URL . "/filiacao/$ano/$token";
 
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Convite para Filiação</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome</strong>,</p>
-                <p>Gostaríamos de convidar você a se filiar ao <strong>Docomomo Brasil</strong>!</p>
-                <p>O Docomomo (Documentation and Conservation of buildings, sites and neighbourhoods of the Modern Movement)
-                é uma organização internacional dedicada à documentação e conservação do patrimônio moderno.
-                Conheça mais sobre o Docomomo Brasil em <a href='https://www.docomomobrasil.com'>www.docomomobrasil.com</a>.</p>
-                <p><strong>Benefícios da filiação:</strong></p>
-                <ul>
-                    <li>Descontos em eventos do Docomomo Brasil e núcleos regionais</li>
-                    <li>Acesso à rede de profissionais e pesquisadores</li>
-                    <li>Participação nas atividades e publicações</li>
-                </ul>
-                <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Filiar-se Agora</a>
-                </p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('convite', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'link' => $link,
+        ]);
 
-        return self::enviarEmail($email, "Convite para Filiação - Docomomo Brasil $ano", $html);
+        if (!$tpl) return false;
+
+        return self::enviarEmail($email, $tpl['assunto'], $tpl['html']);
     }
 
     /**
@@ -277,28 +210,15 @@ class BrevoService {
     ): bool {
         $link = BASE_URL . "/filiacao/$ano/$token";
 
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Filiação Docomomo Brasil</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome</strong>,</p>
-                <p>Obrigado por sua participação no <strong>16º Seminário Docomomo Brasil</strong>!</p>
-                <p>Convidamos você a se filiar ao Docomomo Brasil e fortalecer nossa rede de documentação
-                e conservação da arquitetura, urbanismo e paisagismo modernos.</p>
-                <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Filiar-se Agora</a>
-                </p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('seminario', [
+            'nome' => $nome,
+            'ano' => $ano,
+            'link' => $link,
+        ]);
 
-        return self::enviarEmail($email, "Filiação Docomomo Brasil $ano - Participante do 16º Seminário", $html);
+        if (!$tpl) return false;
+
+        return self::enviarEmail($email, $tpl['assunto'], $tpl['html']);
     }
 
     /**
@@ -314,28 +234,14 @@ class BrevoService {
         $link = BASE_URL . "/filiacao/$ano/$token";
         $nome_display = $nome ?: 'filiado(a)';
 
-        $html = "
-        <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-            <div style='background-color: #4a8c4a; padding: 20px; text-align: center;'>
-                <h1 style='color: white; margin: 0;'>Acesso à Filiação</h1>
-            </div>
-            <div style='padding: 20px; background-color: #f9f9f9;'>
-                <p>Olá <strong>$nome_display</strong>,</p>
-                <p>Você solicitou acesso ao formulário de filiação do <strong>Docomomo Brasil</strong> para o ano de <strong>$ano</strong>.</p>
-                <p>Clique no botão abaixo para acessar seu formulário:</p>
-                <p style='text-align: center; margin: 30px 0;'>
-                    <a href='$link' style='background-color: #4a8c4a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>Acessar Formulário</a>
-                </p>
-                <p><small>Se você não solicitou este acesso, ignore este email.</small></p>
-                <p><small>Este link é pessoal e intransferível.</small></p>
-            </div>
-            <div style='padding: 15px; background-color: #4a8c4a; color: white; text-align: center; font-size: 12px;'>
-                Associação de Colaboradores do Docomomo Brasil<br>
-                <a href='https://www.docomomobrasil.com' style='color: white;'>www.docomomobrasil.com</a> · <a href='https://www.instagram.com/docomomobrasil' style='color: white;'>@docomomobrasil</a>
-            </div>
-        </div>
-        ";
+        $tpl = carregar_template('acesso', [
+            'nome' => $nome_display,
+            'ano' => $ano,
+            'link' => $link,
+        ]);
 
-        return self::enviarEmail($email, "Acesso à Filiação Docomomo Brasil $ano", $html);
+        if (!$tpl) return false;
+
+        return self::enviarEmail($email, $tpl['assunto'], $tpl['html']);
     }
 }

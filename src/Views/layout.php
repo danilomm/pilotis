@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= e($titulo ?? 'Pilotis') ?> - Docomomo Brasil</title>
+    <title><?= e($titulo ?? 'Pilotis') ?> - <?= e(ORG_NOME) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <style>
         :root {
             --pico-font-size: 100%;
-            --pico-primary: #4a8c4a;
-            --pico-primary-hover: #3d733d;
-            --pico-primary-focus: rgba(74, 140, 74, 0.25);
-            --docomomo-verde-claro: #7ab648;
-            --docomomo-verde-escuro: #4a8c4a;
+            --pico-primary: <?= ORG_COR_PRIMARIA ?>;
+            --pico-primary-hover: <?= ORG_COR_PRIMARIA ?>cc;
+            --pico-primary-focus: <?= ORG_COR_PRIMARIA ?>40;
+            --org-cor-primaria: <?= ORG_COR_PRIMARIA ?>;
+            --org-cor-secundaria: <?= ORG_COR_SECUNDARIA ?>;
         }
         body {
             padding: 1rem;
@@ -31,30 +31,30 @@
         .logo-text {
             font-weight: bold;
             font-size: 1.2rem;
-            color: var(--docomomo-verde-escuro);
+            color: var(--org-cor-primaria);
         }
         h1, h2, h3 {
-            color: var(--docomomo-verde-escuro);
+            color: var(--org-cor-primaria);
         }
         article {
-            border-top: 4px solid var(--docomomo-verde-claro);
+            border-top: 4px solid var(--org-cor-secundaria);
         }
         button[type="submit"],
         input[type="submit"],
         [role="button"].primary,
         .btn-primary {
-            background-color: var(--docomomo-verde-escuro);
-            border-color: var(--docomomo-verde-escuro);
+            background-color: var(--org-cor-primaria);
+            border-color: var(--org-cor-primaria);
         }
         button[type="submit"]:hover,
         input[type="submit"]:hover,
         [role="button"].primary:hover,
         .btn-primary:hover {
-            background-color: var(--docomomo-verde-claro);
-            border-color: var(--docomomo-verde-claro);
+            background-color: var(--org-cor-secundaria);
+            border-color: var(--org-cor-secundaria);
         }
         mark {
-            background-color: var(--docomomo-verde-claro);
+            background-color: var(--org-cor-secundaria);
             color: white;
             padding: 0.1rem 0.4rem;
             border-radius: 4px;
@@ -65,11 +65,11 @@
             color: #666;
         }
         fieldset {
-            border-left: 3px solid var(--docomomo-verde-claro);
+            border-left: 3px solid var(--org-cor-secundaria);
             padding-left: 1rem;
         }
         legend {
-            color: var(--docomomo-verde-escuro);
+            color: var(--org-cor-primaria);
             font-weight: bold;
         }
         .alert {
@@ -111,7 +111,7 @@
         <header>
             <div class="logo-container">
                 <a href="/">
-                    <img src="/assets/img/logo-docomomo.png" alt="Docomomo Brasil">
+                    <img src="/assets/img/<?= e(ORG_LOGO) ?>" alt="<?= e(ORG_NOME) ?>">
                 </a>
             </div>
         </header>
@@ -129,8 +129,7 @@
         <footer>
             <hr>
             <small>
-                Pilotis - Sistema de Gestao de Filiados v1.0.0 (PHP)<br>
-                Desenvolvido por Danilo Matoso (Tesoureiro) com assistencia de Claude Code
+                Pilotis - Sistema de Gestao de Filiados v1.0.0 (PHP)
             </small>
         </footer>
     </main>
