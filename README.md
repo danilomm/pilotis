@@ -52,9 +52,23 @@ Isso cria o banco SQLite vazio em `dados/data/pilotis.db`.
 cp .env.example .env
 ```
 
-Edite `.env` com suas credenciais:
+Edite `.env` com os dados da sua organizacao:
 
 ```env
+# Organizacao
+ORG_NOME=Minha Associacao
+ORG_SIGLA=MA
+ORG_LOGO=logo.png
+ORG_COR_PRIMARIA=#4a8c4a
+ORG_COR_SECUNDARIA=#7ab648
+ORG_EMAIL_CONTATO=contato@minhaassociacao.org
+ORG_SITE_URL=https://www.minhaassociacao.org
+ORG_INSTAGRAM=minhaassociacao
+
+# Categorias de filiacao
+# Formato: chave:label:valor_centavos (separados por virgula)
+CATEGORIAS=pleno:Pleno:30000,estudante:Estudante:15000
+
 # Banco de dados
 DATABASE_PATH=dados/data/pilotis.db
 
@@ -64,17 +78,12 @@ PAGBANK_SANDBOX=true
 
 # Brevo - ex-Sendinblue (obter em https://www.brevo.com)
 BREVO_API_KEY=sua_chave_aqui
-EMAIL_FROM=tesouraria@suaorganizacao.com
+EMAIL_FROM=contato@minhaassociacao.org
 
 # App
 BASE_URL=http://localhost:8000
 SECRET_KEY=chave_secreta_aleatoria
 ADMIN_PASSWORD=sua_senha_admin
-
-# Valores de filiacao (em centavos)
-VALOR_ESTUDANTE=11500
-VALOR_PROFISSIONAL=23000
-VALOR_INTERNACIONAL=46000
 ```
 
 ### 4. Instale dependencias (opcional)
@@ -130,41 +139,38 @@ pilotis/
 
 ## Personalizacao
 
-### Logo e cores
+Toda a personalizacao e feita via `.env`, sem editar codigo.
 
-Substitua os arquivos em `public/assets/img/`:
-- `logo-docomomo.png` - Logo principal
-- `logo-docomomo.jpg` - Logo para PDF (sem transparencia)
+### Identidade visual
 
-Edite as cores em `src/Views/layout.php`.
+```env
+ORG_NOME=Minha Associacao
+ORG_SIGLA=MA
+ORG_LOGO=logo.png            # arquivo em public/assets/img/
+ORG_COR_PRIMARIA=#4a8c4a     # cor principal (header, botoes)
+ORG_COR_SECUNDARIA=#7ab648   # cor de destaque
+ORG_SITE_URL=https://www.minhaassociacao.org
+ORG_INSTAGRAM=minhaassociacao
+```
+
+Coloque sua logo em `public/assets/img/` (PNG para web, JPG para PDF sem transparencia).
 
 ### Categorias de filiacao
 
-Edite `src/config.php`:
+Defina as categorias no `.env` no formato `chave:label:valor_centavos`:
 
-```php
-define('CATEGORIAS_FILIACAO', [
-    'profissional_internacional' => [
-        'nome' => 'Filiado Pleno Internacional',
-        'valor' => 46000  // centavos
-    ],
-    'profissional_nacional' => [
-        'nome' => 'Filiado Pleno Nacional',
-        'valor' => 23000
-    ],
-    'estudante' => [
-        'nome' => 'Filiado Estudante',
-        'valor' => 11500
-    ],
-]);
+```env
+# Exemplo com 3 categorias:
+CATEGORIAS=pleno:Pleno:30000,estudante:Estudante:15000,aposentado:Aposentado:7500
+
+# Exemplo com 1 categoria:
+CATEGORIAS=associado:Associado:12000
 ```
 
-### Declaracao PDF
+### Templates de email
 
-Edite `src/Services/PdfService.php` para alterar:
-- Texto da declaracao
-- Nome e cargo do assinante
-- Layout do documento
+Os templates de email sao editaveis pelo painel admin em `/admin/campanha`.
+Na primeira execucao, o sistema cria templates padrao que podem ser personalizados.
 
 ## Scripts CLI
 
