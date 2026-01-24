@@ -1,9 +1,32 @@
-# Python (backup)
-backup-python/venv/
+# Python (backup antigo - manter só local)
+backup-python/
 __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+
+# Documentação específica da instalação
+CLAUDE.md
+
+# Logos específicos (cada instalação tem o seu)
+public/assets/img/logo-*
+
+# Scripts de importação específicos (manter só local)
+scripts/analisar_*.php
+scripts/limpar_*.php
+scripts/importar_*.php
+scripts/normalizar_*.php
+scripts/consolidar_*.php
+scripts/comparar_*.php
+scripts/revisar_*.php
+scripts/verificar_emails.php
+scripts/verificar_semi_organizado.php
+scripts/atualizar_normalizacao.php
+scripts/cidades_normalizadas.php
+scripts/emails_typos.php
+scripts/enderecos_2022_manual.php
+scripts/instituicoes_normalizadas.php
+scripts/analisar_categorias.php
 
 # PHP
 /vendor/

@@ -66,10 +66,11 @@ class PdfService {
             "é filiado(a) ao <strong>" . ORG_NOME . "</strong> na categoria <strong>$categoria</strong>, " .
             "com anuidade de <strong>$valor</strong> referente ao ano de <strong>$ano</strong>, " .
             "devidamente quitada.</p>" .
-            "<p style='margin-top: 60px; text-align: center;'>" .
-            "<strong>Marta Peixoto</strong><br>" .
-            "Coordenadora do " . ORG_NOME . "<br>" .
-            "Gestão 2026-2027</p>";
+            (ORG_ASSINANTE ? "<p style='margin-top: 60px; text-align: center;'>" .
+            "<strong>" . ORG_ASSINANTE . "</strong><br>" .
+            (ORG_CARGO ? ORG_CARGO . " do " . ORG_NOME . "<br>" : '') .
+            (ORG_GESTAO ? "Gestão " . ORG_GESTAO : '') .
+            "</p>" : '');
     }
 
     /**

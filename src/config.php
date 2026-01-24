@@ -58,6 +58,9 @@ define('ORG_COR_SECUNDARIA', env('ORG_COR_SECUNDARIA', '#7ab648'));
 define('ORG_EMAIL_CONTATO', env('ORG_EMAIL_CONTATO', ''));
 define('ORG_SITE_URL', env('ORG_SITE_URL', ''));
 define('ORG_INSTAGRAM', env('ORG_INSTAGRAM', ''));
+define('ORG_ASSINANTE', env('ORG_ASSINANTE', ''));
+define('ORG_CARGO', env('ORG_CARGO', ''));
+define('ORG_GESTAO', env('ORG_GESTAO', ''));
 
 // Brevo (Email)
 define('BREVO_API_KEY', env('BREVO_API_KEY', ''));
