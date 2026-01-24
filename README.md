@@ -182,6 +182,9 @@ php scripts/enviar_campanha.php --dry-run
 php scripts/enviar_campanha.php
 
 # Lembretes (rodar via cron diariamente)
+# - 1 dia antes do vencimento (PIX/Boleto)
+# - Quinzenalmente: vencidos + formulários incompletos (máx 3)
+# - "Última chance" 3 dias antes do fim da campanha
 php scripts/enviar_lembretes.php
 php scripts/enviar_lembretes.php --dry-run
 
@@ -233,7 +236,7 @@ https://filiacao.suaorganizacao.com/webhook/pagbank
 # Campanha diária às 9h (detecta campanha aberta, envia até 290/dia)
 0 12 * * * php /caminho/para/scripts/enviar_campanha.php >> /tmp/campanha.log 2>&1
 
-# Lembretes diários às 8h (pendentes + "última chance" 3 dias antes do fim)
+# Lembretes diários às 8h (vencimento, quinzenais, última chance)
 0 11 * * * php /caminho/para/scripts/enviar_lembretes.php >> /tmp/lembretes.log 2>&1
 
 # Backup diário às 3h
