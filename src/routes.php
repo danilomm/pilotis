@@ -48,6 +48,10 @@ function dispatch(): void {
         $params = match_route($pattern, $uri);
         if ($params !== false) {
             try {
+                // Workaround: força status 200 antes de chamar o handler
+                // Necessário em alguns servidores FastCGI onde o status
+                // padrão após rewrite é incorretamente definido como 404
+                @header('HTTP/1.1 200 OK', true, 200);
                 call_user_func_array($handler, $params);
                 return;
             } catch (Exception $e) {
@@ -92,7 +96,13 @@ function match_route(string $pattern, string $uri): array|false {
  * Redireciona para outra URL
  */
 function redirect(string $url, int $code = 303): void {
-    header("Location: $url", true, $code);
+    // Para FastCGI, pode ser necessário usar Status: em vez de HTTP/1.1
+    if (php_sapi_name() === 'cgi-fcgi' || php_sapi_name() === 'fpm-fcgi') {
+        header("Status: $code", true, $code);
+    } else {
+        header("HTTP/1.1 $code See Other", true, $code);
+    }
+    header("Location: $url");
     exit;
 }
 

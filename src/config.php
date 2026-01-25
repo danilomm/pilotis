@@ -19,14 +19,28 @@ if (file_exists($envPath)) {
             // Remove aspas se houver
             $value = trim($value, '"\'');
             $_ENV[$key] = $value;
-            putenv("$key=$value");
+            // putenv pode estar desabilitado em hospedagem compartilhada
+            if (function_exists('putenv')) {
+                @putenv("$key=$value");
+            }
         }
     }
 }
 
 // Função helper para obter configuração
 function env(string $key, $default = null) {
-    return $_ENV[$key] ?? getenv($key) ?: $default;
+    // Prioriza $_ENV (sempre funciona)
+    if (isset($_ENV[$key])) {
+        return $_ENV[$key];
+    }
+    // Fallback para getenv (pode estar desabilitado)
+    if (function_exists('getenv')) {
+        $val = @getenv($key);
+        if ($val !== false) {
+            return $val;
+        }
+    }
+    return $default;
 }
 
 // Diretório base do projeto

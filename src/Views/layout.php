@@ -1,3 +1,10 @@
+<?php
+// Workaround: força status 200 antes de enviar HTML
+// Necessário em alguns servidores onde o status após rewrite é 404
+if (!headers_sent()) {
+    header('HTTP/1.1 200 OK', true, 200);
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
