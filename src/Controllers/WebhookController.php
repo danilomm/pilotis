@@ -66,6 +66,10 @@ class WebhookController {
 
             registrar_log('pagamento_confirmado', $dados['cadastrado_id'], "Pagamento {$dados['ano']} confirmado via webhook");
 
+            // Cancela lembretes pendentes
+            require_once SRC_DIR . '/Services/LembreteService.php';
+            LembreteService::cancelar($pagamento['id']);
+
             // Processa email e PDF
             self::processarPagamentoConfirmado($dados['cadastrado_id'], $dados['ano']);
 

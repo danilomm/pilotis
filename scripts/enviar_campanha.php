@@ -38,17 +38,33 @@ if (isset($options['help'])) {
 $limite = (int)($options['limite'] ?? 290);
 $dry_run = isset($options['dry-run']);
 
-// Detecta ano: argumento --ano ou campanha aberta no banco
+// Detecta ano: argumento --ano ou campanha em modo 'enviando'
 if (isset($options['ano'])) {
     $ano = (int)$options['ano'];
 } else {
-    $campanha_aberta = db_fetch_one("SELECT ano FROM campanhas WHERE status = 'aberta' ORDER BY ano DESC LIMIT 1");
-    if (!$campanha_aberta) {
-        echo "Nenhuma campanha aberta encontrada. Use --ano YYYY ou crie uma campanha no admin.\n";
+    $campanha_enviando = db_fetch_one("SELECT ano FROM campanhas WHERE status = 'enviando' ORDER BY ano DESC LIMIT 1");
+    if (!$campanha_enviando) {
+        echo "Nenhuma campanha em modo 'enviando'. Clique 'Iniciar Envio' no admin.\n";
         exit(0);
     }
-    $ano = (int)$campanha_aberta['ano'];
+    $ano = (int)$campanha_enviando['ano'];
 }
+
+// Trava contra execução simultânea
+$lock_file = sys_get_temp_dir() . "/pilotis_campanha_{$ano}.lock";
+if (file_exists($lock_file)) {
+    $lock_time = (int)file_get_contents($lock_file);
+    // Lock válido por 30 minutos (proteção contra lock órfão)
+    if (time() - $lock_time < 1800) {
+        echo "Outra execução em andamento (lock file). Abortando.\n";
+        exit(0);
+    }
+}
+file_put_contents($lock_file, time());
+// Remove lock ao terminar (normal ou erro)
+register_shutdown_function(function() use ($lock_file) {
+    @unlink($lock_file);
+});
 
 echo "Campanha de filiação $ano (limite: $limite emails)\n";
 if ($dry_run) {
@@ -87,13 +103,13 @@ $grupos = [
             WHERE p.ativo = 1
             AND f.seminario = 1
             AND p.id NOT IN (
-                SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'pago'
+                SELECT pessoa_id FROM filiacoes WHERE status = 'pago'
             )
             AND p.id NOT IN (
                 SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
             )
         ",
-        'params' => [$ano, $ano],
+        'params' => [$ano],
     ],
     [
         'nome' => 'Ex-filiados',
@@ -199,6 +215,18 @@ foreach ($grupos as $grupo) {
             continue;
         }
 
+        // Marca como 'enviado' ANTES de enviar (evita reenvio se cota estourar)
+        $filiacao = db_fetch_one(
+            "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+            [$d['id'], $ano]
+        );
+        if (!$filiacao) {
+            db_insert("
+                INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
+                VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
+            ", [$d['id'], $ano]);
+        }
+
         try {
             $enviado = false;
             switch ($grupo['template']) {
@@ -218,18 +246,6 @@ foreach ($grupos as $grupo) {
             if ($enviado) {
                 echo "OK\n";
                 $total_enviados++;
-
-                // Cria filiação com status 'enviado' para não reenviar
-                $filiacao = db_fetch_one(
-                    "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
-                    [$d['id'], $ano]
-                );
-                if (!$filiacao) {
-                    db_insert("
-                        INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
-                        VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
-                    ", [$d['id'], $ano]);
-                }
             } else {
                 echo "ERRO\n";
                 $total_erros++;

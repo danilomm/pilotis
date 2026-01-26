@@ -32,7 +32,8 @@ pilotis/
 │   ├── Services/
 │   │   ├── PagBankService.php
 │   │   ├── BrevoService.php
-│   │   └── PdfService.php
+│   │   ├── PdfService.php
+│   │   └── LembreteService.php
 │   └── Views/
 │       ├── layout.php
 │       ├── filiacao/
@@ -52,8 +53,9 @@ pilotis/
 │           ├── 404.php
 │           └── 500.php
 ├── scripts/
-│   ├── enviar_campanha.php
-│   ├── enviar_lembretes.php
+│   ├── enviar_campanha.php   # CLI de campanha (backup, substituido por UI admin)
+│   ├── enviar_lembretes.php  # CLI de lembretes antigo (substituido por processar_lembretes.php)
+│   ├── processar_lembretes.php # CLI idempotente para lembretes agendados
 │   ├── admin.php          # CLI para administracao
 │   ├── verificar_emails.php   # Verifica typos e duplicados
 │   ├── revisar_nomes.php      # Lista nomes para revisao manual
@@ -96,6 +98,9 @@ pilotis/
 | `GET /admin/novo` | Novo cadastro |
 | `GET /admin/download/csv` | Exportar filiados |
 | `GET /admin/download/banco` | Backup do banco |
+| `POST /admin/campanha/enviar-lote` | Envia lote de emails (AJAX JSON) |
+| `POST /admin/campanha/preview-lote` | Conta destinatarios por grupo (AJAX JSON) |
+| `POST /admin/lembretes/processar` | Processa lembretes pendentes (AJAX JSON) |
 
 ## Categorias
 
@@ -116,14 +121,24 @@ Registros de filiacao criados pelo envio de email so contem: `pessoa_id`, `ano`,
 ## Scripts CLI
 
 ```bash
-# Campanha (detecta campanha aberta, envia por grupos, limite 290/dia)
+# Campanha — ENVIO MANUAL via admin (/admin/campanha)
+# O envio agora e feito por lotes interativos no painel admin.
+# O script CLI abaixo e mantido como backup:
 php scripts/enviar_campanha.php --dry-run
 php scripts/enviar_campanha.php
 
-# Lembretes (rodar via cron diariamente)
-# - 1 dia antes do vencimento (PIX/Boleto)
-# - Quinzenalmente: pagamento vencido + formulario incompleto (max 3)
-# - "Ultima chance" 3 dias antes do fim da campanha
+# Lembretes agendados (idempotente — seguro para rodar N vezes)
+# Lembretes sao agendados automaticamente pelo sistema:
+# - PIX/Boleto gerado -> lembrete de vencimento (D-1)
+# - Formulario acessado -> 3 lembretes quinzenais
+# - Data fim definida -> ultima chance (D-3)
+# - Pagamento confirmado -> cancela todos
+# Processamento tambem disponivel via botao no admin (/admin/campanha)
+php scripts/processar_lembretes.php --dry-run
+php scripts/processar_lembretes.php
+php scripts/processar_lembretes.php --limite 20
+
+# Script antigo de lembretes (substituido por processar_lembretes.php)
 php scripts/enviar_lembretes.php
 php scripts/enviar_lembretes.php --dry-run
 
@@ -187,11 +202,19 @@ https://pilotis.docomomobrasil.com/backup-download.php?token=backup-secreto-pilo
 - `seminario`: participantes do 16o Seminario nao filiados
 - `convite`: outros cadastrados
 
-**Lembretes (enviar_lembretes.php):**
-- 1 dia antes do vencimento (PIX/Boleto) — template `lembrete`
-- Quinzenalmente apos vencer (domingos de semana par, max 3) — template `lembrete_vencido`
-- Quinzenalmente para formulario incompleto (domingos de semana par, max 3) — template `lembrete_acesso`
-- 3 dias antes do fim da campanha — template `ultima_chance`
+**Lembretes (tabela `lembretes_agendados`, processados por `LembreteService`):**
+
+Lembretes sao agendados individualmente no banco e processados sob demanda (idempotente).
+
+| Evento | Lembrete agendado |
+|--------|-------------------|
+| PIX/Boleto gerado | `vencimento_amanha` para D-1 |
+| Formulario acessado (status `acesso`) | `formulario_incompleto` para D+14, D+28, D+42 |
+| Data fim da campanha definida | `ultima_chance` para data_fim - 3 dias |
+| Pagamento confirmado | Cancela TODOS os lembretes da filiacao |
+| Campanha fechada | Cancela todos os lembretes do ano |
+
+Processamento: via botao no admin (`/admin/campanha`) ou CLI (`scripts/processar_lembretes.php`)
 
 ## Declaracao PDF
 
@@ -268,25 +291,37 @@ php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 **Tecnologia:** Apache + PHP 8.3 (FPM)
 **Status:** Instalado e funcionando
 
-## Protecao com Senha (pre-lancamento)
+## Para Entrar no Ar (apos homologacao PagBank)
 
-O site esta protegido com HTTP Basic Auth ate o lancamento da campanha.
+**Status atual:** Aguardando homologacao do PagBank (solicitacao enviada 2026-01-25).
 
-**Credenciais de acesso:**
-- Usuario: `admin`
-- Senha: `pilotis2026`
+A campanha esta pausada e o site mostra pagina de manutencao. Quando o PagBank aprovar:
 
-**Para remover a protecao (ao lancar campanha):**
+### 1. Reabrir a campanha
 
-Editar `.htaccess` no servidor e remover estas linhas:
-```apache
-AuthType Basic
-AuthName "Pilotis - Acesso restrito"
-AuthUserFile /home/pilotis/www/.htpasswd
-Require valid-user
+```bash
+sshpass -p 'King@123' ssh pilotis@ftp.pilotis.docomomobrasil.com \
+  "/usr/bin/php81 -r \"require 'www/src/config.php'; require 'www/src/db.php'; db_execute(\\\"UPDATE campanhas SET status = 'aberta' WHERE ano = 2026\\\"); echo 'Campanha reaberta';\""
 ```
 
-Os endpoints de cron e backup continuarao funcionando (tem token proprio).
+Ou via admin: https://pilotis.docomomobrasil.com/admin → Campanhas → Reabrir
+
+### 2. Testar pagamento
+
+1. Acessar https://pilotis.docomomobrasil.com/filiacao/2026
+2. Informar email de teste
+3. Preencher formulario
+4. Gerar PIX e verificar se aparece QR Code
+
+### 3. Enviar emails restantes
+
+O cron vai continuar enviando automaticamente (290/dia).
+Para forcar envio manual:
+
+```bash
+sshpass -p 'King@123' ssh pilotis@ftp.pilotis.docomomobrasil.com \
+  "/usr/bin/php81 www/scripts/enviar_campanha.php"
+```
 
 ### Credenciais do servidor
 

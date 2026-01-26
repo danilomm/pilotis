@@ -129,5 +129,20 @@ SELECT 'estado', estado, COUNT(*) FROM filiacoes WHERE estado IS NOT NULL AND es
 UNION ALL
 SELECT 'profissao', profissao, COUNT(*) FROM filiacoes WHERE profissao IS NOT NULL AND profissao <> '' GROUP BY profissao;
 
+-- Tabela de lembretes agendados (envio individual, idempotente)
+CREATE TABLE IF NOT EXISTS lembretes_agendados (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filiacao_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    data_agendada DATE NOT NULL,
+    enviado INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    enviado_at DATETIME,
+    FOREIGN KEY (filiacao_id) REFERENCES filiacoes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_lembretes_data ON lembretes_agendados(data_agendada, enviado);
+CREATE INDEX IF NOT EXISTS idx_lembretes_filiacao ON lembretes_agendados(filiacao_id);
+
 -- Campanha inicial (ano atual)
 INSERT OR IGNORE INTO campanhas (ano, status) VALUES (strftime('%Y', 'now'), 'aberta');

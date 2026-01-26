@@ -48,17 +48,32 @@
         $ano = $c['ano'];
         $status = $c['status'];
         $stats = $c['stats'];
-        $is_aberta = $status === 'aberta';
-        $border_color = $is_aberta ? '#17a2b8' : '#6c757d';
-        $status_bg = $is_aberta ? '#17a2b8' : '#6c757d';
-        $status_label = $is_aberta ? 'Aberta' : 'Fechada';
+        $is_aberta = in_array($status, ['aberta', 'enviando', 'pausada']);
+        $is_enviando = $status === 'enviando';
+        $is_pausada = $status === 'pausada';
+        $status_colors = [
+            'aberta' => '#17a2b8',
+            'enviando' => '#28a745',
+            'pausada' => '#ffc107',
+            'fechada' => '#6c757d',
+        ];
+        $status_labels = [
+            'aberta' => 'Aberta',
+            'enviando' => 'Enviando',
+            'pausada' => 'Pausada',
+            'fechada' => 'Fechada',
+        ];
+        $border_color = $status_colors[$status] ?? '#6c757d';
+        $status_bg = $border_color;
+        $status_label = $status_labels[$status] ?? ucfirst($status);
+        $status_text_color = $status === 'pausada' ? '#000' : 'white';
         ?>
         <div style="border: 2px solid <?= $border_color ?>; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
             <!-- Cabeçalho -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h3 style="margin: 0;">Campanha <?= e($ano) ?></h3>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <mark style="background: <?= $status_bg ?>; color: white; padding: 4px 12px; border-radius: 4px;"><?= $status_label ?></mark>
+                    <mark style="background: <?= $status_bg ?>; color: <?= $status_text_color ?>; padding: 4px 12px; border-radius: 4px;"><?= $status_label ?></mark>
                     <?php if ($is_aberta && (int)($stats['total'] ?? 0) === 0): ?>
                         <form method="POST" action="/admin/campanha/excluir" style="margin: 0;">
                             <input type="hidden" name="ano" value="<?= $ano ?>">
@@ -168,38 +183,53 @@
                     </form>
                 </details>
 
-                <!-- Ações -->
-                <?php
-                    // Total de contatos para envio
-                    $total_contatos = db_fetch_one("SELECT COUNT(*) as total FROM pessoas WHERE ativo = 1 AND EXISTS (SELECT 1 FROM emails WHERE pessoa_id = pessoas.id)")['total'] ?? 0;
-                ?>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    <button type="button" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; font-size: 14px;"
-                            onclick="document.getElementById('modal-enviar-<?= $ano ?>').style.display='flex'">
-                        Enviar Emails (<?= $total_contatos ?> contatos)
-                    </button>
+                <!-- Envio Manual de Emails -->
+                <details open style="margin-bottom: 15px; background: #f0fff0; padding: 12px 15px; border-radius: 8px; border: 1px solid #b2dfdb;" id="envio-manual-<?= $ano ?>">
+                    <summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #2e7d32;">Envio de Emails</strong>
+                        <span style="color: #2e7d32; font-size: 13px;">Envio manual por lotes</span>
+                    </summary>
+                    <div style="margin-top: 12px;">
+                        <div id="grupos-<?= $ano ?>" style="margin-bottom: 12px;">
+                            <small style="color: #888;">Carregando grupos...</small>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px;">
+                            <div style="background: #e8f5e9; padding: 6px 12px; border-radius: 4px;">
+                                Enviados hoje: <strong id="enviados-hoje-<?= $ano ?>">...</strong> / 290
+                            </div>
+                            <button type="button" id="btn-enviar-<?= $ano ?>"
+                                    onclick="enviarLote(<?= $ano ?>)"
+                                    style="background: #2e7d32; color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 5px; cursor: pointer;">
+                                Enviar proximo lote (50)
+                            </button>
+                        </div>
+                        <div id="log-envio-<?= $ano ?>" style="font-family: monospace; font-size: 12px; color: #555; max-height: 150px; overflow-y: auto;"></div>
+                    </div>
+                </details>
 
-                    <!-- Modal de confirmação -->
-                    <div id="modal-enviar-<?= $ano ?>" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;">
-                        <div style="background:white; padding:30px; border-radius:8px; max-width:400px; width:90%;">
-                            <h4 style="margin-top:0;">Confirmar Envio de Emails</h4>
-                            <p>Serão enviados emails para <strong><?= $total_contatos ?></strong> contatos da campanha <?= $ano ?>.</p>
-                            <form method="POST" action="/admin/campanha/enviar">
-                                <input type="hidden" name="ano" value="<?= $ano ?>">
-                                <input type="hidden" name="tipo" value="todos">
-                                <label for="senha-<?= $ano ?>">Senha de administrador:</label>
-                                <input type="password" name="senha" id="senha-<?= $ano ?>" required style="width:100%; margin-bottom:15px;">
-                                <div style="display:flex; gap:10px; justify-content:flex-end;">
-                                    <button type="button" style="background:#6c757d; color:white; border:none; padding:8px 16px;"
-                                            onclick="document.getElementById('modal-enviar-<?= $ano ?>').style.display='none'">Cancelar</button>
-                                    <button type="submit" style="background:#dc3545; color:white; border:none; padding:8px 16px;">
-                                        Enviar <?= $total_contatos ?> emails
-                                    </button>
-                                </div>
-                            </form>
+                <!-- Lembretes -->
+                <details style="margin-bottom: 15px; background: #fff3e0; padding: 12px 15px; border-radius: 8px; border: 1px solid #ffe0b2;" id="lembretes-<?= $ano ?>">
+                    <summary style="cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #e65100;">Lembretes</strong>
+                        <span style="color: #e65100; font-size: 13px;" id="lembretes-badge-<?= $ano ?>"></span>
+                    </summary>
+                    <div style="margin-top: 12px;">
+                        <div id="lembretes-info-<?= $ano ?>">
+                            <small style="color: #888;">Carregando...</small>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button type="button" id="btn-lembretes-<?= $ano ?>"
+                                    onclick="processarLembretes(<?= $ano ?>)"
+                                    style="background: #e65100; color: white; border: none; padding: 8px 16px; font-size: 13px; border-radius: 5px; cursor: pointer;">
+                                Processar lembretes de hoje
+                            </button>
+                            <span id="lembretes-resultado-<?= $ano ?>" style="margin-left: 10px; font-size: 13px;"></span>
                         </div>
                     </div>
+                </details>
 
+                <!-- Ações -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <form method="POST" action="/admin/campanha/fechar" style="margin: 0;">
                         <input type="hidden" name="ano" value="<?= $ano ?>">
                         <button type="submit" style="background: #dc3545; color: white; border: none; padding: 8px 16px; font-size: 14px;"
@@ -362,3 +392,145 @@
         <p>Nenhuma campanha encontrada. Crie a primeira acima.</p>
     <?php endif; ?>
 </article>
+
+<script>
+// Carrega preview dos grupos ao abrir a pagina
+document.addEventListener('DOMContentLoaded', function() {
+    <?php foreach ($campanhas as $c): ?>
+    <?php if (in_array($c['status'], ['aberta', 'enviando', 'pausada'])): ?>
+    carregarPreview(<?= $c['ano'] ?>);
+    <?php endif; ?>
+    <?php endforeach; ?>
+});
+
+async function carregarPreview(ano) {
+    try {
+        const resp = await fetch('/admin/campanha/preview-lote', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'ano=' + ano
+        });
+        const data = await resp.json();
+        atualizarGrupos(ano, data.grupos);
+        document.getElementById('enviados-hoje-' + ano).textContent = data.enviados_hoje;
+
+        if (data.enviados_hoje >= data.limite_diario) {
+            const btn = document.getElementById('btn-enviar-' + ano);
+            btn.disabled = true;
+            btn.textContent = 'Limite diario atingido';
+            btn.style.background = '#999';
+        }
+    } catch (e) {
+        document.getElementById('grupos-' + ano).innerHTML = '<small style="color: red;">Erro ao carregar grupos</small>';
+    }
+}
+
+function atualizarGrupos(ano, grupos) {
+    let total = 0;
+    let html = '<table style="width: 100%; font-size: 0.9em; margin-bottom: 5px;">';
+    grupos.forEach(function(g, i) {
+        total += g.total;
+        const cor = g.total > 0 ? '#333' : '#aaa';
+        html += '<tr style="color: ' + cor + ';">'
+            + '<td style="padding: 3px 0;">Grupo ' + (i+1) + ': <strong>' + g.nome + '</strong></td>'
+            + '<td style="text-align: right; padding: 3px 0;">' + g.total + ' destinatarios</td>'
+            + '<td style="text-align: right; padding: 3px 0; color: #888; font-size: 0.85em;">' + g.template + '</td>'
+            + '</tr>';
+    });
+    html += '<tr style="border-top: 1px solid #ccc; font-weight: bold;">'
+        + '<td style="padding: 5px 0;">Total</td>'
+        + '<td style="text-align: right; padding: 5px 0;">' + total + ' destinatarios</td>'
+        + '<td></td></tr>';
+    html += '</table>';
+    document.getElementById('grupos-' + ano).innerHTML = html;
+}
+
+async function enviarLote(ano) {
+    const btn = document.getElementById('btn-enviar-' + ano);
+    const log = document.getElementById('log-envio-' + ano);
+
+    if (!confirm('Enviar proximo lote de ate 50 emails?')) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+    btn.style.background = '#888';
+
+    try {
+        const resp = await fetch('/admin/campanha/enviar-lote', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'ano=' + ano
+        });
+        const data = await resp.json();
+
+        if (data.erro) {
+            log.innerHTML += '<div style="color: red;">' + data.erro + '</div>';
+            btn.disabled = true;
+            btn.textContent = 'Limite atingido';
+            btn.style.background = '#999';
+            return;
+        }
+
+        // Atualiza contadores
+        atualizarGrupos(ano, data.grupos);
+        document.getElementById('enviados-hoje-' + ano).textContent = data.enviados_hoje;
+
+        // Mostra resultado
+        const agora = new Date().toLocaleTimeString('pt-BR');
+        log.innerHTML += '<div>' + agora + ' - Lote: ' + data.enviados + ' enviados'
+            + (data.erros > 0 ? ', ' + data.erros + ' erros' : '')
+            + (data.grupo_atual ? ' (' + data.grupo_atual + ')' : '')
+            + '</div>';
+        log.scrollTop = log.scrollHeight;
+
+        if (data.enviados_hoje >= data.limite_diario) {
+            btn.disabled = true;
+            btn.textContent = 'Limite diario atingido';
+            btn.style.background = '#999';
+        } else if (data.enviados === 0) {
+            btn.disabled = true;
+            btn.textContent = 'Todos enviados';
+            btn.style.background = '#999';
+        } else {
+            btn.disabled = false;
+            btn.textContent = 'Enviar proximo lote (50)';
+            btn.style.background = '#2e7d32';
+        }
+    } catch (e) {
+        log.innerHTML += '<div style="color: red;">Erro de rede: ' + e.message + '</div>';
+        btn.disabled = false;
+        btn.textContent = 'Enviar proximo lote (50)';
+        btn.style.background = '#2e7d32';
+    }
+}
+
+async function processarLembretes(ano) {
+    const btn = document.getElementById('btn-lembretes-' + ano);
+    const resultado = document.getElementById('lembretes-resultado-' + ano);
+
+    btn.disabled = true;
+    btn.textContent = 'Processando...';
+
+    try {
+        const resp = await fetch('/admin/lembretes/processar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'ano=' + ano
+        });
+        const data = await resp.json();
+
+        resultado.innerHTML = '<span style="color: #2e7d32;">'
+            + data.enviados + ' enviados, '
+            + data.erros + ' erros, '
+            + data.pulados + ' pulados'
+            + '</span>';
+
+        btn.disabled = false;
+        btn.textContent = 'Processar lembretes de hoje';
+    } catch (e) {
+        resultado.innerHTML = '<span style="color: red;">Erro: ' + e.message + '</span>';
+        btn.disabled = false;
+        btn.textContent = 'Processar lembretes de hoje';
+    }
+}
+</script>

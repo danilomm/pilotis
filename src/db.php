@@ -173,6 +173,22 @@ function init_extra_tables(PDO $db): void {
     $db->exec("UPDATE filiacoes SET status = 'pago' WHERE data_pagamento IS NOT NULL AND status IS NULL");
     $db->exec("UPDATE filiacoes SET status = 'pendente' WHERE data_pagamento IS NULL AND status IS NULL");
 
+    // Tabela de lembretes agendados (envio individual, idempotente)
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS lembretes_agendados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filiacao_id INTEGER NOT NULL,
+            tipo TEXT NOT NULL,
+            data_agendada DATE NOT NULL,
+            enviado INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            enviado_at DATETIME,
+            FOREIGN KEY (filiacao_id) REFERENCES filiacoes(id) ON DELETE CASCADE
+        )
+    ");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_lembretes_data ON lembretes_agendados(data_agendada, enviado)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_lembretes_filiacao ON lembretes_agendados(filiacao_id)");
+
     // View para autocomplete (valores únicos de todos os anos)
     $db->exec("DROP VIEW IF EXISTS autocomplete_valores");
     $db->exec("

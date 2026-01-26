@@ -137,6 +137,15 @@ class AdminController {
             SELECT * FROM campanhas ORDER BY ano DESC
         ");
 
+        // Carrega lembretes pendentes por campanha
+        require_once SRC_DIR . '/Services/LembreteService.php';
+        $lembretes_por_ano = [];
+        foreach ($campanhas_db as $camp) {
+            if (in_array($camp['status'], ['aberta', 'enviando', 'pausada'])) {
+                $lembretes_por_ano[$camp['ano']] = LembreteService::contarPendentes($camp['ano']);
+            }
+        }
+
         // Monta array de campanhas com estatísticas
         $campanhas = [];
         foreach ($campanhas_db as $c) {
@@ -251,11 +260,13 @@ class AdminController {
                 'ano' => $ano,
                 'status' => $c['status'],
                 'created_at' => $c['created_at'],
+                'data_fim' => $c['data_fim'] ?? null,
                 'stats' => $stats,
                 'categorias' => $categorias,
                 'metricas' => $metricas,
                 'valores' => valores_campanha($ano),
                 'envios' => $envios,
+                'lembretes' => $lembretes_por_ano[$ano] ?? null,
             ];
         }
 
@@ -346,6 +357,12 @@ class AdminController {
 
         db_execute("UPDATE campanhas SET data_fim = ? WHERE ano = ?", [$data_fim, $ano]);
 
+        // Agenda lembretes de ultima chance se data foi definida
+        if ($data_fim) {
+            require_once SRC_DIR . '/Services/LembreteService.php';
+            LembreteService::agendarUltimaChance($ano, $data_fim);
+        }
+
         flash('success', $data_fim
             ? "Término da campanha $ano definido para " . date('d/m/Y', strtotime($data_fim)) . "."
             : "Data de término da campanha $ano removida.");
@@ -418,6 +435,46 @@ class AdminController {
     }
 
     /**
+     * Inicia envio de emails da campanha (muda status para 'enviando')
+     */
+    public static function iniciarEnvio(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? 0);
+        if ($ano < 2020) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        db_execute("UPDATE campanhas SET status = 'enviando' WHERE ano = ?", [$ano]);
+        registrar_log('envio_iniciado', null, "Envio de campanha $ano iniciado (cron habilitado)");
+
+        flash('success', "Envio da campanha $ano iniciado. O cron enviará até 290 emails por dia.");
+        redirect('/admin/campanha');
+    }
+
+    /**
+     * Pausa envio de emails (muda status para 'aberta')
+     */
+    public static function pausarEnvio(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? 0);
+        if ($ano < 2020) {
+            flash('error', 'Ano inválido.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        db_execute("UPDATE campanhas SET status = 'aberta' WHERE ano = ?", [$ano]);
+        registrar_log('envio_pausado', null, "Envio de campanha $ano pausado (cron desabilitado)");
+
+        flash('success', "Envio da campanha $ano pausado. O cron não enviará emails.");
+        redirect('/admin/campanha');
+    }
+
+    /**
      * Fecha campanha: marca registros não pagos
      * (Não copia dados - dados cadastrais são buscados dinamicamente no formulário)
      */
@@ -438,6 +495,10 @@ class AdminController {
             SET status = 'nao_pago'
             WHERE ano = ? AND status <> 'pago'
         ", [$ano]);
+
+        // Cancela todos os lembretes pendentes do ano
+        require_once SRC_DIR . '/Services/LembreteService.php';
+        LembreteService::cancelarPorAno($ano);
 
         // Marca campanha como fechada
         db_execute("UPDATE campanhas SET status = 'fechada' WHERE ano = ?", [$ano]);
@@ -674,6 +735,302 @@ class AdminController {
 
         flash('success', "Emails enviados: $enviados. Erros: $erros.");
         redirect('/admin/campanha');
+    }
+
+    /**
+     * Retorna contagens por grupo de destinatarios (AJAX JSON)
+     */
+    public static function previewLote(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? date('Y'));
+        $grupos = self::obterGruposCampanha($ano);
+
+        $resultado = [];
+        foreach ($grupos as $grupo) {
+            $destinatarios = db_fetch_all($grupo['query'], $grupo['params']);
+            $com_email = count(array_filter($destinatarios, fn($d) => !empty($d['email'])));
+            $resultado[] = [
+                'nome' => $grupo['nome'],
+                'template' => $grupo['template'],
+                'total' => $com_email,
+            ];
+        }
+
+        // Enviados hoje
+        $enviados_hoje = db_fetch_one("
+            SELECT COALESCE(SUM(ed.sucesso), 0) as total
+            FROM envios_destinatarios ed
+            JOIN envios_lotes el ON el.id = ed.lote_id
+            WHERE DATE(el.created_at) = DATE('now') AND ed.sucesso = 1
+        ")['total'] ?? 0;
+
+        json_response([
+            'grupos' => $resultado,
+            'enviados_hoje' => (int)$enviados_hoje,
+            'limite_diario' => 290,
+        ]);
+    }
+
+    /**
+     * Envia um lote de emails da campanha (AJAX JSON)
+     */
+    public static function enviarLote(): void {
+        self::exigirLogin();
+
+        $ano = (int)($_POST['ano'] ?? date('Y'));
+        $limite_lote = 50;
+
+        require_once SRC_DIR . '/Services/BrevoService.php';
+
+        // Verifica limite diario (290)
+        $enviados_hoje = (int)(db_fetch_one("
+            SELECT COALESCE(SUM(ed.sucesso), 0) as total
+            FROM envios_destinatarios ed
+            JOIN envios_lotes el ON el.id = ed.lote_id
+            WHERE DATE(el.created_at) = DATE('now') AND ed.sucesso = 1
+        ")['total'] ?? 0);
+
+        if ($enviados_hoje >= 290) {
+            json_response([
+                'erro' => 'Limite diario atingido (290 emails)',
+                'enviados_hoje' => $enviados_hoje,
+            ]);
+            return;
+        }
+
+        $limite_lote = min($limite_lote, 290 - $enviados_hoje);
+
+        $grupos = self::obterGruposCampanha($ano);
+        $total_enviados = 0;
+        $total_erros = 0;
+        $grupo_atual = '';
+        $log_destinatarios = [];
+        $template_usado = null;
+
+        foreach ($grupos as $grupo) {
+            if ($total_enviados >= $limite_lote) break;
+
+            $destinatarios = db_fetch_all($grupo['query'], $grupo['params']);
+            $destinatarios = array_filter($destinatarios, fn($d) => !empty($d['email']));
+            $destinatarios = array_values($destinatarios);
+
+            if (empty($destinatarios)) continue;
+
+            $restante = $limite_lote - $total_enviados;
+            $enviar_agora = array_slice($destinatarios, 0, $restante);
+            $grupo_atual = $grupo['nome'];
+
+            // Snapshot do template para log
+            $tpl_snapshot = carregar_template($grupo['template'], [
+                'nome' => '(destinatario)',
+                'ano' => $ano,
+                'link' => BASE_URL . "/filiacao/$ano/TOKEN",
+            ]);
+            if (!$template_usado) {
+                $template_usado = $tpl_snapshot;
+            }
+
+            foreach ($enviar_agora as $d) {
+                // Gera token se nao tiver
+                $token = $d['token'];
+                if (!$token) {
+                    $token = gerar_token();
+                    db_execute("UPDATE pessoas SET token = ? WHERE id = ?", [$token, $d['id']]);
+                }
+
+                // Marca como 'enviado' ANTES de enviar
+                $filiacao = db_fetch_one(
+                    "SELECT id FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+                    [$d['id'], $ano]
+                );
+                if (!$filiacao) {
+                    db_insert("
+                        INSERT INTO filiacoes (pessoa_id, ano, status, created_at)
+                        VALUES (?, ?, 'enviado', CURRENT_TIMESTAMP)
+                    ", [$d['id'], $ano]);
+                }
+
+                try {
+                    $enviado = false;
+                    switch ($grupo['template']) {
+                        case 'renovacao':
+                            $enviado = BrevoService::enviarCampanhaRenovacao($d['email'], $d['nome'], $ano, $token);
+                            break;
+                        case 'seminario':
+                            $enviado = BrevoService::enviarCampanhaSeminario($d['email'], $d['nome'], $ano, $token);
+                            break;
+                        case 'convite':
+                            $enviado = BrevoService::enviarCampanhaConvite($d['email'], $d['nome'], $ano, $token);
+                            break;
+                    }
+
+                    $log_destinatarios[] = [
+                        'email' => $d['email'],
+                        'nome' => $d['nome'] ?? '',
+                        'sucesso' => (bool)$enviado,
+                    ];
+
+                    if ($enviado) {
+                        $total_enviados++;
+                    } else {
+                        $total_erros++;
+                    }
+                } catch (Exception $e) {
+                    $total_erros++;
+                    $log_destinatarios[] = [
+                        'email' => $d['email'],
+                        'nome' => $d['nome'] ?? '',
+                        'sucesso' => false,
+                    ];
+                }
+
+                usleep(100000); // 100ms entre envios
+            }
+        }
+
+        // Grava lote de envio
+        if (!empty($log_destinatarios)) {
+            registrar_envio_lote(
+                'campanha',
+                $ano,
+                $template_usado['assunto'] ?? "Campanha $ano",
+                $template_usado['html'] ?? '',
+                $log_destinatarios
+            );
+        }
+
+        registrar_log('lote_enviado', null, "Lote campanha $ano: $total_enviados enviados, $total_erros erros ($grupo_atual)");
+
+        // Recalcula preview
+        $grupos_preview = [];
+        foreach (self::obterGruposCampanha($ano) as $g) {
+            $dest = db_fetch_all($g['query'], $g['params']);
+            $com_email = count(array_filter($dest, fn($d) => !empty($d['email'])));
+            $grupos_preview[] = [
+                'nome' => $g['nome'],
+                'template' => $g['template'],
+                'total' => $com_email,
+            ];
+        }
+
+        json_response([
+            'enviados' => $total_enviados,
+            'erros' => $total_erros,
+            'grupo_atual' => $grupo_atual,
+            'enviados_hoje' => $enviados_hoje + $total_enviados,
+            'limite_diario' => 290,
+            'grupos' => $grupos_preview,
+        ]);
+    }
+
+    /**
+     * Retorna definicao dos grupos da campanha
+     */
+    private static function obterGruposCampanha(int $ano): array {
+        $ano_anterior = $ano - 1;
+
+        return [
+            [
+                'nome' => 'Adimplentes ' . $ano_anterior,
+                'template' => 'renovacao',
+                'query' => "
+                    SELECT DISTINCT p.id, p.nome, p.token,
+                           (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                    FROM pessoas p
+                    JOIN filiacoes f ON f.pessoa_id = p.id
+                    WHERE p.ativo = 1
+                    AND f.ano = ? AND f.status = 'pago'
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE ano = ?
+                    )
+                ",
+                'params' => [$ano_anterior, $ano],
+            ],
+            [
+                'nome' => 'Participantes seminario',
+                'template' => 'seminario',
+                'query' => "
+                    SELECT DISTINCT p.id, p.nome, p.token,
+                           (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                    FROM pessoas p
+                    JOIN filiacoes f ON f.pessoa_id = p.id
+                    WHERE p.ativo = 1
+                    AND f.seminario = 1
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE status = 'pago'
+                    )
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
+                    )
+                ",
+                'params' => [$ano],
+            ],
+            [
+                'nome' => 'Ex-filiados',
+                'template' => 'renovacao',
+                'query' => "
+                    SELECT DISTINCT p.id, p.nome, p.token,
+                           (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                    FROM pessoas p
+                    JOIN filiacoes f ON f.pessoa_id = p.id
+                    WHERE p.ativo = 1
+                    AND f.status = 'pago'
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'pago'
+                    )
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
+                    )
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE seminario = 1
+                    )
+                ",
+                'params' => [$ano, $ano],
+            ],
+            [
+                'nome' => 'Contatos sem filiacao',
+                'template' => 'convite',
+                'query' => "
+                    SELECT p.id, p.nome, p.token,
+                           (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                    FROM pessoas p
+                    WHERE p.ativo = 1
+                    AND p.id NOT IN (SELECT pessoa_id FROM filiacoes)
+                ",
+                'params' => [],
+            ],
+            [
+                'nome' => 'Contatos pendentes',
+                'template' => 'convite',
+                'query' => "
+                    SELECT DISTINCT p.id, p.nome, p.token,
+                           (SELECT email FROM emails WHERE pessoa_id = p.id AND principal = 1 LIMIT 1) as email
+                    FROM pessoas p
+                    JOIN filiacoes f ON f.pessoa_id = p.id
+                    WHERE p.ativo = 1
+                    AND p.id NOT IN (SELECT pessoa_id FROM filiacoes WHERE status = 'pago')
+                    AND p.id NOT IN (SELECT pessoa_id FROM filiacoes WHERE seminario = 1)
+                    AND p.id NOT IN (
+                        SELECT pessoa_id FROM filiacoes WHERE ano = ? AND status = 'enviado'
+                    )
+                ",
+                'params' => [$ano],
+            ],
+        ];
+    }
+
+    /**
+     * Processa lembretes pendentes (AJAX JSON, botao manual no admin)
+     */
+    public static function processarLembretes(): void {
+        self::exigirLogin();
+
+        require_once SRC_DIR . '/Services/LembreteService.php';
+
+        $resultado = LembreteService::processar(50);
+
+        json_response($resultado);
     }
 
     /**
@@ -1106,6 +1463,10 @@ class AdminController {
                 data_pagamento = CURRENT_TIMESTAMP
             WHERE id = ?
         ", [(int)$filiacao_id]);
+
+        // Cancela lembretes pendentes
+        require_once SRC_DIR . '/Services/LembreteService.php';
+        LembreteService::cancelar((int)$filiacao_id);
 
         registrar_log('pagamento_manual', $filiacao['pessoa_id'], "Filiação $filiacao_id marcada como paga via admin");
 

@@ -161,7 +161,7 @@ echo "Enviados: $enviados | Erros: $erros | Pulados: $pulados\n";
 // --- Lembrete para quem acessou mas não concluiu (quinzenal, máx 3) ---
 if ($domingo_quinzenal) {
     $campanha_para_acesso = db_fetch_one("
-        SELECT ano FROM campanhas WHERE status = 'aberta' ORDER BY ano DESC LIMIT 1
+        SELECT ano FROM campanhas WHERE status IN ('aberta', 'enviando') ORDER BY ano DESC LIMIT 1
     ");
 
     if ($campanha_para_acesso) {
@@ -251,7 +251,7 @@ if ($domingo_quinzenal) {
 // --- Lembrete "última chance" (3 dias antes do fim da campanha) ---
 $campanha_aberta = db_fetch_one("
     SELECT ano, data_fim FROM campanhas
-    WHERE status = 'aberta' AND data_fim IS NOT NULL
+    WHERE status IN ('aberta', 'enviando') AND data_fim IS NOT NULL
     ORDER BY ano DESC LIMIT 1
 ");
 

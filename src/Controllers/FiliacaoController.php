@@ -12,6 +12,16 @@ class FiliacaoController {
         $titulo = "Filiação $ano";
         $mensagem = null;
 
+        // Verifica se a campanha está pausada
+        $campanha = db_fetch_one("SELECT status FROM campanhas WHERE ano = ?", [(int)$ano]);
+        if ($campanha && $campanha['status'] === 'pausada') {
+            ob_start();
+            require SRC_DIR . '/Views/filiacao/manutencao.php';
+            $content = ob_get_clean();
+            require SRC_DIR . '/Views/layout.php';
+            return;
+        }
+
         ob_start();
         require SRC_DIR . '/Views/filiacao/entrada.php';
         $content = ob_get_clean();
@@ -86,6 +96,17 @@ class FiliacaoController {
      * Formulário de filiação pré-preenchido
      */
     public static function formulario(string $ano, string $token): void {
+        // Verifica se a campanha está pausada
+        $campanha = db_fetch_one("SELECT status FROM campanhas WHERE ano = ?", [(int)$ano]);
+        if ($campanha && $campanha['status'] === 'pausada') {
+            $titulo = "Filiação $ano";
+            ob_start();
+            require SRC_DIR . '/Views/filiacao/manutencao.php';
+            $content = ob_get_clean();
+            require SRC_DIR . '/Views/layout.php';
+            return;
+        }
+
         $cadastrado = buscar_pessoa_por_token($token);
 
         if (!$cadastrado) {
@@ -126,6 +147,10 @@ class FiliacaoController {
                 "UPDATE filiacoes SET status = 'acesso' WHERE pessoa_id = ? AND ano = ?",
                 [$cadastrado['id'], (int)$ano]
             );
+
+            // Agenda lembretes de formulario incompleto
+            require_once SRC_DIR . '/Services/LembreteService.php';
+            LembreteService::agendarFormularioIncompleto($pagamento_existente['id']);
         }
 
         // Dados para autocomplete
@@ -239,6 +264,17 @@ class FiliacaoController {
      * Tela de pagamento com QR Code PIX
      */
     public static function pagamento(string $ano, string $token): void {
+        // Verifica se a campanha está pausada
+        $campanha = db_fetch_one("SELECT status FROM campanhas WHERE ano = ?", [(int)$ano]);
+        if ($campanha && $campanha['status'] === 'pausada') {
+            $titulo = "Filiação $ano";
+            ob_start();
+            require SRC_DIR . '/Views/filiacao/manutencao.php';
+            $content = ob_get_clean();
+            require SRC_DIR . '/Views/layout.php';
+            return;
+        }
+
         require_once SRC_DIR . '/Services/PagBankService.php';
 
         $cadastrado = buscar_pessoa_por_token($token);
@@ -296,6 +332,10 @@ class FiliacaoController {
                 ", [$pix_data['order_id'], $pix_data['expiration_date'], $filiacao['id']]);
 
                 registrar_log('pix_gerado', $cadastrado['id'], "PIX gerado: " . $pix_data['order_id']);
+
+                // Agenda lembrete de vencimento
+                require_once SRC_DIR . '/Services/LembreteService.php';
+                LembreteService::agendarVencimento($filiacao['id'], $pix_data['expiration_date']);
 
             } catch (Exception $e) {
                 $erro_pagbank = $e->getMessage();
@@ -382,6 +422,10 @@ class FiliacaoController {
 
             registrar_log('pix_gerado', $cadastrado['id'], "PIX gerado: " . $pix_data['order_id']);
 
+            // Agenda lembrete de vencimento
+            require_once SRC_DIR . '/Services/LembreteService.php';
+            LembreteService::agendarVencimento($filiacao['id'], $pix_data['expiration_date']);
+
         } catch (Exception $e) {
             registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao criar PIX: " . $e->getMessage());
         }
@@ -451,6 +495,10 @@ class FiliacaoController {
 
             registrar_log('boleto_gerado', $cadastrado['id'], "Boleto gerado: " . $boleto_data['order_id']);
 
+            // Agenda lembrete de vencimento
+            require_once SRC_DIR . '/Services/LembreteService.php';
+            LembreteService::agendarVencimento($filiacao['id'], $boleto_data['due_date']);
+
         } catch (Exception $e) {
             registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao criar boleto: " . $e->getMessage());
         }
@@ -514,6 +562,10 @@ class FiliacaoController {
                     [date('Y-m-d H:i:s'), $filiacao['id']]
                 );
                 registrar_log('pagamento_cartao', $cadastrado['id'], "Pagamento com cartão aprovado: " . $cartao_data['order_id']);
+
+                // Cancela lembretes pendentes
+                require_once SRC_DIR . '/Services/LembreteService.php';
+                LembreteService::cancelar($filiacao['id']);
 
                 // Envia email de confirmação com PDF
                 require_once SRC_DIR . '/Controllers/WebhookController.php';
