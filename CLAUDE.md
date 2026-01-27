@@ -7,7 +7,10 @@ Sistema de gestao de filiados do Docomomo Brasil.
 **Versao:** 1.0.0 (PHP)
 **Tecnologia:** PHP 8.1+ / SQLite / Pico CSS
 **Testado:** PIX, Boleto, Cartao, Emails com PDF
-**Deploy:** Pronto para upload via FTP
+**Deploy:** Em producao (https://pilotis.docomomobrasil.com)
+**PagBank:** Aguardando homologacao (log sandbox enviado 2026-01-27)
+**Brevo:** API key desativada (reativar apos 36h, quarta 2026-01-28 ~10h BRT)
+**Campanha:** Pausada, site mostra pagina de manutencao
 
 ## Estrutura do Projeto
 
@@ -159,18 +162,18 @@ php scripts/admin.php exportar 2026       # Exporta filiados CSV
 php scripts/admin.php stats 2026          # Estatisticas do ano
 ```
 
-## Cron (via GET externo)
+## Cron (via GET externo) — DESATIVADO
 
-O servidor nao permite shell_exec, entao os crons sao disparados via GET por maquina externa do provedor (Labasoft).
+O servidor nao permite shell_exec, entao os crons eram disparados via GET por maquina externa do provedor (Labasoft).
 
-**Endpoints protegidos por token:**
+**IMPORTANTE:** Os crons de campanha e lembretes estao DESATIVADOS (retornam HTTP 503) desde o incidente de emails duplicados em 2026-01-25. O envio de campanha agora e feito manualmente via admin.
 
-| Horario (BRT) | URL |
-|---------------|-----|
-| 9h (campanha) | `https://pilotis.docomomobrasil.com/cron-campanha.php?token=cron-secreto-pilotis-2026` |
-| 8h (lembretes) | `https://pilotis.docomomobrasil.com/cron-lembretes.php?token=cron-secreto-pilotis-2026` |
+**Endpoints protegidos por token (desativados):**
 
-Os scripts so executam se houver campanha aberta ou pagamentos pendentes.
+| Horario (BRT) | URL | Status |
+|---------------|-----|--------|
+| 9h (campanha) | `https://pilotis.docomomobrasil.com/cron-campanha.php?token=cron-secreto-pilotis-2026` | 503 |
+| 8h (lembretes) | `https://pilotis.docomomobrasil.com/cron-lembretes.php?token=cron-secreto-pilotis-2026` | 503 |
 
 ## Backup Automatico (GitHub Actions)
 
@@ -291,13 +294,36 @@ php -r "echo 'sha256:' . hash('sha256', 'sua_senha_forte') . PHP_EOL;"
 **Tecnologia:** Apache + PHP 8.3 (FPM)
 **Status:** Instalado e funcionando
 
+## Incidente: Emails Duplicados (2026-01-25)
+
+Em 25/jan/2026 (domingo), o cron externo (Labasoft) executou o script de campanha 3 vezes (21:22, 21:28, 21:30 BRT), gerando 870 emails para 258 destinatarios. Como o plano gratuito do Brevo tem limite de 300/dia, os emails foram entregues em 3 lotes diarios (25, 26, 27 de janeiro).
+
+**Impacto:** 226 pessoas receberam 3 copias, 32 pessoas receberam 6 copias.
+
+**Acoes tomadas:**
+1. Crons desativados no servidor (retornam 503)
+2. API key do Brevo desativada pelo painel para interromper fila
+3. Pagina de manutencao atualizada com explicacao sobre duplicatas (`src/Views/filiacao/manutencao.php`)
+4. Mensagem enviada a diretoria explicando o ocorrido
+
+**Licoes:** O envio por cron externo e inseguro (rodar N vezes = N lotes). Plano aprovado para substituir por envio manual via admin (lotes interativos, 100% controlado pelo tesoureiro).
+
 ## Para Entrar no Ar (apos homologacao PagBank)
 
-**Status atual:** Aguardando homologacao do PagBank (solicitacao enviada 2026-01-25).
+**Status atual:** Aguardando homologacao do PagBank (log sandbox enviado 2026-01-27).
+
+**Pre-requisitos:**
+1. PagBank aprovar homologacao
+2. Reativar API key do Brevo (desativada desde 2026-01-27)
+3. Remover `scripts/teste_homologacao.php` do servidor (pagina de teste publica)
 
 A campanha esta pausada e o site mostra pagina de manutencao. Quando o PagBank aprovar:
 
-### 1. Reabrir a campanha
+### 1. Reativar Brevo
+
+Acessar painel Brevo → SMTP & API → Reativar chave API. Se gerar chave nova, atualizar `.env` no servidor.
+
+### 2. Reabrir a campanha
 
 ```bash
 sshpass -p 'King@123' ssh pilotis@ftp.pilotis.docomomobrasil.com \
@@ -306,21 +332,23 @@ sshpass -p 'King@123' ssh pilotis@ftp.pilotis.docomomobrasil.com \
 
 Ou via admin: https://pilotis.docomomobrasil.com/admin → Campanhas → Reabrir
 
-### 2. Testar pagamento
+### 3. Testar pagamento
 
 1. Acessar https://pilotis.docomomobrasil.com/filiacao/2026
 2. Informar email de teste
 3. Preencher formulario
 4. Gerar PIX e verificar se aparece QR Code
 
-### 3. Enviar emails restantes
+### 4. Enviar emails restantes
 
-O cron vai continuar enviando automaticamente (290/dia).
-Para forcar envio manual:
+Usar envio manual via admin (`/admin/campanha`) — lotes de 50 controlados pelo tesoureiro.
+Nao usar mais cron para envio de campanha.
+
+### 5. Limpar teste do servidor
 
 ```bash
 sshpass -p 'King@123' ssh pilotis@ftp.pilotis.docomomobrasil.com \
-  "/usr/bin/php81 www/scripts/enviar_campanha.php"
+  "rm www/scripts/teste_homologacao.php"
 ```
 
 ### Credenciais do servidor

@@ -5,7 +5,7 @@
 
     <p>Pedimos desculpas pelo inconveniente.</p>
 
-    <p>O email de campanha de filiação <?= e($ano) ?> foi enviado acidentalmente enquanto ainda estávamos configurando o novo sistema de gestão de filiados.</p>
+    <p>O email de campanha de filiação <?= e($ano) ?> foi enviado acidentalmente enquanto ainda estávamos configurando o novo sistema de gestão de filiados. Alguns associados receberam o email mais de uma vez, nos dias 25 e 26 de janeiro. Pedimos desculpas pela repetição — o problema já foi corrigido e não vai acontecer novamente.</p>
 
     <p>Neste momento, aguardamos a homologação do sistema de pagamentos pelo PagSeguro, o que deve ser concluído no <strong>início de fevereiro</strong>.</p>
 
