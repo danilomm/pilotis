@@ -4,6 +4,7 @@ composer.lock
 
 # Ambiente e credenciais
 .env
+CLAUDE.md
 
 # Banco de dados
 *.db
