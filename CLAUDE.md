@@ -71,7 +71,8 @@ pilotis/
 ├── dados/                 # SUBMODULE (repo privado: pilotis-dados)
 │   ├── data/
 │   │   ├── pilotis.db     # Banco SQLite
-│   │   └── backup.sql     # Versionado no repo privado
+│   │   ├── backup.sql     # Versionado no repo privado
+│   │   └── comprovantes/  # PDFs/imagens de matricula (estudantes)
 │   ├── importacao/        # CSVs de importação
 │   └── DEVLOG.md          # Log com dados sensíveis
 ├── backup-python/         # Codigo Python anterior (referencia)
@@ -101,6 +102,7 @@ pilotis/
 | `GET /admin/novo` | Novo cadastro |
 | `GET /admin/download/csv` | Exportar filiados |
 | `GET /admin/download/banco` | Backup do banco |
+| `GET /admin/comprovante/{pessoa_id}/{ano}` | Ver comprovante de matricula |
 | `POST /admin/campanha/enviar-lote` | Envia lote de emails (AJAX JSON) |
 | `POST /admin/campanha/preview-lote` | Conta destinatarios por grupo (AJAX JSON) |
 | `POST /admin/lembretes/processar` | Processa lembretes pendentes (AJAX JSON) |
@@ -114,6 +116,8 @@ pilotis/
 | estudante | Filiado Estudante Brasil | R$ 115 |
 
 **Categoria default:** `profissional_internacional` (Internacional) - a mais cara. Esta ordem é intencional.
+
+**Comprovante de matricula:** Obrigatorio para categoria `estudante`. Upload de PDF, JPG ou PNG (max 5MB). Armazenado em `dados/data/comprovantes/{pessoa_id}_{ano}.{ext}`. No servidor: `dados_privados/comprovantes/`.
 
 ## Heranca de Dados Cadastrais
 
