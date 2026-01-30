@@ -8,6 +8,7 @@ Sistema de gestão de filiados para associações e organizações sem fins lucr
 - **Pagamento online** via PagBank (PIX, Boleto, Cartão)
 - **Confirmação automática** via webhook
 - **Email de confirmação** com PDF de declaração
+- **Upload de comprovante** de matrícula para categoria estudante
 - **Lista pública** de filiados por ano
 - **Painel administrativo** com busca, edição, relatórios
 - **Campanhas de email** (renovação, convites)
@@ -121,7 +122,8 @@ pilotis/
 ├── scripts/               # CLI e utilitários
 ├── dados/                 # Dados (criar manualmente)
 │   └── data/
-│       └── pilotis.db     # Banco SQLite
+│       ├── pilotis.db     # Banco SQLite
+│       └── comprovantes/  # Comprovantes de matrícula
 ├── .env                   # Credenciais (não versionar!)
 └── .env.example           # Template de credenciais
 ```

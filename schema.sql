@@ -1,73 +1,107 @@
--- Pilotis - Schema do banco de dados SQLite
--- Execute: sqlite3 dados/data/pilotis.db < schema.sql
+-- Pilotis - Schema do Banco de Dados
+-- Sistema de gestão de filiados para associações
+-- https://github.com/danilomm/pilotis
 
--- Tabela de pessoas (cadastros)
-CREATE TABLE IF NOT EXISTS pessoas (
+-- =============================================================================
+-- TABELAS PRINCIPAIS
+-- =============================================================================
+
+-- Pessoas cadastradas
+CREATE TABLE pessoas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT,
+    nome TEXT NOT NULL,
     cpf TEXT,
     token TEXT UNIQUE,
     ativo INTEGER DEFAULT 1,
     notas TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de emails (uma pessoa pode ter varios)
-CREATE TABLE IF NOT EXISTS emails (
+-- Emails das pessoas (suporta múltiplos por pessoa)
+CREATE TABLE emails (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pessoa_id INTEGER NOT NULL,
-    email TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
     principal INTEGER DEFAULT 0,
-    FOREIGN KEY (pessoa_id) REFERENCES pessoas(id) ON DELETE CASCADE,
-    UNIQUE(pessoa_id, email)
+    FOREIGN KEY (pessoa_id) REFERENCES pessoas(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_emails_pessoa ON emails(pessoa_id);
 
--- Tabela de filiacoes (uma por ano por pessoa)
-CREATE TABLE IF NOT EXISTS filiacoes (
+-- Filiações por ano
+CREATE TABLE filiacoes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pessoa_id INTEGER NOT NULL,
     ano INTEGER NOT NULL,
-    categoria TEXT,
+    categoria TEXT NOT NULL,
     valor INTEGER,
     status TEXT DEFAULT 'pendente',
-    data_pagamento DATETIME,
+    data_pagamento TEXT,
     metodo TEXT,
-    pagbank_id TEXT,
-    pagbank_order_id TEXT,
-    pagbank_charge_id TEXT,
-    pagbank_boleto_link TEXT,
-    pagbank_boleto_barcode TEXT,
     data_vencimento TEXT,
+    -- Dados de contato (copiados para histórico)
     telefone TEXT,
     endereco TEXT,
     cep TEXT,
     cidade TEXT,
     estado TEXT,
-    pais TEXT DEFAULT 'Brasil',
+    pais TEXT,
+    -- Dados profissionais
     profissao TEXT,
     formacao TEXT,
     instituicao TEXT,
+    -- PagBank
+    pagbank_order_id TEXT,
+    pagbank_charge_id TEXT,
+    pagbank_boleto_link TEXT,
+    pagbank_boleto_barcode TEXT,
+    -- Comprovante de matrícula (para estudantes)
+    comprovante_path TEXT,
+    -- Flags
     seminario INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pessoa_id) REFERENCES pessoas(id) ON DELETE CASCADE,
     UNIQUE(pessoa_id, ano)
 );
+CREATE INDEX idx_filiacoes_pessoa ON filiacoes(pessoa_id);
+CREATE INDEX idx_filiacoes_ano ON filiacoes(ano);
 
--- Tabela de campanhas (controle de envio de emails)
-CREATE TABLE IF NOT EXISTS campanhas (
+-- =============================================================================
+-- TABELAS DE CAMPANHA
+-- =============================================================================
+
+-- Campanhas anuais
+CREATE TABLE campanhas (
     ano INTEGER PRIMARY KEY,
     status TEXT DEFAULT 'aberta',
-    data_fim DATE,
+    emails_enviados INTEGER DEFAULT 0,
     valor_estudante INTEGER,
     valor_profissional INTEGER,
     valor_internacional INTEGER,
-    emails_enviados INTEGER DEFAULT 0,
+    data_fim DATE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de templates de email
-CREATE TABLE IF NOT EXISTS email_templates (
+-- Lembretes agendados (envio individual)
+CREATE TABLE lembretes_agendados (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filiacao_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    data_agendada DATE NOT NULL,
+    enviado INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    enviado_at DATETIME,
+    FOREIGN KEY (filiacao_id) REFERENCES filiacoes(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_lembretes_data ON lembretes_agendados(data_agendada, enviado);
+CREATE INDEX idx_lembretes_filiacao ON lembretes_agendados(filiacao_id);
+
+-- =============================================================================
+-- TABELAS DE EMAIL
+-- =============================================================================
+
+-- Templates de email editáveis
+CREATE TABLE email_templates (
     tipo TEXT PRIMARY KEY,
     assunto TEXT NOT NULL,
     html TEXT NOT NULL,
@@ -76,8 +110,8 @@ CREATE TABLE IF NOT EXISTS email_templates (
     updated_at DATETIME
 );
 
--- Tabela de lotes de envio (historico)
-CREATE TABLE IF NOT EXISTS envios_lotes (
+-- Lotes de envio (histórico)
+CREATE TABLE envios_lotes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     tipo TEXT NOT NULL,
@@ -89,8 +123,8 @@ CREATE TABLE IF NOT EXISTS envios_lotes (
     total_falha INTEGER DEFAULT 0
 );
 
--- Tabela de destinatarios por lote
-CREATE TABLE IF NOT EXISTS envios_destinatarios (
+-- Destinatários por lote
+CREATE TABLE envios_destinatarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lote_id INTEGER NOT NULL,
     email TEXT NOT NULL,
@@ -99,8 +133,19 @@ CREATE TABLE IF NOT EXISTS envios_destinatarios (
     FOREIGN KEY (lote_id) REFERENCES envios_lotes(id) ON DELETE CASCADE
 );
 
--- Tabela de log (auditoria)
-CREATE TABLE IF NOT EXISTS log (
+-- =============================================================================
+-- TABELAS AUXILIARES
+-- =============================================================================
+
+-- Configurações (chave-valor)
+CREATE TABLE configuracoes (
+    chave TEXT PRIMARY KEY,
+    valor TEXT,
+    updated_at DATETIME
+);
+
+-- Log de ações
+CREATE TABLE log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     tipo TEXT NOT NULL,
@@ -108,18 +153,33 @@ CREATE TABLE IF NOT EXISTS log (
     mensagem TEXT
 );
 
--- Indices para performance
-CREATE INDEX IF NOT EXISTS idx_emails_email ON emails(email);
-CREATE INDEX IF NOT EXISTS idx_emails_pessoa ON emails(pessoa_id);
-CREATE INDEX IF NOT EXISTS idx_filiacoes_pessoa ON filiacoes(pessoa_id);
-CREATE INDEX IF NOT EXISTS idx_filiacoes_ano ON filiacoes(ano);
-CREATE INDEX IF NOT EXISTS idx_filiacoes_status ON filiacoes(status);
-CREATE INDEX IF NOT EXISTS idx_pessoas_token ON pessoas(token);
-CREATE INDEX IF NOT EXISTS idx_envios_lotes_ano ON envios_lotes(ano);
-CREATE INDEX IF NOT EXISTS idx_envios_dest_lote ON envios_destinatarios(lote_id);
+-- =============================================================================
+-- VIEWS
+-- =============================================================================
 
--- View para autocomplete (valores unicos de todos os anos)
-CREATE VIEW IF NOT EXISTS autocomplete_valores AS
+-- Lista de filiados (para consulta rápida)
+CREATE VIEW filiados AS
+SELECT
+    p.id,
+    p.nome,
+    p.cpf,
+    e.email,
+    f.ano,
+    f.categoria,
+    f.valor,
+    f.data_pagamento,
+    f.cidade,
+    f.estado,
+    f.instituicao
+FROM pessoas p
+JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
+JOIN filiacoes f ON f.pessoa_id = p.id
+WHERE f.categoria != 'nao_filiado'
+  AND f.valor IS NOT NULL
+  AND p.ativo = 1;
+
+-- Valores para autocomplete
+CREATE VIEW autocomplete_valores AS
 SELECT 'instituicao' as campo, instituicao as valor, COUNT(*) as qtd
 FROM filiacoes WHERE instituicao IS NOT NULL AND instituicao <> '' GROUP BY instituicao
 UNION ALL
@@ -128,21 +188,3 @@ UNION ALL
 SELECT 'estado', estado, COUNT(*) FROM filiacoes WHERE estado IS NOT NULL AND estado <> '' GROUP BY estado
 UNION ALL
 SELECT 'profissao', profissao, COUNT(*) FROM filiacoes WHERE profissao IS NOT NULL AND profissao <> '' GROUP BY profissao;
-
--- Tabela de lembretes agendados (envio individual, idempotente)
-CREATE TABLE IF NOT EXISTS lembretes_agendados (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filiacao_id INTEGER NOT NULL,
-    tipo TEXT NOT NULL,
-    data_agendada DATE NOT NULL,
-    enviado INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    enviado_at DATETIME,
-    FOREIGN KEY (filiacao_id) REFERENCES filiacoes(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_lembretes_data ON lembretes_agendados(data_agendada, enviado);
-CREATE INDEX IF NOT EXISTS idx_lembretes_filiacao ON lembretes_agendados(filiacao_id);
-
--- Campanha inicial (ano atual)
-INSERT OR IGNORE INTO campanhas (ano, status) VALUES (strftime('%Y', 'now'), 'aberta');

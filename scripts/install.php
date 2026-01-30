@@ -43,6 +43,14 @@ if (!is_dir($dataDir)) {
     echo "   Existe: dados/data/\n";
 }
 
+$comprovantesDir = $dataDir . '/comprovantes';
+if (!is_dir($comprovantesDir)) {
+    mkdir($comprovantesDir, 0755, true);
+    echo "   Criado: dados/data/comprovantes/\n";
+} else {
+    echo "   Existe: dados/data/comprovantes/\n";
+}
+
 // 2. Criar .gitignore no dados/
 $gitignorePath = $dadosDir . '/.gitignore';
 if (!file_exists($gitignorePath)) {
