@@ -1,63 +1,30 @@
-# Python (backup antigo - manter só local)
-backup-python/
-__pycache__/
-*.pyc
-*.pyo
-.pytest_cache/
-
-# Documentação específica da instalação
-CLAUDE.md
-
-# Logos específicos (cada instalação tem o seu)
-public/assets/img/logo-*
-
-# Scripts de importação específicos (manter só local)
-scripts/analisar_*.php
-scripts/limpar_*.php
-scripts/importar_*.php
-scripts/normalizar_*.php
-scripts/consolidar_*.php
-scripts/comparar_*.php
-scripts/revisar_*.php
-scripts/verificar_emails.php
-scripts/verificar_semi_organizado.php
-scripts/atualizar_normalizacao.php
-scripts/cidades_normalizadas.php
-scripts/emails_typos.php
-scripts/enderecos_2022_manual.php
-scripts/instituicoes_normalizadas.php
-scripts/analisar_categorias.php
-
-# PHP
+# Dependências PHP
 /vendor/
 composer.lock
 
-# Ambiente
+# Ambiente e credenciais
 .env
 
-# Banco de dados (usar backup.sql para versionar)
-data/*.db
-data/*.db-journal
+# Banco de dados
+*.db
+*.db-journal
 
-# Backups e arquivos de desenvolvimento (dados sensíveis)
+# Dados e backups
+dados/
 backups/
-desenvolvimento/*.csv
-
-# CSVs gerais (exceto importacao/)
 *.csv
-!importacao/**/*.csv
 
-# Deploy (gerado pelo script preparar_deploy.sh)
-deploy/upload/
+# Logos (cada instalação tem o seu)
+public/assets/img/logo-*
 
 # IDE
 .vscode/
 .idea/
-data/.~lock.*
 .~lock.*
 
 # Logs
 *.log
-public/data/
-importacao/temp/
-MANUAL-TESOUREIRO.md
+
+# Cache Python (se houver)
+__pycache__/
+*.pyc
