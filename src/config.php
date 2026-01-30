@@ -49,6 +49,18 @@ define('SRC_DIR', BASE_DIR . '/src');
 define('PUBLIC_DIR', BASE_DIR . '/public');
 define('DATA_DIR', BASE_DIR . '/data');
 
+// Diretório de comprovantes de matrícula (deve ficar fora do document root)
+$comprovantes_dir = env('COMPROVANTES_DIR', '');
+if (empty($comprovantes_dir)) {
+    // Mesmo diretório do banco de dados
+    $db_dir = dirname(env('DATABASE_PATH', 'dados/data/pilotis.db'));
+    if ($db_dir[0] !== '/') {
+        $db_dir = BASE_DIR . '/' . $db_dir;
+    }
+    $comprovantes_dir = $db_dir . '/comprovantes';
+}
+define('COMPROVANTES_DIR', $comprovantes_dir);
+
 // Banco de dados (resolve caminho relativo para absoluto)
 $db_path = env('DATABASE_PATH', 'dados/data/pilotis.db');
 if ($db_path[0] !== '/') {
@@ -192,4 +204,83 @@ function dd($var): void {
     var_dump($var);
     echo '</pre>';
     exit;
+}
+
+/**
+ * Salva comprovante de matrícula
+ * Retorna o caminho relativo do arquivo ou null em caso de erro
+ */
+function salvar_comprovante(array $file, int $pessoa_id, int $ano): ?string {
+    // Verifica se o arquivo foi enviado
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return null;
+    }
+
+    // Valida tamanho (5MB)
+    $max_size = 5 * 1024 * 1024;
+    if ($file['size'] > $max_size) {
+        return null;
+    }
+
+    // Valida tipo
+    $tipos_permitidos = ['application/pdf', 'image/jpeg', 'image/png'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($mime, $tipos_permitidos)) {
+        return null;
+    }
+
+    // Determina extensão
+    $extensoes = [
+        'application/pdf' => 'pdf',
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+    ];
+    $ext = $extensoes[$mime] ?? 'bin';
+
+    // Cria diretório se não existir
+    if (!is_dir(COMPROVANTES_DIR)) {
+        mkdir(COMPROVANTES_DIR, 0755, true);
+    }
+
+    // Nome do arquivo: {pessoa_id}_{ano}.{ext}
+    $filename = "{$pessoa_id}_{$ano}.{$ext}";
+    $filepath = COMPROVANTES_DIR . '/' . $filename;
+
+    // Remove arquivo anterior se existir (pode ter extensão diferente)
+    foreach (['pdf', 'jpg', 'png'] as $old_ext) {
+        $old_file = COMPROVANTES_DIR . "/{$pessoa_id}_{$ano}.{$old_ext}";
+        if (file_exists($old_file)) {
+            unlink($old_file);
+        }
+    }
+
+    // Move arquivo
+    if (move_uploaded_file($file['tmp_name'], $filepath)) {
+        return $filename;
+    }
+
+    return null;
+}
+
+/**
+ * Retorna o caminho completo do comprovante se existir
+ */
+function obter_comprovante(int $pessoa_id, int $ano): ?string {
+    foreach (['pdf', 'jpg', 'png'] as $ext) {
+        $filepath = COMPROVANTES_DIR . "/{$pessoa_id}_{$ano}.{$ext}";
+        if (file_exists($filepath)) {
+            return $filepath;
+        }
+    }
+    return null;
+}
+
+/**
+ * Verifica se existe comprovante para a filiação
+ */
+function tem_comprovante(int $pessoa_id, int $ano): bool {
+    return obter_comprovante($pessoa_id, $ano) !== null;
 }

@@ -88,7 +88,15 @@
                 <div style="font-size: 0.85em; color: #555;">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
                         <div>
-                            <strong>Categoria:</strong> <?= e(CATEGORIAS_DISPLAY[$f['categoria'] ?? ''] ?? $f['categoria'] ?? '-') ?><br>
+                            <strong>Categoria:</strong> <?= e(CATEGORIAS_DISPLAY[$f['categoria'] ?? ''] ?? $f['categoria'] ?? '-') ?>
+                            <?php if (($f['categoria'] ?? '') === 'estudante'): ?>
+                                <?php if (tem_comprovante($pessoa['id'], (int)$f['ano'])): ?>
+                                    <a href="/admin/comprovante/<?= e($pessoa['id']) ?>/<?= e($f['ano']) ?>" target="_blank" title="Ver comprovante de matrícula" style="color: green;">📎</a>
+                                <?php else: ?>
+                                    <span title="Comprovante de matrícula pendente" style="color: red;">⚠️</span>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            <br>
                             <strong>Valor:</strong> <?= formatar_valor((int)$f['valor']) ?><br>
                             <strong>Método:</strong> <?= e($f['metodo'] ?? '-') ?><br>
                             <strong>Data Pgto:</strong> <?= e($f['data_pagamento'] ?? '-') ?>

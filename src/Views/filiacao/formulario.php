@@ -11,7 +11,7 @@
         </div>
     <?php endif; ?>
 
-    <form method="POST" action="/filiacao/<?= e($ano) ?>/<?= e($token) ?>">
+    <form method="POST" action="/filiacao/<?= e($ano) ?>/<?= e($token) ?>" enctype="multipart/form-data">
 
         <p><small>* Campos obrigatórios</small></p>
 
@@ -88,11 +88,43 @@
             <?php foreach ($categorias as $cat): ?>
                 <label>
                     <input type="radio" name="categoria" value="<?= e($cat['valor']) ?>"
-                           <?= $cat['selecionada'] ? 'checked' : '' ?> required>
+                           <?= $cat['selecionada'] ? 'checked' : '' ?> required
+                           onchange="toggleComprovante()">
                     <?= e($cat['label']) ?>
                 </label>
             <?php endforeach; ?>
         </fieldset>
+
+        <fieldset id="fieldset-comprovante" style="display: none;">
+            <legend>Comprovante de Matrícula *</legend>
+            <small style="display: block; margin-bottom: 1rem; color: var(--muted-color);">
+                Envie um comprovante de matrícula em instituição de ensino (graduação ou pós-graduação).
+                Formatos aceitos: PDF, JPG, PNG. Tamanho máximo: 5MB.
+            </small>
+            <input type="file" id="comprovante" name="comprovante" accept=".pdf,.jpg,.jpeg,.png">
+            <?php if (!empty($comprovante_existente)): ?>
+                <small style="color: green;">✓ Comprovante já enviado anteriormente.</small>
+            <?php endif; ?>
+        </fieldset>
+
+        <script>
+        function toggleComprovante() {
+            var categoria = document.querySelector('input[name="categoria"]:checked');
+            var fieldset = document.getElementById('fieldset-comprovante');
+            var input = document.getElementById('comprovante');
+            if (categoria && categoria.value === 'estudante') {
+                fieldset.style.display = 'block';
+                <?php if (empty($comprovante_existente)): ?>
+                input.required = true;
+                <?php endif; ?>
+            } else {
+                fieldset.style.display = 'none';
+                input.required = false;
+            }
+        }
+        // Roda ao carregar a página
+        document.addEventListener('DOMContentLoaded', toggleComprovante);
+        </script>
 
         <fieldset>
             <legend>Observações</legend>

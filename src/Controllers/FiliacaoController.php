@@ -156,6 +156,9 @@ class FiliacaoController {
         // Dados para autocomplete
         $autocomplete = obter_autocomplete();
 
+        // Verifica se já existe comprovante para este ano
+        $comprovante_existente = tem_comprovante($cadastrado['id'], (int)$ano);
+
         registrar_log('acesso_formulario', $cadastrado['id'], "Acesso ao formulário $ano");
 
         $titulo = "Filiação $ano";
@@ -219,10 +222,33 @@ class FiliacaoController {
             return;
         }
 
+        // Se categoria é estudante, comprovante é obrigatório (exceto se já enviou antes)
+        $comprovante_path = null;
+        if ($categoria === 'estudante') {
+            $comprovante_existente = tem_comprovante($cadastrado['id'], (int)$ano);
+
+            if (!$comprovante_existente && (empty($_FILES['comprovante']) || $_FILES['comprovante']['error'] === UPLOAD_ERR_NO_FILE)) {
+                flash('error', 'Para a categoria Estudante, é obrigatório enviar o comprovante de matrícula.');
+                redirect("/filiacao/$ano/$token");
+                return;
+            }
+
+            // Processa upload se enviou arquivo
+            if (!empty($_FILES['comprovante']) && $_FILES['comprovante']['error'] === UPLOAD_ERR_OK) {
+                $comprovante_path = salvar_comprovante($_FILES['comprovante'], $cadastrado['id'], (int)$ano);
+
+                if ($comprovante_path === null) {
+                    flash('error', 'Erro ao processar comprovante. Verifique se o arquivo é PDF, JPG ou PNG e tem no máximo 5MB.');
+                    redirect("/filiacao/$ano/$token");
+                    return;
+                }
+            }
+        }
+
         $valor = valor_por_categoria($categoria, (int)$ano);
 
         // Atualiza pessoa e filiação
-        atualizar_pessoa_filiacao($cadastrado['id'], (int)$ano, [
+        $dados_filiacao = [
             'nome' => $nome,
             'cpf' => $cpf,
             'telefone' => $telefone,
@@ -236,7 +262,13 @@ class FiliacaoController {
             'instituicao' => $instituicao,
             'categoria' => $categoria,
             'valor' => $valor,
-        ]);
+        ];
+
+        if ($comprovante_path) {
+            $dados_filiacao['comprovante_path'] = $comprovante_path;
+        }
+
+        atualizar_pessoa_filiacao($cadastrado['id'], (int)$ano, $dados_filiacao);
 
         registrar_log('dados_atualizados', $cadastrado['id'], "Dados atualizados para filiação $ano");
 

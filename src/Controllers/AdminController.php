@@ -1772,4 +1772,36 @@ class AdminController {
         fclose($output);
         exit;
     }
+
+    /**
+     * Download de comprovante de matrícula
+     */
+    public static function downloadComprovante(string $pessoa_id, string $ano): void {
+        self::exigirLogin();
+
+        $filepath = obter_comprovante((int)$pessoa_id, (int)$ano);
+
+        if (!$filepath || !file_exists($filepath)) {
+            flash('error', 'Comprovante não encontrado.');
+            redirect("/admin/pessoa/$pessoa_id");
+            return;
+        }
+
+        // Determina o tipo MIME
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $filepath);
+        finfo_close($finfo);
+
+        // Nome do arquivo para download
+        $ext = pathinfo($filepath, PATHINFO_EXTENSION);
+        $filename = "comprovante_{$pessoa_id}_{$ano}.{$ext}";
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($filepath));
+        header('Cache-Control: private, max-age=0, must-revalidate');
+
+        readfile($filepath);
+        exit;
+    }
 }

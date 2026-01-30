@@ -392,6 +392,14 @@ function atualizar_pessoa_filiacao(
     // Verifica se filiação existe
     $filiacao = buscar_filiacao($pessoa_id, $ano);
 
+    // Comprovante (opcional, só atualiza se fornecido)
+    $comprovante_sql = '';
+    $comprovante_params = [];
+    if (isset($dados['comprovante_path']) && $dados['comprovante_path']) {
+        $comprovante_sql = ', comprovante_path = ?';
+        $comprovante_params = [$dados['comprovante_path']];
+    }
+
     if ($filiacao) {
         // Atualiza filiação existente
         db_execute("
@@ -399,8 +407,9 @@ function atualizar_pessoa_filiacao(
                 categoria = ?, valor = ?, telefone = ?, endereco = ?,
                 cep = ?, cidade = ?, estado = ?, pais = ?,
                 profissao = ?, formacao = ?, instituicao = ?
+                $comprovante_sql
             WHERE pessoa_id = ? AND ano = ?
-        ", [
+        ", array_merge([
             $dados['categoria'],
             $dados['valor'],
             $dados['telefone'] ?: null,
@@ -412,18 +421,21 @@ function atualizar_pessoa_filiacao(
             $dados['profissao'] ?: null,
             $dados['formacao'] ?: null,
             $dados['instituicao'] ?: null,
+        ], $comprovante_params, [
             $pessoa_id,
             $ano
-        ]);
+        ]));
     } else {
         // Cria nova filiação
+        $campos_extra = $comprovante_sql ? ', comprovante_path' : '';
+        $valores_extra = $comprovante_sql ? ', ?' : '';
         db_insert("
             INSERT INTO filiacoes (
                 pessoa_id, ano, categoria, valor, status,
                 telefone, endereco, cep, cidade, estado, pais,
-                profissao, formacao, instituicao, created_at
-            ) VALUES (?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ", [
+                profissao, formacao, instituicao, created_at $campos_extra
+            ) VALUES (?, ?, ?, ?, 'pendente', ?, ?, ?, ?, ?, ?, ?, ?, ?, ? $valores_extra)
+        ", array_merge([
             $pessoa_id,
             $ano,
             $dados['categoria'],
@@ -438,7 +450,7 @@ function atualizar_pessoa_filiacao(
             $dados['formacao'] ?: null,
             $dados['instituicao'] ?: null,
             date('Y-m-d H:i:s')
-        ]);
+        ], $comprovante_params));
     }
 }
 

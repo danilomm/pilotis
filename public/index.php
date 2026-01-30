@@ -96,6 +96,7 @@ post('/admin/templates', 'AdminController::salvarTemplate');
 post('/admin/templates/resetar', 'AdminController::resetarTemplate');
 get('/admin/download/banco', 'AdminController::downloadBanco');
 get('/admin/download/csv', 'AdminController::downloadCsv');
+get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminController::downloadComprovante');
 
 // === Assets estaticos ===
 // Servidos diretamente pelo Apache, nao passa pelo PHP
