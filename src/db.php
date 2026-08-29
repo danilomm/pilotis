@@ -13,9 +13,8 @@
  *               cadastros sao a mesma pessoa
  *   Seguranca/  assinatura, limites e mascaramento
  *
- * O arquivo continua existindo e incluindo os quatro, de proposito: as 158
- * chamadas `require SRC_DIR . '/db.php'` espalhadas pelo sistema seguem
- * valendo, e a divisao nao precisou tocar em nenhuma delas. Quem escrever
+ * O arquivo continua existindo e incluindo os quatro, de proposito: os 11
+ * arquivos que fazem `require .../db.php` nao mudaram uma linha. Quem escrever
  * codigo novo pode incluir so o modulo de que precisa.
  *
  * A ORDEM importa: Consulta antes de tudo que consulta; Conexao antes de
