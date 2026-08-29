@@ -9,10 +9,19 @@ Sistema de gestão de filiados para associações e organizações sem fins lucr
 - **Confirmação automática** via webhook
 - **Email de confirmação** com PDF de declaração
 - **Upload de comprovante** de matrícula para categoria estudante
-- **Lista pública** de filiados por ano
 - **Painel administrativo** com busca, edição, relatórios
 - **Campanhas de email** (renovação, convites)
 - **Lembretes automáticos** de pagamento pendente
+
+E, para eventos:
+
+- **Página pública do evento**, com conteúdo editável e meta tags para o link
+  circular em redes e mensageiros
+- **Inscrição** por CPF ou email, com desconto para filiados em dia
+- **Categorias** com preço por faixa de data, lista de convidados e exigência de
+  comprovante
+- **Comprovante de inscrição** em PDF, com QR de validação
+- **Painel da organização** do evento, por email autorizado, somente leitura
 
 ## Requisitos
 
@@ -113,13 +122,18 @@ pilotis/
 │   ├── .htaccess          # URL rewriting (Apache)
 │   └── assets/            # CSS, imagens
 ├── src/
-│   ├── config.php         # Configurações
-│   ├── db.php             # Conexão SQLite
-│   ├── routes.php         # Rotas
-│   ├── Controllers/       # Lógica de negócio
-│   ├── Services/          # PagBank, Brevo, PDF
+│   ├── config.php         # Configurações e helpers de view
+│   ├── db.php             # Só inclui os módulos abaixo
+│   ├── routes.php         # Dispatcher, sessão e CSRF
+│   ├── Schema/            # Conexão e evolução da estrutura do banco
+│   ├── Dados/             # Consultas, por assunto. Sem regra de negócio
+│   ├── Dominio/           # As decisões: preço, adimplência, consolidação
+│   ├── Seguranca/         # Assinatura HMAC, limites, mascaramento
+│   ├── Controllers/
+│   ├── Services/          # PagBank, Brevo, PDF, xlsx
 │   └── Views/             # Templates HTML
 ├── scripts/               # CLI e utilitários
+├── tests/                 # Testes, sem dependência. Rodam por CLI
 ├── dados/                 # Dados (criar manualmente)
 │   └── data/
 │       ├── pilotis.db     # Banco SQLite
@@ -136,7 +150,9 @@ pilotis/
 | `GET /filiacao/{ano}/{token}` | Formulário de filiação |
 | `GET /filiacao/{ano}/{token}/pagamento` | Tela de pagamento |
 | `POST /webhook/pagbank` | Webhook de confirmação |
-| `GET /filiados/{ano}` | Lista pública de filiados |
+| `GET /eventos/{slug}` | Página do evento |
+| `GET /eventos/{slug}/inscricao` | Entrada por CPF ou email |
+| `GET /validar/{codigo}` | Validação de comprovante por QR |
 | `GET /admin` | Painel administrativo |
 
 ## Personalização
@@ -200,6 +216,21 @@ php scripts/admin.php pagar 123
 php scripts/admin.php exportar 2026
 ```
 
+## Testes
+
+Sem dependência nenhuma. Rodam por CLI e recusam HTTP.
+
+```bash
+php tests/texto_formatado.php   # formato do conteúdo do evento: casos e ataques
+php tests/status_http.php       # nenhuma linha de status crua
+php tests/csrf.php              # todo <form method="POST"> tem o campo
+php tests/migracao.php          # a estrutura nasce certa em banco novo e antigo
+php tests/rotas.php             # todo handler de rota existe e é alcançável
+```
+
+Não cobrem o sistema inteiro. Cada um nasceu onde um erro já tinha passado — ou,
+no caso dos dois últimos, para proteger uma mudança grande antes de fazê-la.
+
 ## Deploy em Produção
 
 ### Segurança
@@ -258,3 +289,15 @@ Desenvolvido para o [Docomomo Brasil](https://docomomobrasil.com) por Danilo Mat
 ---
 
 *Pilotis: porque toda boa arquitetura precisa de uma base sólida.*
+
+## Histórico deste repositório
+
+O repositório público foi reiniciado em 29/08/2026, e por isso o primeiro commit
+já traz o sistema inteiro. O motivo foi proteção de dados: arquivos com dado
+pessoal de associados tinham sido versionados por engano e estavam presentes na
+maior parte do histórico. Reiniciar foi mais seguro e mais simples do que
+reescrever 158 commits — e mais honesto do que deixar como estava.
+
+O histórico anterior (175 commits, de janeiro a agosto de 2026) foi preservado
+num repositório privado. O código publicado aqui é o mesmo, no estado de
+29/08/2026.
