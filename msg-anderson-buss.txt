@@ -1,0 +1,22 @@
+Oi Anderson,
+
+Recebi as capturas de tela. O site está no ar e funcionando normalmente do nosso lado — o certificado de segurança está válido até outubro. O que aconteceu com você foram dois problemas separados na rede que você está usando:
+
+1. O aviso do Firefox sobre certificado expirado (16/01/2026) não é do nosso site. É de um "certificado intermediário" que a rede que você está usando (Wi-Fi da instituição, corporativo, VPN ou algum antivírus com proteção HTTPS) inseriu no meio. Esses filtros de rede às vezes ficam com o próprio certificado desatualizado e passam esse erro ao navegador.
+
+2. A tela verde de "Verificação de segurança" é uma proteção antibot do provedor onde o site está hospedado. Ela apareceu porque tinham sido feitas várias tentativas em pouco tempo do mesmo IP.
+
+Sugestões, do mais simples ao mais chato:
+
+- Tenta acessar pelo celular usando os dados móveis (4G/5G), não pelo Wi-Fi. Em rede móvel, esses filtros não existem.
+- Ou tenta em outro navegador (Chrome, Edge, Safari), pode ser que ele confie no certificado.
+- Ou tenta em aba anônima (Ctrl+Shift+P no Firefox, Ctrl+Shift+N no Chrome).
+- Se estiver em rede da faculdade/trabalho e nada funcionar, é o filtro de lá mesmo, sem jeito por hoje — tenta de outra rede.
+
+Reabri o sistema para você. Segue o link direto:
+https://pilotis.docomomobrasil.com/filiacao/2026/MoQdYRiD4ryaiITzEB_-AQ
+
+Qualquer coisa me avisa que a gente resolve.
+
+Um abraço,
+Tesouraria Docomomo Brasil

@@ -1,0 +1,55 @@
+# Libera endpoints protegidos por token
+<FilesMatch "^(backup-download|cron-campanha|cron-lembretes|cron-verificar-pagamentos)\.php$">
+    Satisfy any
+    Allow from all
+</FilesMatch>
+
+# Pilotis - URL Rewriting
+
+RewriteEngine On
+
+# scripts/ e src/ NAO sao area publica: sao codigo de linha de comando e
+# includes. A regra abaixo desvia para o index.php so o que nao e arquivo
+# existente, entao ate 28/08/2026 qualquer .php ali executava por HTTP — e
+# nenhum deles tem trava de CLI. scripts/processar_lembretes.php usa getopt,
+# que sem argumento nao ativa o --dry-run: um GET disparava os emails.
+RewriteRule ^(scripts|src)/ - [F,L]
+
+# HTTPS obrigatorio. Ate 28/08/2026 o site inteiro respondia em HTTP puro,
+# inclusive o login do admin e o formulario de filiacao (CPF, endereco): a
+# senha e o cookie de sessao trafegavam em claro para quem estivesse na mesma
+# rede. Sem HSTS o navegador nao lembra; o header abaixo resolve isso a partir
+# da primeira visita. Condicao por HTTPS e por X-Forwarded-Proto, porque em
+# hospedagem compartilhada o TLS pode terminar num proxy.
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+
+# Se o arquivo ou diretório existe, serve diretamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redireciona tudo para index.php (sem passar pelo ErrorDocument)
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Desabilita ErrorDocument padrão - PHP define os status codes
+ErrorDocument 404 /index.php
+ErrorDocument 500 /index.php
+
+# Segurança: bloqueia acesso a arquivos sensíveis
+<FilesMatch "\.(env|db|sqlite|sql|log)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Cabeçalhos de segurança
+<IfModule mod_headers.c>
+    Header always set Strict-Transport-Security "max-age=31536000" env=HTTPS
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Charset
+AddDefaultCharset UTF-8

@@ -1,0 +1,13 @@
+Prezada Maísa,
+
+Obrigado pelo retorno. Localizei o pagamento no nosso extrato do PagBank. Foi um PIX de R$ 460, realizado em 04/04/2025 às 14:59, com o código de transação correspondente do comprovante que você mandou.
+O erro aconteceu porque seu pagamento chegou, ficou registrado, mas não foi vinculado ao seu cadastro. Isso porque tem dois emails no nosso sistema: maisafonseca@usp.br (o principal, que usamos para tudo — envio de campanha, lembretes, contato) e maisafonseca@gmail.com (secundário). No PagBank, o pagamento saiu pela conta associada ao @gmail.com. Como não passamos pelo formulário do site (que teria criado uma filiação vinculada), a nossa rotina de consolidação de fim de campanha cruzou os pagamentos do PagBank apenas pelo email principal — e o @gmail.com, mesmo estando cadastrado como secundário, não foi conferido. Assim, o pagamento ficou órfão no extrato, e o cadastro ficou como se não tivesse pago.
+
+Você foi a única dos 34 pagamentos avulsos de 2025 (pessoas que pagaram sem preencher o formulário) que caiu nessa lacuna — os outros 33 foram vinculados com sucesso. É uma falha do nosso lado, tanto no fluxo de reconciliação quanto em não termos entrado em contato preventivamente para conferir. Vou incluir na checagem de fim de campanha, para o próximo ano, uma rotina que confira também emails secundários e nome do pagador. Assim ninguém mais escapa.
+
+Sobre 2021: o comprovante que você enviou (TED de 24/12/2020 no valor de R$ 260, autenticação SISBB 6.72D.439.494.42D.C86) foi para pessoa física na gestão anterior, então não conseguimos aferir pelos nossos registros — mas considerando que você foi adimplente em 2020 e o comprovante foi enviado explicitamente para a anuidade de 2021, não temos motivo para questionar. Também lançamos como paga.
+
+Fica registrada sua adimplência ininterrupta desde 2020. Peço desculpas pelo transtorno e agradeço muito por seu retorno.
+
+Um abraço,
+Tesouraria Docomomo Brasil

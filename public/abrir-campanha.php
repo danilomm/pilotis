@@ -1,0 +1,68 @@
+<?php
+/**
+ * Endpoint one-shot para reabrir a campanha em data especifica.
+ * So executa se GET['data'] bater com hoje (evita re-execucao em anos futuros).
+ *
+ * Uso: GET /abrir-campanha.php?token=CRON_TOKEN&ano=2026&data=2026-07-13&data_fim=2026-07-20
+ */
+
+chdir(__DIR__);
+require_once __DIR__ . "/src/config.php";
+
+header("Content-Type: application/json; charset=utf-8");
+
+$token_esperado = env("CRON_TOKEN", "");
+if (empty($token_esperado)) {
+    http_response_code(500);
+    die(json_encode(["erro" => "CRON_TOKEN nao configurado"]));
+}
+
+$token = $_GET["token"] ?? "";
+if (!hash_equals($token_esperado, $token)) {
+    http_response_code(403);
+    die(json_encode(["erro" => "Acesso negado"]));
+}
+
+$data_esperada = $_GET["data"] ?? "";
+$hoje = date("Y-m-d");
+if ($data_esperada !== $hoje) {
+    echo json_encode([
+        "status" => "pulado",
+        "motivo" => "data_esperada nao bate com hoje",
+        "hoje" => $hoje,
+        "esperada" => $data_esperada,
+    ]);
+    exit;
+}
+
+$ano = (int)($_GET["ano"] ?? date("Y"));
+$data_fim = $_GET["data_fim"] ?? "";
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $data_fim)) {
+    http_response_code(400);
+    die(json_encode(["erro" => "data_fim invalida"]));
+}
+
+require_once __DIR__ . "/src/db.php";
+
+$campanha = db_fetch_one("SELECT status FROM campanhas WHERE ano = ?", [$ano]);
+if (!$campanha) {
+    http_response_code(404);
+    die(json_encode(["erro" => "Campanha $ano nao encontrada"]));
+}
+
+$rows = db_execute(
+    "UPDATE campanhas SET status='aberta', data_fim=? WHERE ano=?",
+    [$data_fim, $ano]
+);
+
+registrar_log('campanha_reaberta', null, "Campanha $ano reaberta automaticamente. data_fim=$data_fim");
+
+echo json_encode([
+    "status" => "ok",
+    "ano" => $ano,
+    "status_anterior" => $campanha['status'],
+    "novo_status" => "aberta",
+    "data_fim" => $data_fim,
+    "rows" => $rows,
+    "timestamp" => date("c"),
+]);

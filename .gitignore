@@ -1,0 +1,54 @@
+# Dependências PHP
+/vendor/
+composer.lock
+
+# Ambiente e credenciais
+.env
+CLAUDE.md
+
+# Revisoes de seguranca: descrevem falhas ainda nao corrigidas, com arquivo e
+# linha. Fora do repo publico pelo motivo obvio, e fora do privado pelo mesmo
+# criterio do CLAUDE.md — nao e codigo, e nao e informacao de evento.
+revisao-*.md
+sessao-*-handoff.md
+
+
+# Banco de dados
+*.db
+*.db-journal
+
+# Dados e backups
+dados/
+backups/
+*.csv
+
+# Logos (cada instalação tem o seu)
+public/assets/img/logo-*
+
+# Cartazes/faixas de evento (conteúdo de cada instalação, subido pelo admin)
+public/assets/img/eventos/
+
+# IDE
+.vscode/
+.idea/
+.~lock.*
+
+# Logs
+*.log
+
+# Cache Python (se houver)
+__pycache__/
+*.pyc
+
+# Dado pessoal — nunca no repositorio de codigo (que e o publico).
+#
+# Em 29/08/2026 descobriu-se que 18 arquivos assim estavam versionados E no
+# remoto publico: um banco de 12/01 com 724 cadastros (703 dos tokens ainda
+# valiam), as planilhas de filiados por nucleo, agendas .vcf e um arquivo de
+# links de pagamento. As regras 'backups/' e '*.db' ja existiam e nao adiantaram:
+# regra de ignore nao desrastreia arquivo que ja entrou. Foram tirados do indice
+# na mesma data.
+filiados/
+*.xlsx
+*.vcf
+links-pagamento-*.txt
