@@ -31,6 +31,12 @@ if (file_exists($autoload)) {
 // Carrega Controllers
 require_once SRC_DIR . '/Controllers/FiliacaoController.php';
 require_once SRC_DIR . '/Controllers/AdminController.php';
+// Os controllers do admin ESTENDEM AdminController — a linha acima vem antes,
+// senao a classe base nao existe na hora de definir as filhas.
+require_once SRC_DIR . '/Controllers/AdminCampanhaController.php';
+require_once SRC_DIR . '/Controllers/AdminPessoasController.php';
+require_once SRC_DIR . '/Controllers/AdminEventosController.php';
+require_once SRC_DIR . '/Controllers/AdminTemplatesController.php';
 require_once SRC_DIR . '/Controllers/EventosController.php';
 require_once SRC_DIR . '/Controllers/ValidacaoController.php';
 
@@ -107,60 +113,60 @@ post('/webhook/pagbank', function() {
 
 // === Admin ===
 get('/admin', 'AdminController::painel');
-get('/admin/campanha', 'AdminController::campanha');
-post('/admin/campanha/criar', 'AdminController::criarCampanha');
-post('/admin/campanha/excluir', 'AdminController::excluirCampanha');
-post('/admin/campanha/fechar', 'AdminController::fecharCampanha');
-post('/admin/campanha/valores', 'AdminController::salvarValores');
-post('/admin/campanha/data-fim', 'AdminController::salvarDataFim');
-post('/admin/campanha/iniciar', 'AdminController::iniciarCampanha');
-post('/admin/campanha/enviar-lote', 'AdminController::enviarLote');
-post('/admin/campanha/preview-lote', 'AdminController::previewLote');
-post('/admin/campanha/grupo-teste', 'AdminController::salvarGrupoTeste');
-post('/admin/campanha/enviar-teste', 'AdminController::enviarGrupoTeste');
-post('/admin/lembretes/processar', 'AdminController::processarLembretes');
-post('/admin/lembretes/contar', 'AdminController::contarLembretes');
+get('/admin/campanha', 'AdminCampanhaController::campanha');
+post('/admin/campanha/criar', 'AdminCampanhaController::criarCampanha');
+post('/admin/campanha/excluir', 'AdminCampanhaController::excluirCampanha');
+post('/admin/campanha/fechar', 'AdminCampanhaController::fecharCampanha');
+post('/admin/campanha/valores', 'AdminCampanhaController::salvarValores');
+post('/admin/campanha/data-fim', 'AdminCampanhaController::salvarDataFim');
+post('/admin/campanha/iniciar', 'AdminCampanhaController::iniciarCampanha');
+post('/admin/campanha/enviar-lote', 'AdminCampanhaController::enviarLote');
+post('/admin/campanha/preview-lote', 'AdminCampanhaController::previewLote');
+post('/admin/campanha/grupo-teste', 'AdminCampanhaController::salvarGrupoTeste');
+post('/admin/campanha/enviar-teste', 'AdminCampanhaController::enviarGrupoTeste');
+post('/admin/lembretes/processar', 'AdminCampanhaController::processarLembretes');
+post('/admin/lembretes/contar', 'AdminCampanhaController::contarLembretes');
 // Eventos (admin) — rotas estaticas ANTES das dinamicas ({id})
-get('/admin/eventos', 'AdminController::eventos');
-get('/admin/eventos/novo', 'AdminController::eventoNovoForm');
-post('/admin/eventos/novo', 'AdminController::eventoNovoSalvar');
-get('/admin/eventos/{id}', 'AdminController::evento');
-post('/admin/eventos/{id}', 'AdminController::eventoSalvar');
-post('/admin/eventos/{id}/status', 'AdminController::eventoStatus');
-post('/admin/eventos/{id}/excluir', 'AdminController::eventoExcluir');
-post('/admin/eventos/{id}/categoria', 'AdminController::eventoCategoriaSalvar');
-post('/admin/eventos/{id}/categoria/{cat_id}/excluir', 'AdminController::eventoCategoriaExcluir');
-get('/admin/eventos/{id}/inscritos', 'AdminController::eventoInscritos');
-get('/admin/eventos/{id}/inscritos.xlsx', 'AdminController::eventoInscritosXlsx');
-get('/admin/eventos/{id}/inscritos.csv', 'AdminController::eventoInscritosCsv');
-get('/admin/eventos/{id}/comprovante/{pessoa_id}', 'AdminController::eventoComprovante');
-get('/admin/eventos/{id}/categoria/{cat_id}/convites', 'AdminController::eventoConvitesForm');
-post('/admin/eventos/{id}/categoria/{cat_id}/convidar', 'AdminController::eventoEnviarConvites');
+get('/admin/eventos', 'AdminEventosController::eventos');
+get('/admin/eventos/novo', 'AdminEventosController::eventoNovoForm');
+post('/admin/eventos/novo', 'AdminEventosController::eventoNovoSalvar');
+get('/admin/eventos/{id}', 'AdminEventosController::evento');
+post('/admin/eventos/{id}', 'AdminEventosController::eventoSalvar');
+post('/admin/eventos/{id}/status', 'AdminEventosController::eventoStatus');
+post('/admin/eventos/{id}/excluir', 'AdminEventosController::eventoExcluir');
+post('/admin/eventos/{id}/categoria', 'AdminEventosController::eventoCategoriaSalvar');
+post('/admin/eventos/{id}/categoria/{cat_id}/excluir', 'AdminEventosController::eventoCategoriaExcluir');
+get('/admin/eventos/{id}/inscritos', 'AdminEventosController::eventoInscritos');
+get('/admin/eventos/{id}/inscritos.xlsx', 'AdminEventosController::eventoInscritosXlsx');
+get('/admin/eventos/{id}/inscritos.csv', 'AdminEventosController::eventoInscritosCsv');
+get('/admin/eventos/{id}/comprovante/{pessoa_id}', 'AdminEventosController::eventoComprovante');
+get('/admin/eventos/{id}/categoria/{cat_id}/convites', 'AdminEventosController::eventoConvitesForm');
+post('/admin/eventos/{id}/categoria/{cat_id}/convidar', 'AdminEventosController::eventoEnviarConvites');
 get('/admin/login', 'AdminController::loginForm');
 post('/admin/login', 'AdminController::login');
 get('/admin/logout', 'AdminController::logout');
 get('/admin/log', 'AdminController::log');
 get('/admin/contatos', 'AdminController::contatos');
 get('/admin/buscar', 'AdminController::buscar');
-get('/admin/pessoa/{id}', 'AdminController::pessoa');
-post('/admin/pessoa/{id}', 'AdminController::salvarPessoa');
-get('/admin/filiacao/{id}', 'AdminController::filiacao');
-post('/admin/filiacao/{id}', 'AdminController::salvarFiliacao');
-get('/admin/novo', 'AdminController::novoForm');
-post('/admin/novo', 'AdminController::novoSalvar');
-post('/admin/pagar/{filiacao_id}', 'AdminController::marcarPago');
-post('/admin/enviar-email/{filiacao_id}', 'AdminController::enviarEmail');
-post('/admin/enviar-confirmacao/{filiacao_id}', 'AdminController::enviarConfirmacao');
-post('/admin/eventos/inscricao/{inscricao_id}/enviar-confirmacao', 'AdminController::enviarConfirmacaoInscricao');
-post('/admin/excluir/pagamento/{filiacao_id}', 'AdminController::excluirPagamento');
-post('/admin/excluir/pessoa/{pessoa_id}', 'AdminController::excluirPessoa');
-get('/admin/envio/{id}', 'AdminController::verEnvio');
-get('/admin/templates', 'AdminController::templates');
-post('/admin/templates', 'AdminController::salvarTemplate');
-post('/admin/templates/resetar', 'AdminController::resetarTemplate');
+get('/admin/pessoa/{id}', 'AdminPessoasController::pessoa');
+post('/admin/pessoa/{id}', 'AdminPessoasController::salvarPessoa');
+get('/admin/filiacao/{id}', 'AdminPessoasController::filiacao');
+post('/admin/filiacao/{id}', 'AdminPessoasController::salvarFiliacao');
+get('/admin/novo', 'AdminPessoasController::novoForm');
+post('/admin/novo', 'AdminPessoasController::novoSalvar');
+post('/admin/pagar/{filiacao_id}', 'AdminPessoasController::marcarPago');
+post('/admin/enviar-email/{filiacao_id}', 'AdminPessoasController::enviarEmail');
+post('/admin/enviar-confirmacao/{filiacao_id}', 'AdminPessoasController::enviarConfirmacao');
+post('/admin/eventos/inscricao/{inscricao_id}/enviar-confirmacao', 'AdminEventosController::enviarConfirmacaoInscricao');
+post('/admin/excluir/pagamento/{filiacao_id}', 'AdminPessoasController::excluirPagamento');
+post('/admin/excluir/pessoa/{pessoa_id}', 'AdminPessoasController::excluirPessoa');
+get('/admin/envio/{id}', 'AdminPessoasController::verEnvio');
+get('/admin/templates', 'AdminTemplatesController::templates');
+post('/admin/templates', 'AdminTemplatesController::salvarTemplate');
+post('/admin/templates/resetar', 'AdminTemplatesController::resetarTemplate');
 get('/admin/download/banco', 'AdminController::downloadBanco');
 get('/admin/download/csv', 'AdminController::downloadCsv');
-get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminController::downloadComprovante');
+get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminPessoasController::downloadComprovante');
 
 // === Assets estaticos ===
 // Servidos diretamente pelo Apache, nao passa pelo PHP
