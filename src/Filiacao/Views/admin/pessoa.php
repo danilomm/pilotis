@@ -36,6 +36,35 @@
             </div>
         </div>
 
+        <?php
+        // Documento de quem nao tem CPF. Recolhido, porque e a excecao: fica
+        // aberto so quando ja ha algo escrito, para nao passar despercebido em
+        // quem ja o tem. Nao substitui o CPF — a busca e o indice unico do
+        // sistema continuam sendo por CPF.
+        ?>
+        <details <?= !empty($pessoa['documento']) ? 'open' : '' ?> style="margin-bottom: 16px;">
+            <summary style="cursor: pointer;"><small>Filiado sem CPF (passaporte ou outro documento)</small></summary>
+            <div class="grid" style="margin-top: 10px;">
+                <div>
+                    <label for="documento">Número do documento</label>
+                    <input type="text" id="documento" name="documento" value="<?= e($pessoa['documento'] ?? '') ?>">
+                </div>
+                <div>
+                    <label for="documento_tipo">Tipo</label>
+                    <input type="text" id="documento_tipo" name="documento_tipo" list="tipos-documento"
+                           placeholder="passaporte" value="<?= e($pessoa['documento_tipo'] ?? '') ?>">
+                    <datalist id="tipos-documento">
+                        <option value="passaporte">
+                        <option value="DNI">
+                        <option value="NIE">
+                    </datalist>
+                </div>
+            </div>
+            <small>Para filiado estrangeiro. <strong>Não serve para o pagamento online:</strong>
+            o PagBank exige CPF, então a cobrança dessa pessoa se resolve fora do sistema e a
+            filiação entra aqui como paga.</small>
+        </details>
+
         <div style="border: 1px solid #bcbfc3; border-radius: 4px; padding: 10px 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;">
             <input type="checkbox" id="ativo" name="ativo" value="1" <?= ($pessoa['ativo'] ?? 1) ? 'checked' : '' ?> style="margin: 0; width: 18px; height: 18px;">
             <label for="ativo" style="margin: 0; cursor: pointer;">Ativo <small style="color: #666;">(pessoas inativas não recebem emails de campanha)</small></label>

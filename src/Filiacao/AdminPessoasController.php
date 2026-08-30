@@ -75,6 +75,14 @@ class AdminPessoasController extends AdminController {
         $notas = trim($_POST['notas'] ?? '') ?: null;
         $ativo = isset($_POST['ativo']) ? 1 : 0;
 
+        // Documento de quem nao tem CPF. Sem tipo, o numero nao diz nada —
+        // entao um sem o outro nao se grava pela metade: fica 'passaporte' por
+        // padrao, que e o caso previsto, e a tesouraria corrige se for outro.
+        $documento = trim($_POST['documento'] ?? '') ?: null;
+        $documento_tipo = trim($_POST['documento_tipo'] ?? '') ?: null;
+        if ($documento !== null && $documento_tipo === null) $documento_tipo = 'passaporte';
+        if ($documento === null) $documento_tipo = null;
+
         // CPF normalizado; bloqueia se pertence a outra pessoa (índice único)
         if ($cpf) {
             $cpf = preg_replace('/\D/', '', $cpf);
@@ -89,10 +97,11 @@ class AdminPessoasController extends AdminController {
         // Atualiza pessoa
         db_execute("
             UPDATE pessoas SET
-                nome = ?, cpf = ?, notas = ?, ativo = ?,
+                nome = ?, cpf = ?, documento = ?, documento_tipo = ?,
+                notas = ?, ativo = ?,
                 updated_at = datetime('now','localtime')
             WHERE id = ?
-        ", [$nome, $cpf, $notas, $ativo, (int)$id]);
+        ", [$nome, $cpf, $documento, $documento_tipo, $notas, $ativo, (int)$id]);
 
         // Atualiza email principal.
         //

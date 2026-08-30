@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30c';
+const SCHEMA_VERSION = '2026-08-30d';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -394,6 +394,29 @@ function init_extra_tables(PDO $db): void {
     // e tirar alguem e apagar uma linha da lista.
     garantir_coluna($db, 'eventos', 'emails_organizacao', 'TEXT');
     garantir_coluna($db, 'eventos', 'organizacao_expira_em', 'DATE');
+
+    // Documento de quem NAO tem CPF — estrangeiro filiado, tipicamente com
+    // passaporte. Colunas a parte, e nao um `cpf` polivalente, porque o CPF e
+    // IDENTIDADE neste sistema: entra em 19 pontos de busca e no indice unico
+    // parcial de `pessoas(cpf)`. Misturar os dois na mesma coluna faria a busca
+    // por CPF encontrar passaporte e o indice unico recusar cadastro legitimo.
+    //
+    // `documento_tipo` existe porque numero sem saber o que e nao serve para
+    // nada: 'passaporte' e o caso previsto, mas ha DNI, NIE e afins. Texto
+    // livre de proposito — enumerar paises aqui envelheceria mal.
+    //
+    // SEM indice unico, e de proposito: nao ha formato para validar e dois
+    // paises podem repetir numeracao. Um unico aqui recusaria cadastro
+    // legitimo, que e pior do que aceitar duplicata que alguem confere depois.
+    //
+    // ADITIVA: nenhum fluxo publico mudou. O formulario de filiacao continua
+    // exigindo CPF, e a busca por pessoa continua sendo por CPF. Isto e o LUGAR
+    // do dado, para que ele deixe de se perder — quem preenche hoje e a
+    // tesouraria, pelo /admin, ao cadastrar a mao um filiado estrangeiro.
+    // O passo seguinte (campo no formulario publico, busca pelo documento) fica
+    // para a campanha de 2027, que tem meses; ver CLAUDE.md.
+    garantir_coluna($db, 'pessoas', 'documento', 'TEXT');
+    garantir_coluna($db, 'pessoas', 'documento_tipo', 'TEXT');
 
     garantir_coluna($db, 'eventos', 'apoiadores', 'TEXT');
     garantir_coluna($db, 'eventos', 'imagem_apoiadores', 'TEXT');
