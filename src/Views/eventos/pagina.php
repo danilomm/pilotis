@@ -14,41 +14,43 @@
              style="<?= $img_estilo ?>">
     <?php endif; ?>
 
-    <h2><?= e($evento['nome']) ?></h2>
+    <?php
+    // Titulo e tema num bloco so. A `descricao` do sdrj05 E o titulo do
+    // seminario ("Modernidade alem do canone: ..."), e ate 30/08/2026 ela era
+    // impressa como paragrafo DEPOIS do quadro de data e local — separada do
+    // nome do evento pelo proprio quadro, e com corpo de texto comum.
+    //
+    // <hgroup> e a marcacao certa para titulo + subtitulo: o subtitulo nao e
+    // secao, e parte do titulo. O Pico ja o apresenta esmaecido e junto, sem CSS
+    // nosso. Assim a hierarquia da pagina fica h2 (nome) -> h3 (secoes do
+    // conteudo), sem degrau.
+    ?>
+    <hgroup>
+        <h2><?= e($evento['nome']) ?></h2>
+        <?php if ($evento['descricao']): ?>
+            <p style="font-size: 1.15rem; line-height: 1.45;"><?= nl2br(e($evento['descricao'])) ?></p>
+        <?php endif; ?>
+    </hgroup>
 
     <?php if ($evento['organizador']): ?>
         <p><small>Organização: <?= e($evento['organizador']) ?></small></p>
     <?php endif; ?>
 
     <?php
-    // Quando e onde ficam juntos e no alto: e o que a pessoa procura primeiro,
-    // e o que vai para o cartaz impresso.
-    $tem_quando = !empty($evento['data_inicio']);
-    $tem_onde = !empty($evento['local']);
+    // Data e local, duas linhas, sem rotulo e sem quadro. Ate 30/08/2026 isto era
+    // um cartao com "QUANDO" e "ONDE" em versalete — verboso: quem le
+    // "12 e 13 de novembro de 2026" nao precisa que digam que aquilo e a data.
+    // O que a pessoa procura primeiro continua sendo o primeiro que ela ve.
     ?>
-    <?php if ($tem_quando || $tem_onde): ?>
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem 3rem; margin: 1.2rem 0 1.6rem;
-                    padding: 1rem 1.2rem; background: var(--pico-card-sectioning-background-color);
-                    border-radius: 8px;">
-            <?php if ($tem_quando): ?>
-                <div>
-                    <strong style="display: block; font-size: .8rem; text-transform: uppercase;
-                                   letter-spacing: .04em; color: var(--pico-muted-color);">Quando</strong>
-                    <?= data_por_extenso($evento['data_inicio'], $evento['data_fim']) ?>
-                </div>
+    <?php if (!empty($evento['data_inicio']) || !empty($evento['local'])): ?>
+        <p style="margin: 0 0 1.6rem; line-height: 1.5;">
+            <?php if (!empty($evento['data_inicio'])): ?>
+                <strong><?= data_por_extenso($evento['data_inicio'], $evento['data_fim']) ?></strong>
             <?php endif; ?>
-            <?php if ($tem_onde): ?>
-                <div>
-                    <strong style="display: block; font-size: .8rem; text-transform: uppercase;
-                                   letter-spacing: .04em; color: var(--pico-muted-color);">Onde</strong>
-                    <?= nl2br(e($evento['local'])) ?>
-                </div>
+            <?php if (!empty($evento['local'])): ?>
+                <?= !empty($evento['data_inicio']) ? '<br>' : '' ?><?= nl2br(e($evento['local'])) ?>
             <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($evento['descricao']): ?>
-        <p style="font-size: 1.08rem; line-height: 1.6;"><?= nl2br(e($evento['descricao'])) ?></p>
+        </p>
     <?php endif; ?>
 
     <?php if (!empty($evento['conteudo'])): ?>
