@@ -92,7 +92,7 @@ foreach ($casos_ok as $nome_caso => $ok) {
 }
 
 echo "\n== carregar_template escapa no HTML e nao no assunto ==\n";
-$fonte = file_get_contents($raiz . '/src/Dados/Templates.php');
+$fonte = file_get_contents($raiz . '/src/Campanha/Templates.php');
 $checks = [
     'escapa o valor que vai ao HTML' => strpos($fonte, 'htmlspecialchars($cru') !== false,
     'assunto recebe o valor cru'     => preg_match('/\$assunto = str_replace\([^)]*\$cru/', $fonte) === 1,

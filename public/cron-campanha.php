@@ -192,7 +192,7 @@ $limite_diario = 290 - $enviados_hoje_utc;
 // que o envio automatico da campanha devesse comecar. Nenhum email sairia, e o
 // diagnostico seria um Action vermelho sem corpo, sem SSH para ler o log.
 require_once SRC_DIR . '/Controllers/AdminController.php';
-require_once SRC_DIR . '/Controllers/AdminCampanhaController.php';
+require_once SRC_DIR . '/Campanha/AdminCampanhaController.php';
 
 $reflection = new ReflectionMethod('AdminCampanhaController', 'obterGruposCampanha');
 $reflection->setAccessible(true);

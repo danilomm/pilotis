@@ -121,5 +121,5 @@
         </div>
     <?php endif; ?>
 
-    <?php require SRC_DIR . '/Views/eventos/_apoiadores.php'; ?>
+    <?php require SRC_DIR . '/Eventos/Views/_apoiadores.php'; ?>
 </article>

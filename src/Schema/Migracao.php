@@ -368,7 +368,7 @@ function init_extra_tables(PDO $db): void {
     // e deixava 1308 filiacoes fora da conta.
     //
     // A coluna nasce agora porque o evento e em 12-13/11 e ela precisa existir
-    // antes; a tela que a usa e da etapa 2. Ver Dominio/Inscricoes.php.
+    // antes; a tela que a usa e da etapa 2. Ver Eventos/Inscricoes.php.
     garantir_coluna($db, 'inscricoes', 'presenca_em', 'DATETIME');
 
     // Quem marcou a presenca. Em coluna, e nao so no texto do log: a restricao 3

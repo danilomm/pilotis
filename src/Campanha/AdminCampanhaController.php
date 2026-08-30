@@ -12,7 +12,7 @@
 
 // A base define exigirLogin(). Exigida AQUI, e nao so no index.php: assim o
 // arquivo funciona em qualquer ordem de carregamento — inclusive nos testes.
-require_once __DIR__ . '/AdminController.php';
+require_once __DIR__ . '/../Controllers/AdminController.php';
 
 class AdminCampanhaController extends AdminController {
 
@@ -215,7 +215,7 @@ class AdminCampanhaController extends AdminController {
         $titulo = "Admin - Campanhas";
 
         ob_start();
-        require SRC_DIR . '/Views/admin/campanha.php';
+        require SRC_DIR . '/Campanha/Views/admin/campanha.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -963,6 +963,34 @@ class AdminCampanhaController extends AdminController {
             ];
         }
         return $result;
+    }
+
+    /**
+     * Mostra detalhes de um envio (email enviado + destinatários)
+     */
+    public static function verEnvio(string $id): void {
+        self::exigirLogin();
+
+        $id = (int)$id;
+        $lote = db_fetch_one("SELECT * FROM envios_lotes WHERE id = ?", [$id]);
+
+        if (!$lote) {
+            flash('error', 'Envio não encontrado.');
+            redirect('/admin/campanha');
+            return;
+        }
+
+        $destinatarios = db_fetch_all(
+            "SELECT * FROM envios_destinatarios WHERE lote_id = ? ORDER BY nome",
+            [$id]
+        );
+
+        $titulo = "Admin - Envio #$id";
+
+        ob_start();
+        require SRC_DIR . '/Campanha/Views/admin/envio.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
     }
 
 }

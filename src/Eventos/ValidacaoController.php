@@ -11,7 +11,7 @@
  * situacao ATUAL. Nao mostra endereco, telefone nem email.
  */
 
-require_once SRC_DIR . '/Services/ValidacaoService.php';
+require_once SRC_DIR . '/Eventos/ValidacaoService.php';
 
 class ValidacaoController {
 
@@ -32,7 +32,7 @@ class ValidacaoController {
         $codigo_exibicao = strtoupper(trim($codigo));
         $titulo = 'Validação de documento';
         ob_start();
-        require SRC_DIR . '/Views/validacao/resultado.php';
+        require SRC_DIR . '/Eventos/Views/resultado.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }

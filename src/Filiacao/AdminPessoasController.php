@@ -12,7 +12,7 @@
 
 // A base define exigirLogin(). Exigida AQUI, e nao so no index.php: assim o
 // arquivo funciona em qualquer ordem de carregamento — inclusive nos testes.
-require_once __DIR__ . '/AdminController.php';
+require_once __DIR__ . '/../Controllers/AdminController.php';
 
 class AdminPessoasController extends AdminController {
 
@@ -51,7 +51,7 @@ class AdminPessoasController extends AdminController {
         $titulo = "Admin - " . ($pessoa['nome'] ?: 'Pessoa');
 
         ob_start();
-        require SRC_DIR . '/Views/admin/pessoa.php';
+        require SRC_DIR . '/Filiacao/Views/admin/pessoa.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -175,7 +175,7 @@ class AdminPessoasController extends AdminController {
         $titulo = "Admin - Filiação {$filiacao['ano']}";
 
         ob_start();
-        require SRC_DIR . '/Views/admin/filiacao.php';
+        require SRC_DIR . '/Filiacao/Views/admin/filiacao.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -266,7 +266,7 @@ class AdminPessoasController extends AdminController {
         $titulo = "Admin - Novo Cadastro";
 
         ob_start();
-        require SRC_DIR . '/Views/admin/novo.php';
+        require SRC_DIR . '/Filiacao/Views/admin/novo.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -582,34 +582,6 @@ class AdminPessoasController extends AdminController {
 
         flash('success', 'Pessoa excluída.');
         redirect('/admin');
-    }
-
-    /**
-     * Mostra detalhes de um envio (email enviado + destinatários)
-     */
-    public static function verEnvio(string $id): void {
-        self::exigirLogin();
-
-        $id = (int)$id;
-        $lote = db_fetch_one("SELECT * FROM envios_lotes WHERE id = ?", [$id]);
-
-        if (!$lote) {
-            flash('error', 'Envio não encontrado.');
-            redirect('/admin/campanha');
-            return;
-        }
-
-        $destinatarios = db_fetch_all(
-            "SELECT * FROM envios_destinatarios WHERE lote_id = ? ORDER BY nome",
-            [$id]
-        );
-
-        $titulo = "Admin - Envio #$id";
-
-        ob_start();
-        require SRC_DIR . '/Views/admin/envio.php';
-        $content = ob_get_clean();
-        require SRC_DIR . '/Views/layout.php';
     }
 
     /**

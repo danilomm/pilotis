@@ -29,16 +29,16 @@ if (file_exists($autoload)) {
 }
 
 // Carrega Controllers
-require_once SRC_DIR . '/Controllers/FiliacaoController.php';
+require_once SRC_DIR . '/Filiacao/FiliacaoController.php';
 require_once SRC_DIR . '/Controllers/AdminController.php';
 // Os controllers do admin ESTENDEM AdminController — a linha acima vem antes,
 // senao a classe base nao existe na hora de definir as filhas.
-require_once SRC_DIR . '/Controllers/AdminCampanhaController.php';
-require_once SRC_DIR . '/Controllers/AdminPessoasController.php';
-require_once SRC_DIR . '/Controllers/AdminEventosController.php';
-require_once SRC_DIR . '/Controllers/AdminTemplatesController.php';
-require_once SRC_DIR . '/Controllers/EventosController.php';
-require_once SRC_DIR . '/Controllers/ValidacaoController.php';
+require_once SRC_DIR . '/Campanha/AdminCampanhaController.php';
+require_once SRC_DIR . '/Filiacao/AdminPessoasController.php';
+require_once SRC_DIR . '/Eventos/AdminEventosController.php';
+require_once SRC_DIR . '/Campanha/AdminTemplatesController.php';
+require_once SRC_DIR . '/Eventos/EventosController.php';
+require_once SRC_DIR . '/Eventos/ValidacaoController.php';
 
 // === ROTAS ===
 
@@ -160,7 +160,7 @@ post('/admin/enviar-confirmacao/{filiacao_id}', 'AdminPessoasController::enviarC
 post('/admin/eventos/inscricao/{inscricao_id}/enviar-confirmacao', 'AdminEventosController::enviarConfirmacaoInscricao');
 post('/admin/excluir/pagamento/{filiacao_id}', 'AdminPessoasController::excluirPagamento');
 post('/admin/excluir/pessoa/{pessoa_id}', 'AdminPessoasController::excluirPessoa');
-get('/admin/envio/{id}', 'AdminPessoasController::verEnvio');
+get('/admin/envio/{id}', 'AdminCampanhaController::verEnvio');
 get('/admin/templates', 'AdminTemplatesController::templates');
 post('/admin/templates', 'AdminTemplatesController::salvarTemplate');
 post('/admin/templates/resetar', 'AdminTemplatesController::resetarTemplate');

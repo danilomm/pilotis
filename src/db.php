@@ -42,12 +42,12 @@ require_once __DIR__ . '/Seguranca/Mascaras.php';
 // --- consultas, por assunto ---------------------------------------------
 require_once __DIR__ . '/Dados/Log.php';
 require_once __DIR__ . '/Dados/Pessoas.php';
-require_once __DIR__ . '/Dados/Filiacoes.php';
-require_once __DIR__ . '/Dados/Eventos.php';
+require_once __DIR__ . '/Filiacao/Dados.php';
+require_once __DIR__ . '/Eventos/Dados.php';
 require_once __DIR__ . '/Dados/Autocomplete.php';
-require_once __DIR__ . '/Dados/Templates.php';
+require_once __DIR__ . '/Campanha/Templates.php';
 
 // --- regras -------------------------------------------------------------
 require_once __DIR__ . '/Dominio/Consolidacao.php';
-require_once __DIR__ . '/Dominio/Eventos.php';
-require_once __DIR__ . '/Dominio/Inscricoes.php';
+require_once __DIR__ . '/Eventos/Dominio.php';
+require_once __DIR__ . '/Eventos/Inscricoes.php';

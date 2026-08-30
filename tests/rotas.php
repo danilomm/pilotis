@@ -28,7 +28,13 @@ $raiz = dirname(__DIR__);
 // Carrega as classes sem executar o dispatcher.
 require_once $raiz . '/src/config.php';
 require_once $raiz . '/src/db.php';
-foreach (glob($raiz . '/src/Controllers/*.php') as $c) {
+// Controllers ficam em dois lugares: os transversais em src/Controllers/, e os
+// de cada modulo dentro da pasta do proprio modulo (src/Eventos/, etc.) — o
+// sistema e organizado por MODULO, nao por camada.
+foreach (array_merge(
+    glob($raiz . '/src/Controllers/*.php'),
+    glob($raiz . '/src/*/*Controller.php')
+) as $c) {
     require_once $c;
 }
 

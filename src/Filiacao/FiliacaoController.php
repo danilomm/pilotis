@@ -16,7 +16,7 @@ class FiliacaoController {
         $campanha = db_fetch_one("SELECT status, data_fim, data_fim_internacional FROM campanhas WHERE ano = ?", [(int)$ano]);
         if (!$campanha || $campanha['status'] !== 'aberta') {
             ob_start();
-            require SRC_DIR . '/Views/filiacao/campanha_encerrada.php';
+            require SRC_DIR . '/Filiacao/Views/campanha_encerrada.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -32,14 +32,14 @@ class FiliacaoController {
         }
         if ($todas_expiradas) {
             ob_start();
-            require SRC_DIR . '/Views/filiacao/campanha_encerrada.php';
+            require SRC_DIR . '/Filiacao/Views/campanha_encerrada.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
         }
 
         ob_start();
-        require SRC_DIR . '/Views/filiacao/entrada.php';
+        require SRC_DIR . '/Filiacao/Views/entrada.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -130,7 +130,7 @@ class FiliacaoController {
         $titulo = "Verifique seu Email";
 
         ob_start();
-        require SRC_DIR . '/Views/filiacao/email_enviado.php';
+        require SRC_DIR . '/Filiacao/Views/email_enviado.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -144,7 +144,7 @@ class FiliacaoController {
         if (!$campanha || $campanha['status'] !== 'aberta') {
             $titulo = "Filiação $ano";
             ob_start();
-            require SRC_DIR . '/Views/filiacao/campanha_encerrada.php';
+            require SRC_DIR . '/Filiacao/Views/campanha_encerrada.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -234,7 +234,7 @@ class FiliacaoController {
         $titulo = "Filiação $ano";
 
         ob_start();
-        require SRC_DIR . '/Views/filiacao/formulario.php';
+        require SRC_DIR . '/Filiacao/Views/formulario.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -402,7 +402,7 @@ class FiliacaoController {
             $mensagem = "Sua filiação já está confirmada!";
 
             ob_start();
-            require SRC_DIR . '/Views/filiacao/confirmacao.php';
+            require SRC_DIR . '/Filiacao/Views/confirmacao.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -468,7 +468,7 @@ class FiliacaoController {
         $primeiro_nome = explode(' ', trim($antigo['nome']))[0] ?? '';
         $titulo = "Vincular cadastro";
         ob_start();
-        require SRC_DIR . '/Views/filiacao/vincular_cadastro.php';
+        require SRC_DIR . '/Filiacao/Views/vincular_cadastro.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -615,7 +615,7 @@ class FiliacaoController {
         if (!$campanha || $campanha['status'] !== 'aberta') {
             $titulo = "Filiação $ano";
             ob_start();
-            require SRC_DIR . '/Views/filiacao/campanha_encerrada.php';
+            require SRC_DIR . '/Filiacao/Views/campanha_encerrada.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -643,7 +643,7 @@ class FiliacaoController {
             $mensagem = "Sua filiação já está confirmada!";
 
             ob_start();
-            require SRC_DIR . '/Views/filiacao/confirmacao.php';
+            require SRC_DIR . '/Filiacao/Views/confirmacao.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -746,7 +746,7 @@ class FiliacaoController {
         $valor_formatado = formatar_valor($valor_centavos);
 
         ob_start();
-        require SRC_DIR . '/Views/filiacao/pagamento.php';
+        require SRC_DIR . '/Filiacao/Views/pagamento.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -983,7 +983,7 @@ class FiliacaoController {
                 $mensagem = "Pagamento aprovado! Sua filiação está confirmada.";
 
                 ob_start();
-                require SRC_DIR . '/Views/filiacao/confirmacao.php';
+                require SRC_DIR . '/Filiacao/Views/confirmacao.php';
                 $content = ob_get_clean();
                 require SRC_DIR . '/Views/layout.php';
                 return;

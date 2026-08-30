@@ -11,7 +11,7 @@
 
 // A base define exigirLogin(). Exigida AQUI, e nao so no index.php: assim o
 // arquivo funciona em qualquer ordem de carregamento — inclusive nos testes.
-require_once __DIR__ . '/AdminController.php';
+require_once __DIR__ . '/../Controllers/AdminController.php';
 
 class AdminEventosController extends AdminController {
 
@@ -67,7 +67,7 @@ class AdminEventosController extends AdminController {
 
         $titulo = "Admin - Eventos";
         ob_start();
-        require SRC_DIR . '/Views/admin/eventos.php';
+        require SRC_DIR . '/Eventos/Views/admin/eventos.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -80,7 +80,7 @@ class AdminEventosController extends AdminController {
 
         $titulo = "Admin - Novo Evento";
         ob_start();
-        require SRC_DIR . '/Views/admin/evento_novo.php';
+        require SRC_DIR . '/Eventos/Views/admin/evento_novo.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -151,7 +151,7 @@ class AdminEventosController extends AdminController {
 
         $titulo = "Admin - Evento: " . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/admin/evento.php';
+        require SRC_DIR . '/Eventos/Views/admin/evento.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -498,7 +498,7 @@ class AdminEventosController extends AdminController {
 
         $titulo = 'Inscritos — ' . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/admin/evento_inscritos.php';
+        require SRC_DIR . '/Eventos/Views/admin/evento_inscritos.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -620,7 +620,7 @@ class AdminEventosController extends AdminController {
 
         $titulo = 'Convites — ' . $cat['nome'];
         ob_start();
-        require SRC_DIR . '/Views/admin/evento_convites.php';
+        require SRC_DIR . '/Eventos/Views/admin/evento_convites.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }

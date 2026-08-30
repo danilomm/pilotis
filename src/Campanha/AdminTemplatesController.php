@@ -8,7 +8,7 @@
 
 // A base define exigirLogin(). Exigida AQUI, e nao so no index.php: assim o
 // arquivo funciona em qualquer ordem de carregamento — inclusive nos testes.
-require_once __DIR__ . '/AdminController.php';
+require_once __DIR__ . '/../Controllers/AdminController.php';
 
 class AdminTemplatesController extends AdminController {
 
@@ -33,7 +33,7 @@ class AdminTemplatesController extends AdminController {
         $titulo = "Admin - Templates de Email";
 
         ob_start();
-        require SRC_DIR . '/Views/admin/templates.php';
+        require SRC_DIR . '/Campanha/Views/admin/templates.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }

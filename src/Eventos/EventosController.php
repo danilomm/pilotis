@@ -21,7 +21,7 @@ class EventosController {
 
         $titulo = "Eventos - " . ORG_NOME;
         ob_start();
-        require SRC_DIR . '/Views/eventos/lista.php';
+        require SRC_DIR . '/Eventos/Views/lista.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -54,7 +54,7 @@ class EventosController {
         $titulo = $evento['nome'];
         $meta = self::metaDoEvento($evento);
         ob_start();
-        require SRC_DIR . '/Views/eventos/pagina.php';
+        require SRC_DIR . '/Eventos/Views/pagina.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -84,7 +84,7 @@ class EventosController {
         $titulo = "Inscrição — " . $evento['nome'];
         $meta = self::metaDoEvento($evento);
         ob_start();
-        require SRC_DIR . '/Views/eventos/inscricao.php';
+        require SRC_DIR . '/Eventos/Views/inscricao.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -200,7 +200,7 @@ class EventosController {
                 $cpf_pendente = $so_digitos;
                 $titulo = "Inscrição — " . $evento['nome'];
                 ob_start();
-                require SRC_DIR . '/Views/eventos/pedir_email.php';
+                require SRC_DIR . '/Eventos/Views/pedir_email.php';
                 $content = ob_get_clean();
                 require SRC_DIR . '/Views/layout.php';
                 return;
@@ -282,7 +282,7 @@ class EventosController {
 
         $titulo = "Verifique seu Email";
         ob_start();
-        require SRC_DIR . '/Views/eventos/email_enviado.php';
+        require SRC_DIR . '/Eventos/Views/email_enviado.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -293,7 +293,7 @@ class EventosController {
      * Entrada do painel: pede o email autorizado.
      */
     public static function organizacaoEntrada(string $slug): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
 
         $evento = buscar_evento_por_slug($slug);
         if (!$evento || !painel_organizacao_ativo($evento)) {
@@ -308,7 +308,7 @@ class EventosController {
 
         $titulo = 'Acompanhamento — ' . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/eventos/organizacao_entrada.php';
+        require SRC_DIR . '/Eventos/Views/organizacao_entrada.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -320,7 +320,7 @@ class EventosController {
      * descobre quem faz parte da organizacao.
      */
     public static function organizacaoEnviarLink(string $slug): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
         require_once SRC_DIR . '/Services/BrevoService.php';
 
         $evento = buscar_evento_por_slug($slug);
@@ -384,7 +384,7 @@ class EventosController {
         $titulo = 'Acompanhamento — ' . $evento['nome'];
         $enviado = true;
         ob_start();
-        require SRC_DIR . '/Views/eventos/organizacao_entrada.php';
+        require SRC_DIR . '/Eventos/Views/organizacao_entrada.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -393,7 +393,7 @@ class EventosController {
      * Abre a sessao a partir do link recebido por email.
      */
     public static function organizacaoAcesso(string $slug, string $token): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
 
         $evento = buscar_evento_por_slug($slug);
         if (!$evento || !painel_organizacao_ativo($evento)) {
@@ -418,7 +418,7 @@ class EventosController {
      * O painel em si. Somente leitura.
      */
     public static function organizacaoInscritos(string $slug): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
 
         $evento = buscar_evento_por_slug($slug);
         if (!$evento) { error_404(); return; }
@@ -445,7 +445,7 @@ class EventosController {
 
         $titulo = 'Inscritos — ' . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/eventos/organizacao_inscritos.php';
+        require SRC_DIR . '/Eventos/Views/organizacao_inscritos.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -461,7 +461,7 @@ class EventosController {
      * Receita. Quem lida com pagamento e a tesouraria, e la o CPF esta.
      */
     private static function exportarPainel(string $slug, string $formato): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
 
         $evento = buscar_evento_por_slug($slug);
         if (!$evento) { error_404(); return; }
@@ -513,7 +513,7 @@ class EventosController {
     }
 
     public static function organizacaoSair(string $slug): void {
-        require_once SRC_DIR . '/Services/PainelOrganizacaoService.php';
+        require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
         $evento = buscar_evento_por_slug($slug);
         if ($evento) PainelOrganizacaoService::encerrarSessao($evento);
         redirect("/eventos/$slug/organizacao");
@@ -547,7 +547,7 @@ class EventosController {
         if (!evento_inscricoes_abertas($evento)) {
             $titulo = $evento['nome'];
             ob_start();
-            require SRC_DIR . '/Views/eventos/encerrado.php';
+            require SRC_DIR . '/Eventos/Views/encerrado.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -622,7 +622,7 @@ class EventosController {
 
         $titulo = "Inscrição - " . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/eventos/formulario.php';
+        require SRC_DIR . '/Eventos/Views/formulario.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -972,7 +972,7 @@ class EventosController {
         $primeiro_nome = explode(' ', trim($antigo['nome']))[0] ?? '';
         $titulo = "Vincular cadastro";
         ob_start();
-        require SRC_DIR . '/Views/eventos/vincular.php';
+        require SRC_DIR . '/Eventos/Views/vincular.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -1287,7 +1287,7 @@ class EventosController {
         if (!$abertas && empty($inscricao['pagbank_order_id'])) {
             $titulo = "Inscrições encerradas - " . $evento['nome'];
             ob_start();
-            require SRC_DIR . '/Views/eventos/encerrado.php';
+            require SRC_DIR . '/Eventos/Views/encerrado.php';
             $content = ob_get_clean();
             require SRC_DIR . '/Views/layout.php';
             return;
@@ -1371,7 +1371,7 @@ class EventosController {
 
         $titulo = "Pagamento - " . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/eventos/pagamento.php';
+        require SRC_DIR . '/Eventos/Views/pagamento.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }
@@ -1568,7 +1568,7 @@ class EventosController {
             : null;
         $titulo = "Inscrição Confirmada - " . $evento['nome'];
         ob_start();
-        require SRC_DIR . '/Views/eventos/confirmada.php';
+        require SRC_DIR . '/Eventos/Views/confirmada.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
     }

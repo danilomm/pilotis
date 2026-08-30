@@ -40,7 +40,7 @@ function buscar_inscricao(int $pessoa_id, int $evento_id): ?array {
  *
  * ATENCAO: ela traz `p.cpf` e `i.valor`. **Nao e ela que protege o painel da
  * organizacao** — quem omite CPF e valores sao a view
- * (`Views/eventos/organizacao_inscritos.php`) e a lista de colunas de
+ * (`Eventos/Views/organizacao_inscritos.php`) e a lista de colunas de
  * `exportarPainel()`. Quem escrever tela nova do painel a partir daqui recebe
  * os dois campos sem perceber, achando que a consulta ja filtrou.
  */
