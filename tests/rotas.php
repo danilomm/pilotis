@@ -177,6 +177,64 @@ foreach ($ordem as $i => [$mh, $rota]) {
 }
 if (!$falhas) echo "  ok     nenhuma rota inalcancavel\n";
 
+// ---------------------------------------------------------------------------
+// Todo require aponta para arquivo que existe.
+//
+// Existe porque a reorganizacao em modulos de 30/08 quebrou um require que
+// nenhum outro teste via: o PdfService incluia ValidacaoService por
+// __DIR__, dentro de um ramo que so roda ao gerar PDF com QR. O php -l nao
+// ve, o boot nao ve, e o erro so apareceria na hora de emitir o comprovante
+// de quem acabou de pagar.
+// ---------------------------------------------------------------------------
+echo "\n== requires apontam para arquivo existente ==\n";
+
+$arquivos_php = [];
+foreach (['src', 'public', 'scripts', 'tests'] as $dir) {
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($raiz . '/' . $dir));
+    foreach ($it as $f) {
+        if ($f->isFile() && $f->getExtension() === 'php') $arquivos_php[] = $f->getPathname();
+    }
+}
+
+$conferidos = 0;
+foreach ($arquivos_php as $arq) {
+    $src = file_get_contents($arq);
+    $rel_arq = str_replace($raiz . '/', '', $arq);
+
+    // SRC_DIR . '/...'  — resolve contra src/
+    if (preg_match_all("/SRC_DIR\s*\.\s*'([^']+\.php)'/", $src, $mm)) {
+        foreach ($mm[1] as $ref) {
+            $conferidos++;
+            if (!is_file($raiz . '/src' . $ref)) {
+                echo "  FALHA  $rel_arq -> SRC_DIR . '$ref' nao existe\n"; $falhas++;
+            }
+        }
+    }
+    // __DIR__ . '/...'  — resolve contra a pasta do proprio arquivo.
+    //
+    // Um mesmo arquivo pode escrever DUAS formas do mesmo destino de
+    // proposito: backup-download.php e os cron-*.php resolvem o layout local
+    // (public/ irmao de src/) e o do servidor (src/ dentro de www/) com um
+    // is_file. Por isso a falha e por BASENAME: so acusa quando nenhuma das
+    // formas escritas naquele arquivo chega a um arquivo existente.
+    if (preg_match_all("/__DIR__\\s*\\.\\s*'([^']+\\.php)'/", $src, $mm)) {
+        $por_nome = [];
+        foreach ($mm[1] as $ref) $por_nome[basename($ref)][] = $ref;
+        foreach ($por_nome as $nome => $refs) {
+            $conferidos++;
+            $achou = false;
+            foreach ($refs as $ref) {
+                if (is_file(dirname($arq) . $ref)) { $achou = true; break; }
+            }
+            if (!$achou) {
+                echo "  FALHA  $rel_arq -> __DIR__ . '" . $refs[0] . "' nao existe\n";
+                $falhas++;
+            }
+        }
+    }
+}
+echo "  $conferidos require(s) conferido(s) em " . count($arquivos_php) . " arquivo(s)\n";
+
 echo "\n";
 if ($falhas > 0) {
     echo "FALHOU: $falhas problema(s).\n";

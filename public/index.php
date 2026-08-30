@@ -38,7 +38,7 @@ require_once SRC_DIR . '/Filiacao/AdminPessoasController.php';
 require_once SRC_DIR . '/Eventos/AdminEventosController.php';
 require_once SRC_DIR . '/Campanha/AdminTemplatesController.php';
 require_once SRC_DIR . '/Eventos/EventosController.php';
-require_once SRC_DIR . '/Eventos/ValidacaoController.php';
+require_once SRC_DIR . '/Controllers/ValidacaoController.php';
 
 // === ROTAS ===
 

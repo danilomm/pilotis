@@ -32,10 +32,6 @@
         <?php endif; ?>
     </hgroup>
 
-    <?php if ($evento['organizador']): ?>
-        <p><small>Organização: <?= e($evento['organizador']) ?></small></p>
-    <?php endif; ?>
-
     <?php
     // Data e local, duas linhas, sem rotulo e sem quadro. Ate 30/08/2026 isto era
     // um cartao com "QUANDO" e "ONDE" em versalete — verboso: quem le

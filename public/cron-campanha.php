@@ -14,7 +14,12 @@
  * e sem implementacao ate 28/08/2026.
  */
 
-require_once __DIR__ . '/src/config.php';
+// O layout local (public/ + src/ irmaos) e o do servidor (src/ dentro de www/)
+// diferem; resolver os dois evita que o endpoint quebre em um deles — e permite
+// exercitar as travas fora de producao, que e onde nao se pode testa-las.
+require_once is_file(__DIR__ . '/src/config.php')
+    ? __DIR__ . '/src/config.php'
+    : __DIR__ . '/../src/config.php';
 require_once SRC_DIR . '/db.php';
 
 header('Content-Type: application/json');
