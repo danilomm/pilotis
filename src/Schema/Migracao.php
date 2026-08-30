@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30a';
+const SCHEMA_VERSION = '2026-08-30b';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -420,6 +420,11 @@ function init_extra_tables(PDO $db): void {
     // `conteudo` e o corpo da pagina: apresentacao, eixos tematicos,
     // programacao, comissoes. Um nao serve de resumo do outro.
     garantir_coluna($db, 'eventos', 'conteudo', 'TEXT');
+
+    // Programacao do evento, em PDF. A coluna nasce no primeiro deploy ainda que
+    // o arquivo so exista semanas depois: sem ela, publicar a programacao em
+    // outubro exigiria outro deploy por FTP. Ver salvar_programa_evento().
+    garantir_coluna($db, 'eventos', 'programa_path', 'TEXT');
 
     // Onde acontece, por extenso, com endereco. Fica no evento e nao no texto
     // porque tambem vai para o cabecalho da pagina e para o cracha.

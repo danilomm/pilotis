@@ -57,6 +57,18 @@
         </div>
     <?php endif; ?>
 
+    <?php if (!empty($evento['programa_path'])): ?>
+        <?php // A programacao e um PDF que a organizacao publica quando existir —
+              // semanas antes do evento, nao na abertura das inscricoes. Ate la o
+              // bloco simplesmente nao aparece. ?>
+        <p style="margin: 1.5rem 0;">
+            <a href="<?= e(EVENTOS_DOC_URL . '/' . $evento['programa_path']) ?>"
+               role="button" class="secondary" target="_blank" rel="noopener">
+                Programação (PDF)
+            </a>
+        </p>
+    <?php endif; ?>
+
     <h3>Inscrição</h3>
 
     <table>

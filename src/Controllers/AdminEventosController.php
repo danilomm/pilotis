@@ -216,6 +216,22 @@ class AdminEventosController extends AdminController {
             }
         }
 
+        // Programacao em PDF (opcional). Mesma logica dos dois acima.
+        $programa = null;
+        $erro_prog = $_FILES['programa']['error'] ?? UPLOAD_ERR_NO_FILE;
+        if ($erro_prog === UPLOAD_ERR_OK) {
+            $programa = salvar_programa_evento($_FILES['programa'], $slug);
+            if ($programa === null) {
+                flash('error', 'Não foi possível salvar a programação. Use um PDF de até 10MB.');
+                redirect("/admin/eventos/$id");
+                return;
+            }
+        } elseif ($erro_prog !== UPLOAD_ERR_NO_FILE) {
+            flash('error', 'O arquivo da programação não chegou inteiro. Tente de novo.');
+            redirect("/admin/eventos/$id");
+            return;
+        }
+
         db_execute("
             UPDATE eventos SET nome = ?, slug = ?, descricao = ?, conteudo = ?,
                 local = ?, organizador = ?,
@@ -223,7 +239,8 @@ class AdminEventosController extends AdminController {
                 email_contato = ?, assinantes = ?, apoiadores = ?,
                 emails_organizacao = ?, organizacao_expira_em = ?,
                 imagem_path = COALESCE(?, imagem_path),
-                imagem_apoiadores = COALESCE(?, imagem_apoiadores)
+                imagem_apoiadores = COALESCE(?, imagem_apoiadores),
+                programa_path = COALESCE(?, programa_path)
             WHERE id = ?
         ", [
             $nome,
@@ -243,6 +260,7 @@ class AdminEventosController extends AdminController {
             ($_POST['organizacao_expira_em'] ?? '') ?: null,
             $imagem,
             $imagem_apoio,
+            $programa,
             (int)$id,
         ]);
 

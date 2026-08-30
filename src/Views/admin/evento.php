@@ -135,6 +135,18 @@
                 <input type="file" id="imagem" name="imagem" accept="image/jpeg,image/png,image/webp">
                 <small>JPG, PNG ou WebP até 10MB. É reduzido para 1400px automaticamente.</small>
 
+                <label for="programa">Programação (PDF)</label>
+                <?php if (!empty($evento['programa_path'])): ?>
+                    <p style="margin: 0 0 8px;">
+                        <a href="<?= e(EVENTOS_DOC_URL . '/' . $evento['programa_path']) ?>" target="_blank">
+                            ver a programação publicada
+                        </a>
+                    </p>
+                <?php endif; ?>
+                <input type="file" id="programa" name="programa" accept="application/pdf">
+                <small>PDF até 10MB. Aparece como link na página do evento, e não substitui o
+                calendário do texto. Subir de novo troca o arquivo anterior.</small>
+
                 <label for="apoiadores">Apoio e patrocínio</label>
                 <textarea id="apoiadores" name="apoiadores" rows="4"
                           placeholder="Um por linha. Use uma linha só com dois-pontos para separar blocos:&#10;Realização:&#10;Docomomo Rio de Janeiro&#10;Apoio:&#10;IAB-RJ&#10;CAU/RJ"><?= e($evento['apoiadores'] ?? '') ?></textarea>

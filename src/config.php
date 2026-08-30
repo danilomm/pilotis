@@ -82,6 +82,11 @@ define('COMPROVANTES_DIR', $comprovantes_dir);
 define('EVENTOS_IMG_DIR', PUBLIC_DIR . '/assets/img/eventos');
 define('EVENTOS_IMG_URL', '/assets/img/eventos');
 
+// Documentos publicos do evento (hoje so a programacao, em PDF). Pasta separada
+// da de imagem porque o conteudo e de outra natureza e a validacao e outra.
+define('EVENTOS_DOC_DIR', PUBLIC_DIR . '/assets/doc/eventos');
+define('EVENTOS_DOC_URL', '/assets/doc/eventos');
+
 // Banco de dados (resolve caminho relativo para absoluto)
 $db_path = env('DATABASE_PATH', 'dados/data/pilotis.db');
 if ($db_path[0] !== '/') {
@@ -547,6 +552,48 @@ function tem_comprovante(int $pessoa_id, int $ano): bool {
  *
  * Retorna o nome do arquivo (nao o caminho) ou null em caso de erro.
  */
+/**
+ * Guarda um documento publico do evento — hoje, a programacao em PDF.
+ *
+ * POR QUE EXISTE AGORA, e nao na etapa 2: a programacao sai semanas antes do
+ * evento, nao na abertura das inscricoes. Mas o CAMPO precisa existir desde o
+ * primeiro deploy — senao publicar a programacao em outubro exige outro deploy,
+ * e deploy aqui e FTP arquivo a arquivo, sem SSH. Custa uma coluna hoje e uma
+ * operacao de risco depois.
+ *
+ * Quem sobe, por enquanto, e o tesoureiro pelo /admin. A organizacao subir pelo
+ * painel dela e a etapa 2, e depende da decisao sobre a credencial de escrita —
+ * ver a restricao 3 do ROADMAP.
+ *
+ * So PDF: e o formato em que a programacao existe, e aceitar mais tipos so
+ * ampliaria a superficie sem servir a ninguem.
+ */
+function salvar_programa_evento(array $file, string $slug): ?string {
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) return null;
+    if ($file['size'] > 10 * 1024 * 1024) return null;
+
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mime = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+    if ($mime !== 'application/pdf') return null;
+
+    if (!is_dir(EVENTOS_DOC_DIR) && !mkdir(EVENTOS_DOC_DIR, 0755, true) && !is_dir(EVENTOS_DOC_DIR)) {
+        return null;
+    }
+
+    $slug_limpo = preg_replace('/[^a-z0-9-]/', '', strtolower($slug)) ?: 'evento';
+    $filename = $slug_limpo . '-programa.pdf';
+    $destino = EVENTOS_DOC_DIR . '/' . $filename;
+
+    if (!move_uploaded_file($file['tmp_name'], $destino)) {
+        // Fora de requisicao HTTP (teste, CLI) move_uploaded_file recusa.
+        if (!rename($file['tmp_name'], $destino)) return null;
+    }
+    @chmod($destino, 0644);
+
+    return $filename;
+}
+
 function salvar_imagem_evento(array $file, string $slug, string $sufixo = ''): ?string {
     if ($file['error'] !== UPLOAD_ERR_OK) return null;
     if ($file['size'] > 10 * 1024 * 1024) return null;
