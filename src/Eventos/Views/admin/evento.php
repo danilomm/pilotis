@@ -162,6 +162,17 @@
                 <small>A tira de logotipos que a organização já monta. Vai no rodapé da página do evento.
                 Vale manter os nomes acima também: imagem não é texto — não vai para busca nem para leitor de tela.</small>
 
+                <label for="imagem_organizador">Logotipo de quem organiza</label>
+                <?php if (!empty($evento['imagem_organizador'])): ?>
+                    <img src="<?= e(EVENTOS_IMG_URL . '/' . $evento['imagem_organizador']) ?>" alt="Logotipo do organizador atual"
+                         style="max-width: 220px; height: auto; display: block; margin-bottom: 8px;">
+                <?php endif; ?>
+                <input type="file" id="imagem_organizador" name="imagem_organizador" accept="image/jpeg,image/png,image/webp">
+                <small>A marca do núcleo ou entidade que realiza o evento — não a dos apoiadores.
+                Sai centralizada sob a palavra <em>Organização</em>, acima da faixa de logotipos.
+                <strong>PNG com fundo transparente</strong> é o que fica bem em qualquer fundo.
+                Sem arquivo, sai o nome escrito no campo <em>Organizador</em>.</small>
+
                 <label for="emails_organizacao">Acesso da organização ao painel</label>
                 <textarea id="emails_organizacao" name="emails_organizacao" rows="3"
                           placeholder="Um email por linha. Quem estiver aqui pede o próprio link de acesso."><?= e($evento['emails_organizacao'] ?? '') ?></textarea>

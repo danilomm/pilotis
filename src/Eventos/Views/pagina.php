@@ -104,7 +104,12 @@
         <?php endif; ?>
 
         <p style="margin: 1.5rem 0;">
-            <a href="/eventos/<?= e($evento['slug']) ?>/inscricao" role="button"
+            <?php
+            // class="primary" e o que o layout.php estiliza com a cor do
+            // Docomomo. Sem ela o Pico pinta o botao de azul — e o principal
+            // chamado da pagina saia na unica cor que nao e da instituicao.
+            ?>
+            <a href="/eventos/<?= e($evento['slug']) ?>/inscricao" role="button" class="primary"
                style="display: inline-block; padding: .9rem 2rem; font-size: 1.05rem;">
                 Inscrever-se
             </a>

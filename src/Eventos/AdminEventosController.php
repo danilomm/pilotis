@@ -216,7 +216,18 @@ class AdminEventosController extends AdminController {
             }
         }
 
-        // Programacao em PDF (opcional). Mesma logica dos dois acima.
+        // Logotipo de quem organiza (opcional), mesma logica da faixa.
+        $imagem_org = null;
+        if (!empty($_FILES['imagem_organizador']) && $_FILES['imagem_organizador']['error'] === UPLOAD_ERR_OK) {
+            $imagem_org = salvar_imagem_evento($_FILES['imagem_organizador'], $slug, 'organizacao');
+            if ($imagem_org === null) {
+                flash('error', 'Não foi possível salvar o logotipo do organizador. Use JPG, PNG ou WebP de até 10MB.');
+                redirect("/admin/eventos/$id");
+                return;
+            }
+        }
+
+        // Programacao em PDF (opcional). Mesma logica dos tres acima.
         $programa = null;
         $erro_prog = $_FILES['programa']['error'] ?? UPLOAD_ERR_NO_FILE;
         if ($erro_prog === UPLOAD_ERR_OK) {
@@ -240,6 +251,7 @@ class AdminEventosController extends AdminController {
                 emails_organizacao = ?, organizacao_expira_em = ?,
                 imagem_path = COALESCE(?, imagem_path),
                 imagem_apoiadores = COALESCE(?, imagem_apoiadores),
+                imagem_organizador = COALESCE(?, imagem_organizador),
                 programa_path = COALESCE(?, programa_path)
             WHERE id = ?
         ", [
@@ -260,6 +272,7 @@ class AdminEventosController extends AdminController {
             ($_POST['organizacao_expira_em'] ?? '') ?: null,
             $imagem,
             $imagem_apoio,
+            $imagem_org,
             $programa,
             (int)$id,
         ]);

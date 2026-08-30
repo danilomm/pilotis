@@ -31,20 +31,40 @@
  * do titulo, onde apenas repetia o nome do evento ("V Seminario Docomomo Rio
  * de Janeiro" / "Organizacao: Docomomo Rio de Janeiro"). Credito institucional
  * e assunto de rodape, junto com o apoio.
+ *
+ * Havendo `imagem_organizador`, o credito sai como LOGOTIPO centralizado sob a
+ * palavra "Organizacao", e o nome escrito vira o `alt` — a mesma regra do
+ * apoio: a imagem mostra, o texto explica, e nao se imprime a mesma coisa
+ * duas vezes. Sem logotipo, sai o nome em texto, que e o comportamento de
+ * qualquer evento que nao tenha subido marca.
  */
 $linhas_apoio = array_values(array_filter(array_map('trim',
     preg_split('/\R/', (string)($evento['apoiadores'] ?? '')) ?: []
 ), fn($l) => $l !== ''));
 
-$tem_faixa = !empty($evento['imagem_apoiadores']);
-$organizador = trim((string)($evento['organizador'] ?? ''));
+$tem_faixa      = !empty($evento['imagem_apoiadores']);
+$logo_org       = trim((string)($evento['imagem_organizador'] ?? ''));
+$organizador    = trim((string)($evento['organizador'] ?? ''));
 
-if (!$linhas_apoio && !$tem_faixa && $organizador === '') {
+if (!$linhas_apoio && !$tem_faixa && $logo_org === '' && $organizador === '') {
     return;
 }
 ?>
 <footer style="margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--pico-muted-border-color);">
-    <?php if ($organizador !== ''): ?>
+    <?php if ($logo_org !== ''): ?>
+        <div style="text-align: center; margin-bottom: 1.6rem;">
+            <p style="margin: 0 0 .5rem; font-size: .9rem; font-weight: 600;">Organização</p>
+            <?php
+            // Teto em altura, e nao em largura: logotipo institucional vem em
+            // proporcao imprevisivel (o do Docomomo-RJ e 4,2:1) e limitar a
+            // largura faria um deitado ficar gigante e um quadrado, minusculo.
+            // O max-width em % impede que estoure a coluna no celular.
+            ?>
+            <img src="<?= e(EVENTOS_IMG_URL . '/' . $logo_org) ?>"
+                 alt="<?= e($organizador !== '' ? $organizador : 'Organização do evento') ?>"
+                 style="max-height: 62px; max-width: 80%; width: auto; height: auto; display: inline-block;">
+        </div>
+    <?php elseif ($organizador !== ''): ?>
         <p style="margin: 0; font-size: .9rem;">
             <strong>Organização:</strong> <?= e($organizador) ?>
         </p>

@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30b';
+const SCHEMA_VERSION = '2026-08-30c';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -397,6 +397,11 @@ function init_extra_tables(PDO $db): void {
 
     garantir_coluna($db, 'eventos', 'apoiadores', 'TEXT');
     garantir_coluna($db, 'eventos', 'imagem_apoiadores', 'TEXT');
+
+    // Logotipo de quem ORGANIZA, distinto da faixa de quem apoia. Coluna
+    // propria porque o organizador muda a cada evento — o proximo seminario
+    // pode ser de outro nucleo, e fixar a marca no codigo faria sair a errada.
+    garantir_coluna($db, 'eventos', 'imagem_organizador', 'TEXT');
     garantir_coluna($db, 'eventos', 'data_valor_cheio', 'DATE');
 
     // Cartaz/banner do evento (arquivo PUBLICO, dentro de assets/img/eventos/)
