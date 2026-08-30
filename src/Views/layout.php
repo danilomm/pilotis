@@ -180,7 +180,21 @@ if (!headers_sent() && http_response_code() === 200) {
         <header>
             <div class="logo-container">
                 <a href="<?= e(ORG_SITE_URL) ?>">
-                    <img src="/assets/img/<?= e(ORG_LOGO) ?>" alt="<?= e(ORG_NOME) ?>">
+                    <?php
+                    // Se o arquivo nao esta la, sai o NOME, e nao um <img>
+                    // quebrado. O padrao de ORG_LOGO e 'logo.png', que o
+                    // projeto nao distribui — sem esta conferencia, toda
+                    // instalacao nova (e a previa local, que foi onde
+                    // apareceu em 30/08) abre com o icone de imagem faltando
+                    // no alto de TODAS as paginas, sem erro nenhum no log.
+                    // O `.logo-text` ja estava no CSS deste arquivo desde
+                    // sempre, escrito para este caso e nunca ligado.
+                    ?>
+                    <?php if (is_file(PUBLIC_DIR . '/assets/img/' . ORG_LOGO)): ?>
+                        <img src="/assets/img/<?= e(ORG_LOGO) ?>" alt="<?= e(ORG_NOME) ?>">
+                    <?php else: ?>
+                        <span class="logo-text"><?= e(ORG_NOME) ?></span>
+                    <?php endif; ?>
                 </a>
             </div>
         </header>
