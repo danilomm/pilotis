@@ -168,6 +168,9 @@ class BrevoService {
             'valor' => $valor_formatado,
             'link' => $link,
             'urgencia' => $urgencia,
+        ], [
+            // Monta <span> de destaque: e HTML do proprio sistema, nao de
+            // formulario. Por isso entra pelo segundo parametro, que nao escapa.
             'dias_info' => $dias_info,
         ]);
 

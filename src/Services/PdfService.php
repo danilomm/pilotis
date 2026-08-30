@@ -130,10 +130,34 @@ class PdfService {
     /**
      * Texto padrao do comprovante (fallback se o template nao existir)
      */
+    /**
+     * Escapa valor que vai para o HTML lido pelo TCPDF.
+     *
+     * O TCPDF **interpreta** o HTML que recebe, inclusive `<img>`, e carrega o
+     * arquivo apontado — por caminho absoluto no disco. Como `pessoas.nome` vem
+     * de `$_POST` com `trim()` e mais nada, um nome com uma tag de imagem fazia
+     * o comprovante sair com o comprovante de MATRICULA de outra pessoa
+     * embutido, e o sistema envia esse PDF por email a quem se inscreveu.
+     *
+     * Nao e o mesmo `e()` das views por precaucao de nome: aqui o destino nao e
+     * navegador, e convem que a razao esteja escrita ao lado do uso.
+     */
+    private static function pdfEscape(?string $valor): string {
+        return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
+    }
+
     private static function textoComprovantePadrao(
         string $nome, string $cpf, string $evento, string $categoria,
         string $valor, string $data, string $metodo
     ): string {
+        $nome      = self::pdfEscape($nome);
+        $cpf       = self::pdfEscape($cpf);
+        $evento    = self::pdfEscape($evento);
+        $categoria = self::pdfEscape($categoria);
+        $valor     = self::pdfEscape($valor);
+        $data      = self::pdfEscape($data);
+        $metodo    = self::pdfEscape($metodo);
+
         $abertura = "<p>Declaramos para os devidos fins que <strong>$nome</strong>" .
             ($cpf ? ", CPF $cpf," : ",") .
             " está inscrito(a) no evento <strong>$evento</strong>, " .
@@ -279,6 +303,10 @@ class PdfService {
      * Texto padrão da declaração (fallback se template não existir)
      */
     private static function textoDeclaracaoPadrao(string $nome, string $categoria, string $valor, int $ano): string {
+        $nome      = self::pdfEscape($nome);
+        $categoria = self::pdfEscape($categoria);
+        $valor     = self::pdfEscape($valor);
+
         return "<p>Declaramos para os devidos fins que <strong>$nome</strong> " .
             "é filiado(a) ao <strong>" . ORG_NOME . "</strong> na categoria <strong>$categoria</strong>, " .
             "com anuidade de <strong>$valor</strong> referente ao ano de <strong>$ano</strong>, " .

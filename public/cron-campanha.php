@@ -95,12 +95,20 @@ $enviados_campanha = (int)(db_fetch_one("
 // envios_destinatarios: lembretes, links de acesso, convites de evento,
 // confirmacoes de pagamento. Contar so a campanha permitia 290 aqui + 50 de
 // links + 280 de lembretes no mesmo dia, contra um teto de 300.
+//
+// Os cinco ultimos tipos entraram em 30/08/2026: o conserto de 28/08 — contar
+// TODO email que sai pelo Brevo — foi feito ANTES de o modulo de eventos
+// existir, e a lista nao acompanhou. Na semana de abertura das inscricoes,
+// confirmacao de inscricao e justamente o volume novo.
 $enviados_outros = (int)(db_fetch_one("
     SELECT COUNT(*) as total FROM log
     WHERE DATE(timestamp, '+3 hours') = DATE('now')
     AND tipo IN ('lembrete_enviado', 'link_acesso_enviado', 'evento_link_enviado',
                  'email_confirmacao_enviado', 'evento_convite_enviado',
-                 'painel_organizacao_link')
+                 'painel_organizacao_link',
+                 'email_confirmacao_inscricao', 'evento_confirmacao_enviada',
+                 'evento_confirmacao_reenviada', 'consolidacao_confirmacao_enviada',
+                 'evento_consolidacao_confirmacao_enviada')
 ")['total'] ?? 0);
 
 $enviados_hoje_utc = $enviados_campanha + $enviados_outros;
@@ -126,20 +134,42 @@ if ($enviados_hoje_utc >= 290) {
 // de qualquer marca. E sobreposicao e exatamente o que acontece quando alguem
 // clica "Run workflow" enquanto o agendado roda, ou quando um job falha no meio
 // e e re-executado.
-$ultimo_lote = db_fetch_one("
-    SELECT created_at,
-           ROUND((julianday('now','localtime') - julianday(created_at)) * 24, 1) AS horas
-    FROM envios_lotes ORDER BY id DESC LIMIT 1
-");
+// COMO A TRAVA FUNCIONA, e por que nao le mais `envios_lotes`:
+//
+// Ate 30/08/2026 ela consultava a ultima linha de `envios_lotes` — e essa linha
+// so e escrita DEPOIS de o lote inteiro ter sido enviado (`registrar_envio_lote`).
+// Duas execucoes sobrepostas liam antes de qualquer uma escrever, e as duas
+// passavam. Ou seja: a trava escrita para responder ao incidente de 25/01 **nao
+// teria impedido o incidente**, cujas execucoes foram as 21:22, 21:28 e 21:30 —
+// com usleep por email mais a latencia do Brevo, um lote de 258 leva minutos, e
+// a das 21:30 quase certamente comecou com a das 21:28 ainda rodando.
+//
+// Agora a marca e escrita ANTES do envio, e a escrita e o proprio teste: um
+// UPDATE condicional, atomico no SQLite. Duas execucoes simultaneas disputam a
+// mesma linha e so uma afeta linha alguma — e a outra para aqui. E o mesmo
+// padrao de compare-and-swap que o LembreteService usa para nao duplicar
+// lembrete ("marca ANTES de enviar", conferindo as linhas afetadas).
+$agora  = date('Y-m-d H:i:s');
+$limite = date('Y-m-d H:i:s', strtotime('-24 hours'));
 
-if ($ultimo_lote && (float)$ultimo_lote['horas'] < 24) {
+db_execute("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('cron_campanha_inicio', '')");
+
+$ganhou = db_execute("
+    UPDATE configuracoes
+    SET valor = ?, updated_at = ?
+    WHERE chave = 'cron_campanha_inicio'
+      AND (valor = '' OR valor IS NULL OR valor < ?)
+", [$agora, $agora, $limite]);
+
+if ($ganhou === 0) {
+    $marca = db_fetch_one("SELECT valor FROM configuracoes WHERE chave = 'cron_campanha_inicio'");
+    $desde = $marca['valor'] ?? '(desconhecido)';
     registrar_log('cron_campanha_bloqueado', null,
-        "Tentativa de lote a {$ultimo_lote['horas']}h do anterior ({$ultimo_lote['created_at']}): intervalo minimo e 24h");
+        "Tentativa de lote bloqueada: ja houve inicio em $desde (intervalo minimo 24h, ou execucao sobreposta)");
     echo json_encode([
         'status' => 'bloqueado',
-        'motivo' => 'Intervalo minimo de 24h entre lotes nao cumprido',
-        'ultimo_lote' => $ultimo_lote['created_at'],
-        'horas_desde' => (float)$ultimo_lote['horas']
+        'motivo' => 'Intervalo minimo de 24h entre lotes nao cumprido, ou outra execucao em andamento',
+        'ultimo_inicio' => $desde
     ]);
     exit;
 }
@@ -149,10 +179,22 @@ require_once SRC_DIR . '/Services/BrevoService.php';
 
 $limite_diario = 290 - $enviados_hoje_utc;
 
-// Obtem grupos e envia
+// Obtem grupos e envia.
+//
+// A classe e AdminCampanhaController desde 29/08/2026, quando o AdminController
+// foi dividido por assunto. ReflectionMethod NAO sobe para a classe filha: com
+// 'AdminController' aqui, isto lancava ReflectionException — HTTP 500, corpo
+// vazio, sem try/catch.
+//
+// E o defeito era LATENTE: esta linha vem depois das quatro travas, que dao
+// exit. Com a campanha fechada o endpoint respondia "bloqueado" normalmente, e
+// o erro so apareceria no dia em que as travas passassem — isto e, no dia em
+// que o envio automatico da campanha devesse comecar. Nenhum email sairia, e o
+// diagnostico seria um Action vermelho sem corpo, sem SSH para ler o log.
 require_once SRC_DIR . '/Controllers/AdminController.php';
+require_once SRC_DIR . '/Controllers/AdminCampanhaController.php';
 
-$reflection = new ReflectionMethod('AdminController', 'obterGruposCampanha');
+$reflection = new ReflectionMethod('AdminCampanhaController', 'obterGruposCampanha');
 $reflection->setAccessible(true);
 $grupos = $reflection->invoke(null, $ano);
 

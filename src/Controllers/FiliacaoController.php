@@ -330,7 +330,9 @@ class FiliacaoController {
             }
 
             // Processa upload se enviou arquivo
-            if (!empty($_FILES['comprovante']) && $_FILES['comprovante']['error'] === UPLOAD_ERR_OK) {
+            $erro_upload = $_FILES['comprovante']['error'] ?? UPLOAD_ERR_NO_FILE;
+
+            if ($erro_upload === UPLOAD_ERR_OK) {
                 $comprovante_path = salvar_comprovante($_FILES['comprovante'], $cadastrado['id'], (int)$ano);
 
                 if ($comprovante_path === null) {
@@ -338,6 +340,23 @@ class FiliacaoController {
                     redirect("/filiacao/$ano/$token");
                     return;
                 }
+            } elseif ($erro_upload !== UPLOAD_ERR_NO_FILE) {
+                // Mesmo vao do fluxo de evento: todo erro que nao fosse "nao
+                // mandou arquivo" passava em silencio. Ver EventosController.
+                $motivos = [
+                    UPLOAD_ERR_INI_SIZE   => 'O arquivo é maior do que o servidor aceita. Envie até 2 MB.',
+                    UPLOAD_ERR_FORM_SIZE  => 'O arquivo é maior do que o formulário aceita.',
+                    UPLOAD_ERR_PARTIAL    => 'O envio foi interrompido. Tente de novo.',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Falha no servidor ao receber o arquivo. Avise a tesouraria.',
+                    UPLOAD_ERR_CANT_WRITE => 'Falha no servidor ao gravar o arquivo. Avise a tesouraria.',
+                    UPLOAD_ERR_EXTENSION  => 'O envio foi bloqueado pelo servidor. Avise a tesouraria.',
+                ];
+                registrar_log('erro_upload_comprovante', $cadastrado['id'],
+                    "Upload de comprovante falhou na filiacao $ano: codigo $erro_upload");
+                flash('error', ($motivos[$erro_upload] ?? 'Não foi possível receber o arquivo.')
+                    . ' Se o problema continuar, escreva para ' . ORG_EMAIL_CONTATO . '.');
+                redirect("/filiacao/$ano/$token");
+                return;
             }
         }
 
@@ -502,6 +521,24 @@ class FiliacaoController {
                 redirect("/filiacao/$ano/$token/pagamento");
                 return;
             }
+
+            // Mesma trava do fluxo de evento: o destino do email e escolhido por
+            // quem clica (o match casa por nome exato, e nomes de dirigente sao
+            // publicos). Aqui a campanha fechada ja limita, mas a trava vale por
+            // si — cota do Brevo e restricao dura.
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '?';
+            $destino = (string)$email_antigo['email'];
+            if (excedeu_limite_pedidos('consolidacao_pedido', $destino, 2)
+                || excedeu_limite_pedidos('consolidacao_pedido', $ip, 5)) {
+                registrar_log('consolidacao_limite', $cadastrado['id'],
+                    "Limite de pedidos de fusao atingido [$ip]");
+                flash('success', 'Enviamos um email para ' . mascarar_email($destino)
+                    . ' com um link para confirmar a unificação.');
+                redirect("/filiacao/$ano/$token/pagamento");
+                return;
+            }
+            registrar_log('consolidacao_pedido', $cadastrado['id'],
+                "Pedido de fusao para [$destino] [$ip]");
 
             require_once SRC_DIR . '/Services/BrevoService.php';
 

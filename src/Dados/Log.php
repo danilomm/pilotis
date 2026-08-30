@@ -47,6 +47,21 @@ function tipos_log_criticos(): array {
         'match_assinatura_invalida'  => 'Tentativa de fusao com assinatura invalida',
         'erro_pagbank'               => 'Falha ao falar com o PagBank',
         'cron_campanha_bloqueado'    => 'Envio automatico barrado por trava',
+
+        // Acrescentados em 30/08/2026. Todos significam que ALGUEM PRECISA
+        // FAZER ALGUMA COISA, e nenhum estava na lista — o bloco de pendencias
+        // dava a impressao de cobrir, e nao cobria.
+        'erro_confirmacao_inscricao' => 'A pessoa PAGOU e o comprovante nao saiu — reenviar pelo admin',
+        'erro_email_confirmacao'     => 'A pessoa PAGOU e a declaracao nao saiu — reenviar pelo admin',
+        'erro_confirmacao'           => 'Falha ao processar confirmacao de pagamento',
+        'erro_comprovante_inscricao' => 'O PDF do comprovante nao foi gerado',
+        'erro_registro_lote'         => 'Lote enviado e nao registrado: DESARMA a trava de 24h e a cota do dia seguinte',
+        'template_variavel_orfa'     => 'Email saiu com {{variavel}} literal — corrigir em /admin/templates',
+        'erro_verificacao_pagamento' => 'Falha ao verificar pagamento no PagBank',
+        'evento_convite_falhou'      => 'Convite de evento nao foi enviado',
+        'convite_identificadores_divergentes' => 'CPF e email do convite apontam para pessoas diferentes',
+        'erro_upload_comprovante'    => 'Comprovante de matricula nao pode ser recebido',
+        'admin_login_bloqueado'      => 'Login do admin bloqueado por excesso de tentativas',
     ];
 }
 

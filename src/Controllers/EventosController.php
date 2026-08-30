@@ -341,12 +341,29 @@ class EventosController {
         //
         // A resposta e identica nos dois casos e no de email nao autorizado:
         // quem tenta nao descobre se acertou o endereco nem se foi barrado.
-        $excedeu = excedeu_limite_pedidos('painel_organizacao_link', $email, 3)
-                || excedeu_limite_pedidos('painel_organizacao_link', $ip, 5);
+        // Conta TENTATIVA, nao envio bem-sucedido.
+        //
+        // Ate 30/08/2026 as duas travas liam 'painel_organizacao_link', que so e
+        // gravado quando o email SAI para um endereco autorizado. A trava por
+        // email funcionava; a trava por IP — cuja razao declarada e impedir que
+        // a mesma origem percorra uma LISTA de enderecos — **nunca disparava**,
+        // porque percorrer a lista nao gravava nada contavel. Com seis pessoas
+        // na organizacao, uma origem mandava 3x6 = 18 emails/hora contra um teto
+        // de 5.
+        //
+        // E o mesmo defeito consertado em 29/08 em evento_link_pedido e
+        // filiacao_link_pedido; o painel ficou de fora daquele conserto.
+        $excedeu = excedeu_limite_pedidos('painel_organizacao_pedido', $email, 3)
+                || excedeu_limite_pedidos('painel_organizacao_pedido', $ip, 5);
 
         if ($excedeu) {
             registrar_log('painel_organizacao_limite', null,
                 "Limite de pedidos de link no painel de {$evento['slug']} atingido [$ip]");
+        } else {
+            // Registrado ANTES do trabalho e DEPOIS da checagem, com as duas
+            // chaves entre colchetes — e assim que excedeu_limite_pedidos() conta.
+            registrar_log('painel_organizacao_pedido', null,
+                "Pedido de link no painel de {$evento['slug']} [$email] [$ip]");
         }
 
         if (!$excedeu && email_autorizado_no_painel($evento, $email)) {
@@ -772,13 +789,39 @@ class EventosController {
                 redirect("/eventos/$slug/$token");
                 return;
             }
-            if (!empty($_FILES['comprovante']) && $_FILES['comprovante']['error'] === UPLOAD_ERR_OK) {
+            $erro_upload = $_FILES['comprovante']['error'] ?? UPLOAD_ERR_NO_FILE;
+
+            if ($erro_upload === UPLOAD_ERR_OK) {
                 $comprovante_path = salvar_comprovante_evento($_FILES['comprovante'], (int)$evento['id'], (int)$cadastrado['id']);
                 if ($comprovante_path === null) {
                     flash('error', 'Erro no comprovante. Use PDF, JPG ou PNG de até 5MB.');
                     redirect("/eventos/$slug/$token");
                     return;
                 }
+            } elseif ($erro_upload !== UPLOAD_ERR_NO_FILE) {
+                // Todo erro que NAO seja "nao mandou arquivo" caia neste vao ate
+                // 30/08/2026: o codigo seguia, $comprovante_path ficava null, a
+                // inscricao virava pendente e a pessoa nao era avisada de nada.
+                // O caso comum e UPLOAD_ERR_INI_SIZE — o upload_max_filesize
+                // padrao do PHP e 2 MB, e salvar_comprovante_evento() aceita 5;
+                // foto de carteirinha tirada no celular passa de 2 MB sem
+                // esforco. Resultado: estudante paga, some da fila de "exigem
+                // comprovante" e ninguem sabe por que. Fere o invariante de
+                // erro visivel.
+                $motivos = [
+                    UPLOAD_ERR_INI_SIZE   => 'O arquivo é maior do que o servidor aceita. Envie até 2 MB.',
+                    UPLOAD_ERR_FORM_SIZE  => 'O arquivo é maior do que o formulário aceita.',
+                    UPLOAD_ERR_PARTIAL    => 'O envio foi interrompido. Tente de novo.',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Falha no servidor ao receber o arquivo. Avise a organização.',
+                    UPLOAD_ERR_CANT_WRITE => 'Falha no servidor ao gravar o arquivo. Avise a organização.',
+                    UPLOAD_ERR_EXTENSION  => 'O envio foi bloqueado pelo servidor. Avise a organização.',
+                ];
+                registrar_log('erro_upload_comprovante', $cadastrado['id'],
+                    "Upload de comprovante falhou no evento {$evento['slug']}: codigo $erro_upload");
+                flash('error', ($motivos[$erro_upload] ?? 'Não foi possível receber o arquivo.')
+                    . ' Se o problema continuar, escreva para ' . ORG_EMAIL_CONTATO . '.');
+                redirect("/eventos/$slug/$token");
+                return;
             }
         }
 
@@ -974,6 +1017,11 @@ class EventosController {
                 registrar_log('evento_erro_consolidacao', $cadastrado['id'],
                     "Match $match_id sem email para confirmar (evento {$evento['slug']})");
                 flash('error', 'Não foi possível confirmar esse cadastro. Seguindo com cadastro separado.');
+            } elseif (self::excedeuPedidoDeFusao((string)$email_antigo['email'], $cadastrado)) {
+                // Resposta identica a do caminho normal, para nao denunciar a
+                // trava nem revelar se o endereco existe.
+                flash('success', 'Enviamos um email para ' . mascarar_email($email_antigo['email'])
+                    . ' com um link para confirmar a unificação. Sua inscrição segue normalmente.');
             } else {
                 $expira = time() + 86400;
                 $sig = assinar_consolidacao((int)$cadastrado['id'], $match_id, $expira);
@@ -1111,6 +1159,41 @@ class EventosController {
     }
 
     /**
+     * A pessoa ja pediu fusao demais, contra este endereco ou desta origem?
+     *
+     * POR QUE: o "sim" da tela de fusao dispara um email para o endereco do
+     * cadastro ANTIGO — que quem clica escolhe, porque o criterio de match
+     * inclui NOME EXATO, e o site institucional publica o nome completo dos
+     * dirigentes. Sem trava, obtido um token pelo fluxo normal, o POST podia ser
+     * repetido a vontade: assedio a terceiro com email legitimo da associacao, e
+     * estouro da cota de 300/dia do Brevo — que derruba em silencio os links de
+     * acesso, os lembretes e as confirmacoes do dia.
+     *
+     * Na filiacao o mesmo caminho existe, mas esta atras de campanha aberta. No
+     * fluxo de evento nao ha essa trava, e e o que vai ao ar.
+     *
+     * A prova de posse continua sendo o que impede a fusao indevida; isto
+     * limita o PEDIDO.
+     */
+    private static function excedeuPedidoDeFusao(string $email_destino, array $cadastrado): bool
+    {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '?';
+
+        $excedeu = excedeu_limite_pedidos('consolidacao_pedido', $email_destino, 2)
+                || excedeu_limite_pedidos('consolidacao_pedido', $ip, 5);
+
+        if ($excedeu) {
+            registrar_log('consolidacao_limite', $cadastrado['id'] ?? null,
+                "Limite de pedidos de fusao atingido [$ip]");
+            return true;
+        }
+
+        registrar_log('consolidacao_pedido', $cadastrado['id'] ?? null,
+            "Pedido de fusao para [$email_destino] [$ip]");
+        return false;
+    }
+
+    /**
      * Abre o link mandado ao email do cadastro ANTIGO e consolida.
      * Espelha FiliacaoController::confirmarVinculo.
      */
@@ -1151,6 +1234,40 @@ class EventosController {
     }
 
     /**
+     * Recalcula o valor da inscricao pela faixa vigente HOJE.
+     *
+     * Chamada em todo ponto que cria cobranca NOVA — a tela de pagamento e os
+     * tres geradores. Nao e so na tela: ate 30/08/2026 so a tela reavaliava, e
+     * ela cria um PIX na primeira visita. A partir dali `pagbank_order_id`
+     * existia e a reavaliacao nunca mais rodava, entao **abrir a tela uma vez
+     * antes da virada de preco e voltar depois para gerar boleto ou pagar com
+     * cartao garantia o valor reduzido, indefinidamente**.
+     *
+     * O criterio: cobranca que a pessoa JA TEM EM MAOS vale o que foi emitido —
+     * mexer nela so criaria divergencia entre o QR e a tela. Cobranca NOVA,
+     * emitida agora, vale o preco de agora. A data de virada e do EVENTO, nao
+     * da pessoa.
+     */
+    private static function reavaliarValor(array &$inscricao, array $evento, int $pessoa_id): void {
+        if (empty($inscricao['categoria_id'])) return;
+
+        $cat = db_fetch_one("SELECT * FROM evento_categorias WHERE id = ?", [(int)$inscricao['categoria_id']]);
+        if (!$cat) return;
+
+        $vigente = valor_vigente_categoria($cat, $evento);
+        if ($vigente === (int)$inscricao['valor']) return;
+
+        db_execute(
+            "UPDATE inscricoes SET valor = ? WHERE id = ? AND status NOT IN ('pago','gratuita_confirmada')",
+            [$vigente, (int)$inscricao['id']]
+        );
+        registrar_log('valor_reavaliado', $pessoa_id,
+            "Inscricao {$inscricao['id']} ({$evento['slug']}): valor passou de {$inscricao['valor']} para $vigente"
+            . " (faixa vigente na data de emissao da cobranca)");
+        $inscricao['valor'] = $vigente;
+    }
+
+    /**
      * Tela de pagamento da inscricao (PIX / Boleto / Cartao)
      */
     public static function pagamento(string $slug, string $token): void {
@@ -1185,19 +1302,8 @@ class EventosController {
         // Reavalia aqui, enquanto nao ha cobranca criada. Depois de gerada, o
         // valor esta no QR e mudar so criaria divergencia; nesse caso vale o
         // que a pessoa ja tem em maos.
-        if (empty($inscricao['pagbank_order_id']) && !empty($inscricao['categoria_id'])) {
-            $cat_atual = db_fetch_one("SELECT * FROM evento_categorias WHERE id = ?", [(int)$inscricao['categoria_id']]);
-            if ($cat_atual) {
-                $vigente = valor_vigente_categoria($cat_atual, $evento);
-                if ($vigente !== (int)$inscricao['valor']) {
-                    db_execute("UPDATE inscricoes SET valor = ? WHERE id = ? AND status NOT IN ('pago','gratuita_confirmada')",
-                               [$vigente, (int)$inscricao['id']]);
-                    registrar_log('valor_reavaliado', $cadastrado['id'],
-                        "Inscricao {$inscricao['id']} ({$evento['slug']}): valor passou de {$inscricao['valor']} para $vigente"
-                        . " (faixa vigente na data do pagamento)");
-                    $inscricao['valor'] = $vigente;
-                }
-            }
+        if (empty($inscricao['pagbank_order_id'])) {
+            self::reavaliarValor($inscricao, $evento, (int)$cadastrado['id']);
         }
 
         $valor_centavos = (int)$inscricao['valor'];
@@ -1285,6 +1391,10 @@ class EventosController {
             return;
         }
 
+        // Cobranca NOVA vale o preco de hoje. Sem isto, abrir a tela de
+        // pagamento antes da virada e voltar depois congelava o valor reduzido.
+        self::reavaliarValor($inscricao, $evento, (int)$cadastrado['id']);
+
         try {
             $pix_data = PagBankService::criarCobrancaPix(
                 PagBankService::referenciaInscricao((int)$inscricao['id']),
@@ -1330,6 +1440,10 @@ class EventosController {
             redirect("/eventos/$slug/$token/pagamento");
             return;
         }
+
+        // Cobranca NOVA vale o preco de hoje. Sem isto, abrir a tela de
+        // pagamento antes da virada e voltar depois congelava o valor reduzido.
+        self::reavaliarValor($inscricao, $evento, (int)$cadastrado['id']);
 
         try {
             $boleto_data = PagBankService::criarCobrancaBoleto(
@@ -1387,6 +1501,9 @@ class EventosController {
             redirect("/eventos/$slug/$token/pagamento");
             return;
         }
+
+        // Cobranca NOVA vale o preco de hoje — ver reavaliarValor().
+        self::reavaliarValor($inscricao, $evento, (int)$cadastrado['id']);
 
         try {
             $cartao_data = PagBankService::criarCobrancaCartao(

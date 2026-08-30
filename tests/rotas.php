@@ -83,6 +83,54 @@ foreach ($m as $r) {
 }
 echo "  " . count($m) . " rotas com handler nomeado conferidas\n";
 
+echo "\n== referencias Classe::metodo fora do index.php ==\n";
+// O index.php nao e o unico lugar que aponta para metodo por STRING. Os
+// endpoints de cron em public/ chamam por Reflection, e foi exatamente ali que
+// a divisao do AdminController quebrou sem ninguem ver: ReflectionMethod nao
+// sobe para a classe filha, e a chamada ficava DEPOIS das travas — o erro so
+// apareceria no dia do primeiro envio automatico.
+$outros = array_diff(glob($raiz . '/public/*.php'), [$raiz . '/public/index.php']);
+$conferidas = 0;
+foreach ($outros as $arquivo) {
+    $txt = file_get_contents($arquivo);
+    $rel = str_replace($raiz . '/', '', $arquivo);
+
+    // new ReflectionMethod('Classe', 'metodo')
+    if (preg_match_all("/new\s+ReflectionMethod\(\s*'(\w+)'\s*,\s*'(\w+)'/", $txt, $m, PREG_SET_ORDER)) {
+        foreach ($m as $r) {
+            [, $classe, $metodo] = $r;
+            $conferidas++;
+            if (!class_exists($classe)) {
+                echo "  FALHA  $rel -> classe inexistente: $classe\n"; $falhas++; continue;
+            }
+            // Reflection NAO herda: o metodo tem de estar na propria classe.
+            $ref = new ReflectionClass($classe);
+            $tem = false;
+            foreach ($ref->getMethods() as $mm) {
+                if ($mm->getName() === $metodo && $mm->getDeclaringClass()->getName() === $classe) { $tem = true; break; }
+            }
+            if (!$tem) {
+                echo "  FALHA  $rel -> $classe nao DECLARA $metodo() (Reflection nao sobe para a filha)\n";
+                $falhas++;
+            }
+        }
+    }
+
+    // Classe::metodo( em chamada estatica direta
+    if (preg_match_all('/\b(Admin\w*Controller|\w+Controller|\w+Service)::(\w+)\s*\(/', $txt, $m2, PREG_SET_ORDER)) {
+        foreach ($m2 as $r) {
+            [, $classe, $metodo] = $r;
+            if (!class_exists($classe)) continue;   // pode nao estar carregada aqui
+            $conferidas++;
+            if (!method_exists($classe, $metodo)) {
+                echo "  FALHA  $rel -> $classe::$metodo() nao existe\n";
+                $falhas++;
+            }
+        }
+    }
+}
+echo "  $conferidas referencia(s) conferida(s) em " . count($outros) . " arquivo(s) de public/\n";
+
 echo "\n== rotas duplicadas ==\n";
 $dup = array_filter(array_count_values($vistos), fn($n) => $n > 1);
 if ($dup) {

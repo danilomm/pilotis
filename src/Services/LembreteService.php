@@ -224,8 +224,14 @@ class LembreteService {
             'enviados' => 0,
             'erros' => 0,
             'pulados' => 0,
+            'interrompido' => false,
             'detalhes' => [],
         ];
+
+        // Falhas consecutivas nesta execucao. Distingue canal fora do ar (cota
+        // do Brevo) de lembrete individualmente ruim — ver o bloco de erro
+        // adiante.
+        $falhas_seguidas = 0;
 
         foreach ($pendentes as $lembrete) {
             $resultado['processados']++;
@@ -301,6 +307,7 @@ class LembreteService {
             $enviado = self::enviarPorTipo($lembrete, $token);
 
             if ($enviado) {
+                $falhas_seguidas = 0;
                 $resultado['enviados']++;
                 registrar_log('lembrete_enviado', $lembrete['pessoa_id'],
                     empty($lembrete['inscricao_id'])
@@ -322,6 +329,30 @@ class LembreteService {
                 // Volta para a fila, com teto: 3 tentativas. Sem o teto, um
                 // lembrete que falha sempre (email invalido, template quebrado)
                 // seria retentado em toda execucao, para sempre.
+                // FALHA GLOBAL x FALHA DESTE LEMBRETE.
+                //
+                // O teto de 3 existe para o caso PERMANENTE — email invalido,
+                // template quebrado. Mas a falha mais comum e global e
+                // transitoria: cota do Brevo estourada, que reprova o lote
+                // inteiro. Contando tentativa nesse caso, tres execucoes em
+                // dias de cota cheia queimavam a fila toda em
+                // `lembrete_desistido` — e a fila e o aviso de vencimento de
+                // PIX e boleto.
+                //
+                // Heuristica: falhas consecutivas nesta mesma execucao indicam
+                // problema do canal, nao dos destinatarios. A partir do
+                // terceiro seguido, para a execucao SEM contar tentativa: a
+                // fila fica intacta para a proxima rodada.
+                $falhas_seguidas++;
+                if ($falhas_seguidas >= 3) {
+                    registrar_log('lembrete_canal_indisponivel', null,
+                        "Tres falhas seguidas de envio: interrompendo a execucao sem gastar tentativa. "
+                        . "Causa provavel: cota do Brevo ou chave invalida. A fila fica intacta.");
+                    $resultado['erros']++;
+                    $resultado['interrompido'] = true;
+                    break;
+                }
+
                 $tentativas = (int)($lembrete['tentativas'] ?? 0) + 1;
                 if ($tentativas < 3) {
                     db_execute("

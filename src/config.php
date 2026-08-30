@@ -114,6 +114,50 @@ define('EMAIL_DRY_RUN', $email_dry_run || $em_localhost);
 // pessoa a quem digitasse o email dela.
 define('AMBIENTE_LOCAL', $em_localhost);
 
+// O .env deste servidor parece ser de outro ambiente?
+//
+// POR QUE: o .env nao esta em git, entao nao ha diff que pegue engano — e o
+// roteiro de deploy manda "criar o .env no servidor", que e o momento exato do
+// erro. Copiar o .env local para producao produz QUATRO falhas de uma vez, e
+// TRES sao mudas:
+//
+//   BASE_URL=localhost      -> forca EMAIL_DRY_RUN: nenhum email sai, e a tela
+//                              diz que saiu
+//   BASE_URL=localhost      -> o pedido ao PagBank vai sem notification_urls:
+//                              nenhum webhook chega
+//   PAGBANK_SANDBOX=true    -> cobranca no ambiente de teste: dinheiro nenhum
+//                              entra
+//   APP_DEBUG=true          -> excecao impressa na pagina 500 publica
+//
+// A prova de ponta que o CLAUDE.md pede (pedir link para um email seu e ver se
+// chega) cobre a primeira e nao as outras tres.
+//
+// A deteccao e barata e nao consulta banco: se estamos sendo servidos por um
+// host de verdade e o .env descreve um ambiente local, alguma coisa esta errada.
+// So se calcula; quem avisa e o painel do admin.
+$host_servido = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+$host_real = $host_servido !== ''
+    && !preg_match('~^(localhost|127\.0\.0\.1|\[::1\])(:|$)~', $host_servido);
+
+$avisos_ambiente = [];
+if ($host_real && $em_localhost) {
+    $avisos_ambiente[] = 'BASE_URL aponta para localhost, mas o site esta sendo '
+        . 'servido por ' . $host_servido . '. Nenhum email sai e nenhum webhook chega.';
+}
+if ($host_real && filter_var(env('PAGBANK_SANDBOX', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+    $avisos_ambiente[] = 'PAGBANK_SANDBOX esta ligado num servidor real: as '
+        . 'cobrancas vao para o ambiente de teste e nenhum dinheiro entra.';
+}
+if ($host_real && filter_var(env('APP_DEBUG', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+    $avisos_ambiente[] = 'APP_DEBUG esta ligado num servidor real: a pagina de '
+        . 'erro publica mostra detalhe de excecao.';
+}
+if ($host_real && filter_var(env('EMAIL_DRY_RUN', 'false'), FILTER_VALIDATE_BOOLEAN)) {
+    $avisos_ambiente[] = 'EMAIL_DRY_RUN esta ligado: nenhum email sai, e a tela '
+        . 'diz que saiu. Se as inscricoes ja abriram, isto quebra tudo em silencio.';
+}
+define('AVISOS_AMBIENTE', $avisos_ambiente);
+
 // PagBank
 define('PAGBANK_TOKEN', env('PAGBANK_TOKEN', ''));
 // Padrao FALSE: omissao tem de cair no modo seguro. Antes caia em sandbox, o

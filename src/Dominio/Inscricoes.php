@@ -33,7 +33,9 @@ function criar_inscricao(
     int $evento_id,
     string $status = 'enviado',
     string $origem = 'publico',
-    ?int $categoria_id = null
+    ?int $categoria_id = null,
+    ?int $valor = null,
+    bool $atualizar_existente = false
 ): ?array {
     if ($pessoa_id <= 0 || $evento_id <= 0) {
         return null;
@@ -41,15 +43,45 @@ function criar_inscricao(
 
     $existente = buscar_inscricao($pessoa_id, $evento_id);
     if ($existente) {
-        return $existente;
+        // Por padrao devolve o que existe sem tocar em nada: e o que o fluxo
+        // publico quer, e e o que impede um convite reenviado de rebaixar quem
+        // ja pagou.
+        //
+        // Mas a mesa de credenciamento da etapa 2 precisa do oposto: a maioria
+        // de quem chega JA TEM registro, criado pelo convite em 'enviado', e
+        // confirmar essa pessoa e justamente atualizar a linha. Por isso o
+        // $atualizar_existente — explicito, nunca por padrao, e **nunca** mexe
+        // em quem ja esta pago ou confirmado.
+        if (!$atualizar_existente) {
+            return $existente;
+        }
+
+        if (in_array($existente['status'], ['pago', 'gratuita_confirmada'], true)) {
+            return $existente;
+        }
+
+        db_execute("
+            UPDATE inscricoes
+            SET status = ?, status_at = datetime('now','localtime'),
+                categoria_id = COALESCE(?, categoria_id),
+                valor = COALESCE(?, valor)
+            WHERE id = ?
+        ", [$status, $categoria_id, $valor, (int)$existente['id']]);
+
+        registrar_log('inscricao_atualizada', $pessoa_id,
+            "Inscricao {$existente['id']} atualizada para status=$status (origem=$origem)");
+
+        return buscar_inscricao($pessoa_id, $evento_id);
     }
 
     // UNIQUE(pessoa_id, evento_id) e INSERT OR IGNORE: duas requisições
     // simultâneas — a pessoa clicando duas vezes — não criam duas linhas.
+    // Grava tambem o VALOR. Sem ele, a inscricao feita na mesa de credenciamento
+    // sai com valor NULL, e a lista de inscritos e o comprovante saem sem valor.
     db_insert("
-        INSERT OR IGNORE INTO inscricoes (pessoa_id, evento_id, categoria_id, status, status_at)
-        VALUES (?, ?, ?, ?, datetime('now','localtime'))
-    ", [$pessoa_id, $evento_id, $categoria_id, $status]);
+        INSERT OR IGNORE INTO inscricoes (pessoa_id, evento_id, categoria_id, valor, status, status_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now','localtime'))
+    ", [$pessoa_id, $evento_id, $categoria_id, $valor, $status]);
 
     $inscricao = buscar_inscricao($pessoa_id, $evento_id);
 
@@ -76,13 +108,38 @@ function criar_inscricao(
  */
 function marcar_presenca(int $inscricao_id, ?string $por = null): bool {
     $linhas = db_execute("
-        UPDATE inscricoes SET presenca_em = datetime('now','localtime')
+        UPDATE inscricoes
+        SET presenca_em = datetime('now','localtime'), presenca_por = ?
         WHERE id = ? AND presenca_em IS NULL
-    ", [$inscricao_id]);
+    ", [$por, $inscricao_id]);
 
     if ($linhas > 0) {
         registrar_log('presenca_marcada', null,
             "Presenca na inscricao $inscricao_id" . ($por ? " por $por" : ''));
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Desfaz a marcacao de presenca.
+ *
+ * POR QUE EXISTE: numa mesa de credenciamento com trezentas pessoas, alguem vai
+ * marcar a linha errada. Sem esta funcao o desfazer seria SQL por FTP, num
+ * sabado, com fila esperando. `marcar_presenca()` e irreversivel por desenho
+ * (so age quando `presenca_em IS NULL`), e essa e a metade que faltava.
+ *
+ * Registra quem desfez, pelo mesmo motivo que registra quem marcou.
+ */
+function desmarcar_presenca(int $inscricao_id, ?string $por = null): bool {
+    $linhas = db_execute("
+        UPDATE inscricoes SET presenca_em = NULL, presenca_por = NULL
+        WHERE id = ? AND presenca_em IS NOT NULL
+    ", [$inscricao_id]);
+
+    if ($linhas > 0) {
+        registrar_log('presenca_desmarcada', null,
+            "Presenca DESFEITA na inscricao $inscricao_id" . ($por ? " por $por" : ''));
         return true;
     }
     return false;

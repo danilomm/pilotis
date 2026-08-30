@@ -1,3 +1,19 @@
+<?php if (AVISOS_AMBIENTE): ?>
+    <?php // O .env deste servidor descreve outro ambiente. Sao falhas que NAO
+          // dao erro: o sistema responde normalmente e nao faz o que deveria. ?>
+    <div style="border: 3px solid #b00; background: #fff3f3; padding: 16px; border-radius: 8px; margin-bottom: 1.5rem;">
+        <strong style="color: #b00;">⚠ A configuração deste servidor está inconsistente</strong>
+        <ul style="margin: 8px 0 0;">
+            <?php foreach (AVISOS_AMBIENTE as $aviso): ?>
+                <li><?= e($aviso) ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <small>Nenhuma dessas falhas aparece como erro — o sistema responde
+        normalmente e não faz o que deveria. Corrigir o <code>.env</code> do
+        servidor.</small>
+    </div>
+<?php endif; ?>
+
 <article>
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h2>Painel Admin - <?= e($ano) ?></h2>

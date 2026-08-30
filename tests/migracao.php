@@ -56,7 +56,7 @@ $exigidas = [
                             'email_contato', 'emails_organizacao', 'data_valor_cheio'],
     'evento_categorias' => ['valor_cheio', 'cpfs_liberados', 'independe_filiacao'],
     'inscricoes'        => ['pessoa_id', 'evento_id', 'nome_cracha', 'telefone', 'instituicao',
-                            'presenca_em'],
+                            'presenca_em', 'presenca_por'],
     'lembretes_agendados' => ['tentativas'],
     'pagbank_pedidos'   => ['order_id', 'filiacao_id'],
     'configuracoes'     => ['chave', 'valor'],
@@ -106,6 +106,31 @@ if ($antes === $depois) {
     $falhas++;
 }
 
+echo "\n== banco REALMENTE vazio: recusa com mensagem util ==\n";
+// Cenario do .env errado no deploy: o PDO cria arquivo vazio em silencio, e o
+// site inteiro passava a responder 500 com "no such table: filiacoes" vindo de
+// dentro da migracao. Agora tem de recusar dizendo o que fazer.
+$vazio = banco_temporario('vazio');
+try {
+    garantir_schema($vazio);
+    echo "  FALHA  migrou um banco vazio, em vez de recusar\n";
+    $falhas++;
+} catch (RuntimeException $e) {
+    $msg = $e->getMessage();
+    $tem_pessoas = strpos($msg, 'pessoas') !== false;
+    $tem_caminho = strpos($msg, 'DATABASE_PATH') !== false || strpos($msg, '.env') !== false;
+    $tem_saida   = strpos($msg, 'install.php') !== false;
+    if ($tem_pessoas && $tem_caminho && $tem_saida) {
+        echo "  ok     recusa nomeando a tabela, o caminho e a saida\n";
+    } else {
+        echo "  FALHA  mensagem pouco util: $msg\n";
+        $falhas++;
+    }
+} catch (Throwable $e) {
+    echo "  FALHA  erro nao tratado (" . get_class($e) . "): " . $e->getMessage() . "\n";
+    $falhas++;
+}
+
 echo "\n== banco antigo: sem as tabelas de evento, com dados ==\n";
 // Reproduz a forma da producao ate o deploy da etapa 1: pessoas e filiacoes
 // existem, o modulo de eventos nao. Dados ficticios — nunca de associado real.
@@ -117,7 +142,7 @@ $velho->exec("
                          email TEXT UNIQUE, principal INTEGER DEFAULT 1);
     CREATE TABLE filiacoes (id INTEGER PRIMARY KEY AUTOINCREMENT, pessoa_id INTEGER,
                             ano INTEGER, categoria TEXT, valor INTEGER, data_pagamento TEXT);
-    CREATE TABLE campanhas (id INTEGER PRIMARY KEY AUTOINCREMENT, ano INTEGER UNIQUE, status TEXT);
+    CREATE TABLE campanhas (ano INTEGER PRIMARY KEY, status TEXT DEFAULT 'aberta');
 ");
 $velho->exec("INSERT INTO pessoas (nome, cpf, token) VALUES ('Fulana de Tal Ficticia', '00000000191', 'tok-ficticio-1')");
 $velho->exec("INSERT INTO emails (pessoa_id, email) VALUES (1, 'ficticio@example.invalid')");

@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-29b';
+const SCHEMA_VERSION = '2026-08-30a';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -69,6 +69,24 @@ function garantir_coluna(PDO $db, string $tabela, string $coluna, string $tipo):
  * para o lado de pular deixa o sistema sem coluna.
  */
 function garantir_schema(PDO $db): void {
+    // O banco e o que se espera? `pessoas` vem do schema.sql, nunca daqui.
+    //
+    // POR QUE ISTO EXISTE: `new PDO("sqlite:...")` **cria arquivo vazio em
+    // silencio**. Se o DATABASE_PATH do .env sair errado no deploy — caminho
+    // relativo, pasta trocada, upload parcial — o sistema passa a falar com um
+    // banco vazio e todas as paginas quebram, inclusive a pagina do evento, que
+    // tem a URL impressa no cartaz. Sem esta checagem o sintoma e "no such
+    // table" no meio da migracao, que manda o diagnostico para o lado errado.
+    if (!colunas_da_tabela($db, 'pessoas')) {
+        throw new RuntimeException(
+            'Banco sem a tabela `pessoas`: o arquivo existe mas nao foi instalado, '
+            . 'ou DATABASE_PATH aponta para o lugar errado (' . DATABASE_PATH . '). '
+            . 'Instalacao nova: rodar `php scripts/install.php`, que aplica o schema.sql. '
+            . 'Instalacao existente: conferir o caminho no .env — o PDO cria arquivo '
+            . 'vazio em silencio quando o caminho esta errado.'
+        );
+    }
+
     $db->exec("CREATE TABLE IF NOT EXISTS configuracoes (
         chave TEXT PRIMARY KEY, valor TEXT, updated_at DATETIME
     )");
@@ -115,14 +133,27 @@ function init_extra_tables(PDO $db): void {
         );
     ");
 
-    // Cria campanhas para anos que já têm filiações (se não existirem)
-    $db->exec("
-        INSERT OR IGNORE INTO campanhas (ano, status)
-        SELECT DISTINCT ano,
-            CASE WHEN ano < strftime('%Y', 'now') THEN 'fechada' ELSE 'aberta' END
-        FROM filiacoes
-        WHERE ano IS NOT NULL
-    ");
+    // Cria campanhas para anos que já têm filiações (se não existirem).
+    //
+    // Guardado por colunas_da_tabela(): `filiacoes` NAO e criada aqui — vem do
+    // schema.sql, pelo install.php. Sem a guarda, um banco sem ela fazia esta
+    // linha lancar PDOException de dentro de garantir_schema(), que roda em
+    // get_db(), que roda em TODA requisicao: o site inteiro respondia 500.
+    if (colunas_da_tabela($db, 'filiacoes')) {
+        $db->exec("
+            INSERT OR IGNORE INTO campanhas (ano, status)
+            SELECT DISTINCT ano,
+                -- CAST obrigatorio: `ano` e INTEGER e strftime devolve TEXT, e
+                -- no SQLite INTEGER sempre ordena antes de TEXT. Sem o CAST,
+                -- `2026 < '2026'` da 1 e o CASE caia SEMPRE em 'fechada'.
+                -- Mesma armadilha ja documentada no CLAUDE.md para o
+                -- CAST(? AS INTEGER) do autocomplete.
+                CASE WHEN ano < CAST(strftime('%Y', 'now') AS INTEGER)
+                     THEN 'fechada' ELSE 'aberta' END
+            FROM filiacoes
+            WHERE ano IS NOT NULL
+        ");
+    }
 
     // Tabela de templates de email
     $db->exec("
@@ -339,6 +370,11 @@ function init_extra_tables(PDO $db): void {
     // A coluna nasce agora porque o evento e em 12-13/11 e ela precisa existir
     // antes; a tela que a usa e da etapa 2. Ver Dominio/Inscricoes.php.
     garantir_coluna($db, 'inscricoes', 'presenca_em', 'DATETIME');
+
+    // Quem marcou a presenca. Em coluna, e nao so no texto do log: a restricao 3
+    // do ROADMAP exige que acao da organizacao tenha autor, e log e recuperavel
+    // mas nao consultavel — a tela da mesa vai querer mostrar isso na linha.
+    garantir_coluna($db, 'inscricoes', 'presenca_por', 'TEXT');
     garantir_coluna($db, 'evento_categorias', 'cpfs_liberados', 'TEXT');
 
     // Categoria que vale para todo mundo, filiado ou nao (acompanhante,
@@ -352,7 +388,7 @@ function init_extra_tables(PDO $db): void {
     // por extenso — que a faixa nao da (imagem nao e texto: nao vai para busca,
     // nem para leitor de tela, e some se o arquivo se perder).
     // Painel de leitura da organizacao do evento. O acesso e por email
-    // autorizado, com link de uso unico enviado na hora — nao por senha
+    // autorizado, com link de 30 minutos enviado na hora — nao por senha
     // compartilhada, que vaza uma vez e vive para sempre num grupo de
     // conversa, sem deixar saber quem entrou. Aqui o registro diz quem abriu,
     // e tirar alguem e apagar uma linha da lista.
