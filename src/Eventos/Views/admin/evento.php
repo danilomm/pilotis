@@ -193,9 +193,12 @@
                 <textarea id="emails_organizacao" name="emails_organizacao" rows="3"
                           placeholder="Um email por linha. Quem estiver aqui pede o próprio link de acesso."><?= e($evento['emails_organizacao'] ?? '') ?></textarea>
                 <small>Cada pessoa da lista entra em <code>/eventos/<?= e($evento['slug']) ?>/organizacao</code>,
-                informa o email e recebe um link de acesso. O painel mostra a lista de inscritos com contato
-                e endereço, <strong>sem CPF</strong>, e permite baixar planilha. Todo acesso fica registrado
-                no log. Vazio = painel desligado.</small>
+                informa o email e recebe um link de acesso. O painel mostra a lista de inscritos com contato,
+                endereço e valores, <strong>sem CPF</strong>, e permite baixar planilha. Todo acesso fica
+                registrado no log com o email de quem fez. Vazio = painel desligado.
+                <br><strong>Use o email pessoal de cada pessoa, nunca uma caixa coletiva do evento:</strong>
+                numa caixa compartilhada o log registra sempre o mesmo endereço, e não se sabe mais quem
+                baixou a lista.</small>
 
                 <label for="organizacao_expira_em">Painel válido até</label>
                 <input type="date" id="organizacao_expira_em" name="organizacao_expira_em"
