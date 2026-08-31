@@ -359,6 +359,20 @@ function palpite_nome_cracha(?string $nome): string {
 }
 
 /**
+ * Versao do aviso de privacidade em vigor.
+ *
+ * **Trocar SEMPRE que o texto de `/privacidade` mudar.** O consentimento e
+ * gravado por VERSAO (`filiacoes.consentimento_versao`,
+ * `inscricoes.consentimento_versao`): sem trocar aqui, o registro aponta para
+ * um texto que a pessoa nunca leu, e ai a pergunta que o registro existe para
+ * responder — "essas pessoas concordaram com o que?" — volta a nao ter resposta.
+ *
+ * Formato AAAA-MM-DD, a data da mudanca. Nao e semver: o que importa e achar o
+ * texto daquele dia no historico do git.
+ */
+const POLITICA_PRIVACIDADE_VERSAO = '2026-08-30';
+
+/**
  * Como esta pessoa se identifica num documento: "CPF 000.000.000-00" ou
  * "Passaporte XX0000000".
  *

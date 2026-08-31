@@ -184,6 +184,27 @@
             <label for="observacoes_filiado">Algo que queira nos informar?</label>
             <textarea id="observacoes_filiado" name="observacoes_filiado" rows="3"><?= e($cadastrado['observacoes_filiado'] ?? '') ?></textarea>
         </fieldset>
+        <?php
+        // Consentimento: o que fica GRAVADO e a versao do texto e a data
+        // (POLITICA_PRIVACIDADE_VERSAO). Sem isso, a pergunta "essas pessoas
+        // concordaram com o que?" nao tem resposta — e ela ja foi feita neste
+        // projeto: quem preencheu os formularios de 2015 a 2024 nunca soube que
+        // a lista viraria pagina publica, e ela existiu sete meses.
+        //
+        // Marcado quando a pessoa JA consentiu nesta mesma versao: refazer o
+        // aceite a cada visita nao acrescenta nada e vira ruido. Versao nova
+        // reabre a caixa, que e o ponto de versionar.
+        $ja_consentiu = ($pre_consentimento ?? '') === POLITICA_PRIVACIDADE_VERSAO;
+        ?>
+        <fieldset style="margin-top: 1.4rem;">
+            <label for="consentimento" style="font-weight: normal;">
+                <input type="checkbox" id="consentimento" name="consentimento" value="1"
+                       <?= $ja_consentiu ? 'checked' : '' ?> required>
+                Li e concordo com o <a href="/privacidade" target="_blank" rel="noopener">aviso
+                de privacidade</a>: quais dados são coletados, para que servem e quem os vê.
+            </label>
+        </fieldset>
+
 
         <button type="submit">Continuar para Pagamento</button>
 

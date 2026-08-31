@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30f';
+const SCHEMA_VERSION = '2026-08-30g';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -441,6 +441,21 @@ function init_extra_tables(PDO $db): void {
     if ($st->rowCount() > 0) {
         error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
     }
+
+    // Consentimento com o aviso de privacidade: QUAL versao e QUANDO.
+    //
+    // Fica no ato (filiacao, inscricao) e nao na pessoa, porque e por ato que
+    // ela consente: quem se filiou em 2026 leu o texto de 2026, e uma inscricao
+    // em evento coleta coisas que a filiacao nao coleta (nome no cracha,
+    // presenca). Guardar so na pessoa apagaria essa distincao.
+    //
+    // Registros ANTERIORES ficam com NULL, e e o certo: ninguem consentiu com
+    // um texto que nao existia. Preencher retroativamente seria inventar o
+    // consentimento — exatamente o que o registro existe para impedir.
+    garantir_coluna($db, 'filiacoes', 'consentimento_versao', 'TEXT');
+    garantir_coluna($db, 'filiacoes', 'consentimento_em', 'DATETIME');
+    garantir_coluna($db, 'inscricoes', 'consentimento_versao', 'TEXT');
+    garantir_coluna($db, 'inscricoes', 'consentimento_em', 'DATETIME');
 
     garantir_coluna($db, 'pessoas', 'documento', 'TEXT');
     garantir_coluna($db, 'pessoas', 'documento_tipo', 'TEXT');

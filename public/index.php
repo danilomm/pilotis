@@ -39,6 +39,7 @@ require_once SRC_DIR . '/Eventos/AdminEventosController.php';
 require_once SRC_DIR . '/Campanha/AdminTemplatesController.php';
 require_once SRC_DIR . '/Eventos/EventosController.php';
 require_once SRC_DIR . '/Controllers/ValidacaoController.php';
+require_once SRC_DIR . '/Controllers/PrivacidadeController.php';
 
 // === ROTAS ===
 
@@ -100,6 +101,7 @@ post('/eventos/{slug}/{token}', 'EventosController::salvar');
 get('/eventos/{slug}/{token}/vincular', 'EventosController::vincular');
 post('/eventos/{slug}/{token}/vincular', 'EventosController::processarVinculacao');
 get('/eventos/{slug}/{token}/confirmar-vinculo', 'EventosController::confirmarVinculo');
+get('/privacidade', 'PrivacidadeController::ver');
 get('/eventos/{slug}/{token}/aguardando', 'EventosController::aguardandoTesouraria');
 get('/eventos/{slug}/{token}/pagamento', 'EventosController::pagamento');
 post('/eventos/{slug}/{token}/gerar-pix', 'EventosController::gerarPix');

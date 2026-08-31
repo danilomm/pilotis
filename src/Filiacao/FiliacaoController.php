@@ -231,6 +231,15 @@ class FiliacaoController {
 
         registrar_log('acesso_formulario', $cadastrado['id'], "Acesso ao formulário $ano");
 
+        // Versao do aviso que esta pessoa ja aceitou NESTE ano, se aceitou. A
+        // caixa vem marcada quando bate com a versao em vigor; versao nova
+        // reabre o aceite, que e o ponto de versionar.
+        $ja = db_fetch_one(
+            "SELECT consentimento_versao FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+            [$cadastrado['id'], (int)$ano]
+        );
+        $pre_consentimento = (string)($ja['consentimento_versao'] ?? '');
+
         $titulo = "Filiação $ano";
 
         ob_start();
@@ -293,6 +302,23 @@ class FiliacaoController {
             'pais' => 'País',
             'profissao' => 'Profissão',
         ];
+
+        // Consentimento conferido NO SERVIDOR. O `required` do HTML e conforto de
+        // quem preenche, nao garantia: qualquer POST direto o ignora, e e
+        // justamente o registro de consentimento que nao pode depender de o
+        // navegador ter colaborado. Aceita tambem quem ja consentiu nesta MESMA
+        // versao — a caixa vem marcada, e reenviar o formulario nao pode exigir
+        // reler o que nao mudou.
+        $consentido_antes = db_fetch_one(
+            "SELECT consentimento_versao FROM filiacoes WHERE pessoa_id = ? AND ano = ?",
+            [$cadastrado['id'], (int)$ano]
+        );
+        if (empty($_POST['consentimento'])
+            && (string)($consentido_antes['consentimento_versao'] ?? '') !== POLITICA_PRIVACIDADE_VERSAO) {
+            flash('error', 'É preciso concordar com o aviso de privacidade para continuar.');
+            redirect("/filiacao/$ano/$token");
+            return;
+        }
 
         // CPF: confere o DIGITO VERIFICADOR aqui, e nao so a presenca.
         //
@@ -404,6 +430,16 @@ class FiliacaoController {
         atualizar_pessoa_filiacao($cadastrado['id'], (int)$ano, $dados_filiacao);
 
         // Atualiza status para 'pendente' se ainda não pagou
+        // Consentimento: versao e data. A data so na PRIMEIRA vez (COALESCE) —
+        // o que importa e quando a pessoa aceitou aquele texto, e reenviar o
+        // formulario nao e um novo consentimento.
+        db_execute(
+            "UPDATE filiacoes SET consentimento_versao = ?,
+                    consentimento_em = COALESCE(consentimento_em, datetime('now','localtime'))
+             WHERE pessoa_id = ? AND ano = ?",
+            [POLITICA_PRIVACIDADE_VERSAO, $cadastrado['id'], (int)$ano]
+        );
+
         db_execute(
             "UPDATE filiacoes SET status = 'pendente', status_at = ? WHERE pessoa_id = ? AND ano = ? AND status IN ('enviado', 'acesso')",
             [date('Y-m-d H:i:s'), $cadastrado['id'], (int)$ano]

@@ -25,6 +25,20 @@
         <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00"
                inputmode="numeric" autocomplete="off" required>
         <small>Digite apenas os números.</small>
+        <?php
+        // O aviso fica AQUI, colado no campo, e nao num rodape.
+        //
+        // Esta e a primeira tela e ja pede CPF — dado que identifica a pessoa
+        // na Receita. Avisar depois, no formulario, seria avisar tarde: o
+        // numero ja teria sido digitado. Duas linhas, com o essencial dito no
+        // proprio texto (para que serve, e que nao e publicado) e o resto a um
+        // clique.
+        ?>
+        <small style="display: block; margin: -.2rem 0 .8rem; color: var(--pico-muted-color);">
+            O CPF é usado para encontrar seu cadastro e é exigido pelo meio de
+            pagamento. Não é publicado.
+            <a href="/privacidade" target="_blank" rel="noopener">Como seus dados são tratados</a>.
+        </small>
         <button type="submit">Continuar</button>
     </form>
 

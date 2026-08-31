@@ -588,6 +588,8 @@ class EventosController {
         $instituicoes = instituicoes_conhecidas();
 
         // Pré-preenchimento: dados da inscrição (se já preencheu) > cadastro (última filiação com dados)
+        $pre_consentimento = (string)($inscricao['consentimento_versao'] ?? '');
+
         $pre = $cadastrado;
         if ($inscricao && !empty($inscricao['endereco'])) {
             foreach (['telefone','endereco','cep','cidade','estado','pais','profissao','instituicao'] as $c) {
@@ -708,6 +710,22 @@ class EventosController {
 
         if (empty($nome)) {
             flash('error', 'Nome é obrigatório.');
+            redirect("/eventos/$slug/$token");
+            return;
+        }
+
+        // Consentimento conferido NO SERVIDOR. O `required` do HTML e conforto
+        // de quem preenche, nao garantia: qualquer POST direto o ignora, e e
+        // justamente o registro de consentimento que nao pode depender do
+        // navegador ter colaborado.
+        //
+        // Aceita quando a caixa vem marcada AGORA ou quando ja havia
+        // consentimento nesta MESMA versao — a caixa ja vem marcada nesse caso,
+        // e reenviar o formulario nao pode exigir reler o que nao mudou.
+        $consentiu = !empty($_POST['consentimento'])
+            || (string)($inscricao['consentimento_versao'] ?? '') === POLITICA_PRIVACIDADE_VERSAO;
+        if (!$consentiu) {
+            flash('error', 'É preciso concordar com o aviso de privacidade para continuar.');
             redirect("/eventos/$slug/$token");
             return;
         }
@@ -899,6 +917,7 @@ class EventosController {
                 telefone = ?, endereco = ?, cep = ?, cidade = ?, estado = ?, pais = ?,
                 profissao = ?, instituicao = ?,
                 comprovante_path = COALESCE(?, comprovante_path),
+                consentimento_versao = ?, consentimento_em = COALESCE(consentimento_em, datetime('now','localtime')),
                 status = ?, status_at = datetime('now','localtime')
                 $limpar_cobranca
             WHERE id = ? AND status NOT IN ('pago', 'gratuita_confirmada')
@@ -907,6 +926,7 @@ class EventosController {
             $telefone ?: null, $endereco ?: null, $cep ?: null, $cidade ?: null,
             $estado ?: null, $pais ?: 'Brasil', $profissao ?: null, $instituicao ?: null,
             $comprovante_path,
+            POLITICA_PRIVACIDADE_VERSAO,
             $novo_status,
             (int)$inscricao['id'],
         ]);

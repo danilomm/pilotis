@@ -25,6 +25,16 @@
 
     <p><small>Enviaremos um link de acesso para seu email. Se você já possui cadastro, seus dados serão pré-preenchidos.</small></p>
 
+    <?php
+    // A entrada da filiacao pede so o email, entao o aviso e mais curto que o da
+    // inscricao — mas existe pelo mesmo motivo: o formulario seguinte pede CPF,
+    // endereco e telefone, e quem esta decidindo se entra tem direito de saber
+    // disso ANTES de comecar.
+    ?>
+    <p><small style="color: var(--pico-muted-color);">No formulário pediremos CPF,
+    telefone e endereço, necessários para a cobrança e para o contato.
+    <a href="/privacidade" target="_blank" rel="noopener">Como seus dados são tratados</a>.</small></p>
+
     <hr>
 
     <h3>Categorias e valores</h3>
