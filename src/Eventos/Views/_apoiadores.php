@@ -64,13 +64,16 @@ if (!$linhas_apoio && !$tem_faixa && $logo_org === '' && $organizador === ''
     // lia a pagina e queria perguntar alguma coisa achava apenas o email da
     // tesouraria — a ponta errada, e que nao sabe responder sobre o evento.
     ?>
+    <?php
+    // So o endereco. O NOME da caixa ("V Docomomo RJ") ficava numa segunda
+    // linha, entre o email e a palavra "Organizacao" — solto, parecendo do
+    // bloco de baixo, e sem acrescentar nada: a secao ja e sobre este evento.
+    // No PDF ele continua, porque la a linha e uma assinatura de email.
+    ?>
     <?php if ($contato_evento['email'] !== ''): ?>
-        <p style="margin: 0 0 .9rem; font-size: .9rem;">
+        <p style="margin: 0 0 1.8rem; font-size: .9rem;">
             Dúvidas sobre o evento:
             <a href="mailto:<?= e($contato_evento['email']) ?>"><?= e($contato_evento['email']) ?></a>
-            <?php if ($contato_evento['nome'] !== ''): ?>
-                <br><small style="color: var(--pico-muted-color);"><?= e($contato_evento['nome']) ?></small>
-            <?php endif; ?>
         </p>
     <?php endif; ?>
 
