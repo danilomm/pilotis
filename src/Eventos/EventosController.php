@@ -683,6 +683,13 @@ class EventosController {
         }
         $email_form = strtolower(trim($_POST['email'] ?? ''));
         $cpf = trim($_POST['cpf'] ?? '');
+
+        // Documento de quem nao tem CPF. Sem tipo, o numero nao diz nada:
+        // 'passaporte' e o padrao, e a pessoa corrige se for outro.
+        $documento = trim($_POST['documento'] ?? '');
+        $documento_tipo = trim($_POST['documento_tipo'] ?? '');
+        if ($documento !== '' && $documento_tipo === '') $documento_tipo = 'passaporte';
+        if ($documento === '') $documento_tipo = '';
         $telefone = trim($_POST['telefone'] ?? '');
         $endereco = trim($_POST['endereco'] ?? '');
         $cep = trim($_POST['cep'] ?? '');
@@ -716,10 +723,17 @@ class EventosController {
             return;
         }
 
-        // Categoria paga: CPF (exigência PagBank) e dados de contato/endereço (boleto)
+        // Categoria paga: identificacao e dados de contato/endereco (boleto).
+        //
+        // A identificacao aceita CPF **ou** outro documento. O CPF e o unico que
+        // o PagBank aceita; quem entra com passaporte tem a inscricao registrada
+        // como PENDENTE e a tesouraria combina o pagamento por fora — e nao
+        // chega a tela de pagamento, para nao tentar o cartao e falhar. Ate
+        // 30/08/2026 aqui exigia CPF e ponto: estrangeiro preenchia o
+        // formulario inteiro para levar "CPF é obrigatório para inscrição paga".
         if ($valor > 0) {
             $obrigatorios = [
-                'cpf' => 'CPF', 'telefone' => 'Telefone', 'endereco' => 'Endereço',
+                'telefone' => 'Telefone', 'endereco' => 'Endereço',
                 'cep' => 'CEP', 'cidade' => 'Cidade', 'estado' => 'Estado', 'pais' => 'País',
             ];
             foreach ($obrigatorios as $campo => $label) {
@@ -729,7 +743,13 @@ class EventosController {
                     return;
                 }
             }
-            if (strlen(preg_replace('/\D/', '', $cpf)) !== 11) {
+            if ($cpf === '' && $documento === '') {
+                flash('error', 'Informe o CPF. Se você não tem CPF brasileiro, '
+                    . 'abra "Não tenho CPF brasileiro" e informe o passaporte.');
+                redirect("/eventos/$slug/$token");
+                return;
+            }
+            if ($cpf !== '' && strlen(preg_replace('/\D/', '', $cpf)) !== 11) {
                 flash('error', 'CPF inválido.');
                 redirect("/eventos/$slug/$token");
                 return;
@@ -841,9 +861,20 @@ class EventosController {
         if ($cpf_gravar && cpf_pertence_a_outra_pessoa($cpf_gravar, (int)$cadastrado['id'])) {
             $cpf_gravar = null; // vinculação será oferecida adiante
         }
+        // Documento estrangeiro: grava so quando veio preenchido, para nao
+        // apagar o que a tesouraria tenha lancado pelo /admin. Quem passou a ter
+        // CPF nao perde o passaporte — sao dados diferentes, e o CPF tem
+        // precedencia na hora de identificar num documento.
+        $doc_gravar = $documento !== '' ? $documento : null;
+        $doc_tipo_gravar = $documento !== '' ? $documento_tipo : null;
+
         db_execute(
-            "UPDATE pessoas SET nome = ?, cpf = COALESCE(?, cpf), updated_at = datetime('now','localtime') WHERE id = ?",
-            [$nome, $cpf_gravar, (int)$cadastrado['id']]
+            "UPDATE pessoas SET nome = ?, cpf = COALESCE(?, cpf),
+                    documento = COALESCE(?, documento),
+                    documento_tipo = COALESCE(?, documento_tipo),
+                    updated_at = datetime('now','localtime')
+             WHERE id = ?",
+            [$nome, $cpf_gravar, $doc_gravar, $doc_tipo_gravar, (int)$cadastrado['id']]
         );
 
         // Atualiza inscrição.
@@ -937,6 +968,46 @@ class EventosController {
             registrar_log('evento_match_oferecido', $cadastrado['id'], "Match candidato pessoa_id=$mid motivo={$match['motivo']} (evento {$evento['slug']})");
             $sig = assinar_match((int)$cadastrado['id'], $mid);
             redirect("/eventos/$slug/$token/vincular?match=$mid&motivo=$motivo&sig=$sig");
+            return;
+        }
+
+        // Sem CPF, o pagamento online nao existe: o PagBank exige CPF ou CNPJ e
+        // recusaria o cartao. Mandar a pessoa para a tela de pagamento seria
+        // deixa-la tentar e falhar, o que e desgastante e nao leva a nada.
+        // A inscricao fica registrada e pendente, e a tesouraria combina.
+        if ($valor > 0 && $cpf === '') {
+            registrar_log('inscricao_sem_cpf', (int)$cadastrado['id'],
+                "Inscricao {$inscricao['id']} no evento {$evento['slug']} registrada sem CPF"
+                . ($documento !== '' ? " ($documento_tipo)" : '') . '; pagamento a combinar com a tesouraria');
+
+            // Avisa a TESOURARIA, que e quem tem de agir: mandar a ordem de
+            // pagamento (PayPal, transferencia) e depois lancar como paga.
+            // O log sozinho nao serve: ele so e lido por quem abre o /admin/log
+            // de proposito, e a pessoa que preencheu tudo ficaria esperando.
+            //
+            // Falhar aqui NAO desfaz a inscricao nem muda o que a pessoa ve: o
+            // registro dela esta feito, e a pendencia continua no log. Perder a
+            // inscricao por causa do aviso seria trocar um problema por um pior.
+            try {
+                $link_admin = rtrim(BASE_URL, '/') . BASE_PATH . '/admin/eventos/'
+                    . (int)$evento['id'] . '/inscritos?status=pendente';
+                BrevoService::avisarTesourariaInscricaoSemCpf(
+                    $nome,
+                    $cadastrado['email'] ?? '',
+                    documento_identificacao('', $documento ?: null, $documento_tipo ?: null),
+                    $evento['nome'],
+                    $categoria['nome'] ?? '',
+                    (int)$valor,
+                    $pais,
+                    $link_admin
+                );
+            } catch (Throwable $e) {
+                registrar_log('erro_aviso_sem_cpf', (int)$cadastrado['id'],
+                    "Inscricao {$inscricao['id']} sem CPF registrada, mas o aviso a tesouraria falhou: "
+                    . $e->getMessage());
+            }
+
+            redirect("/eventos/$slug/$token/aguardando");
             return;
         }
 
@@ -1283,6 +1354,47 @@ class EventosController {
     /**
      * Tela de pagamento da inscricao (PIX / Boleto / Cartao)
      */
+    /**
+     * Inscricao registrada, sem pagamento online: a tesouraria vai combinar.
+     *
+     * Existe porque o PagBank exige CPF ou CNPJ (conferido em 30/08/2026 na
+     * documentacao e nas recusas reais do nosso log). Quem se inscreve com
+     * passaporte nao tem como pagar por aqui.
+     *
+     * A tela **diz o motivo**. Mandar a pessoa para o pagamento e deixa-la
+     * tentar o cartao seria desgastante e nao levaria a nada; mas desviar em
+     * silencio seria pior — ela acharia que o sistema quebrou, e voltaria a
+     * tentar. O que ela precisa entender e que nao chegou ali PORQUE nao tem
+     * CPF, e que isso ja esta previsto.
+     */
+    public static function aguardandoTesouraria(string $slug, string $token): void {
+        $ctx = self::contextoPagamento($slug, $token);
+        if (!$ctx) return;
+        [$evento, $cadastrado, $inscricao, $categoria] = $ctx;
+
+        // Ja pago (a tesouraria lancou): mostra a confirmacao normal.
+        if (in_array($inscricao['status'], ['pago', 'gratuita_confirmada'], true)) {
+            self::renderConfirmada($evento, $cadastrado, $inscricao);
+            return;
+        }
+
+        // Passou a ter CPF: o caminho normal voltou a existir.
+        if (trim((string)($cadastrado['cpf'] ?? '')) !== '') {
+            redirect("/eventos/$slug/$token/pagamento");
+            return;
+        }
+
+        $identificacao = documento_identificacao(
+            $cadastrado['cpf'] ?? '', $cadastrado['documento'] ?? null, $cadastrado['documento_tipo'] ?? null
+        );
+
+        $titulo = "Inscrição registrada — " . $evento['nome'];
+        ob_start();
+        require SRC_DIR . '/Eventos/Views/aguardando_tesouraria.php';
+        $content = ob_get_clean();
+        require SRC_DIR . '/Views/layout.php';
+    }
+
     public static function pagamento(string $slug, string $token): void {
         require_once SRC_DIR . '/Services/PagBankService.php';
 
@@ -1292,6 +1404,15 @@ class EventosController {
 
         if (in_array($inscricao['status'], ['pago', 'gratuita_confirmada'])) {
             self::renderConfirmada($evento, $cadastrado, $inscricao);
+            return;
+        }
+
+        // Sem CPF nao ha o que oferecer aqui: o PagBank recusaria os tres meios.
+        // Quem chega por URL guardada ou pelo botao de voltar vai para a tela
+        // que EXPLICA o motivo, em vez de ver PIX, boleto e cartao que nao
+        // funcionam para ela.
+        if ((int)$inscricao['valor'] > 0 && trim((string)($cadastrado['cpf'] ?? '')) === '') {
+            redirect("/eventos/$slug/$token/aguardando");
             return;
         }
 

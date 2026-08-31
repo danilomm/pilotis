@@ -62,6 +62,12 @@ function tipos_log_criticos(): array {
         'convite_identificadores_divergentes' => 'CPF e email do convite apontam para pessoas diferentes',
         'erro_upload_comprovante'    => 'Comprovante de matricula nao pode ser recebido',
         'admin_login_bloqueado'      => 'Login do admin bloqueado por excesso de tentativas',
+        // Nao e erro: e alguem ESPERANDO a tesouraria. Sem CPF nao ha cobranca
+        // online (o PagBank exige CPF ou CNPJ), entao a inscricao fica pendente
+        // ate alguem combinar o pagamento e lancar. Se ninguem olhar, a pessoa
+        // preencheu tudo e some.
+        'inscricao_sem_cpf'          => 'Inscricao sem CPF: combinar pagamento e lancar a mao',
+        'erro_aviso_sem_cpf'         => 'Inscricao sem CPF registrada e a TESOURARIA NAO FOI AVISADA',
     ];
 }
 

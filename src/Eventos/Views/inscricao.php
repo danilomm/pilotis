@@ -28,13 +28,23 @@
         <button type="submit">Continuar</button>
     </form>
 
+    <?php
+    // "Nao tenho CPF brasileiro" — e um caminho de verdade desde 30/08/2026.
+    //
+    // Ate entao era caminho fechado: a pessoa recebia o link, preenchia nome,
+    // endereco, telefone e pais, escolhia a categoria e levava "CPF é
+    // obrigatório para inscrição paga". Agora o formulario aceita passaporte
+    // (ou RNM, DNI...) no lugar do CPF, a inscricao fica registrada como
+    // pendente, aparece na lista da organizacao, e a tesouraria combina o
+    // pagamento por fora — porque o PagBank exige CPF ou CNPJ, e essa
+    // exigencia e dele, nao do Docomomo.
+    ?>
     <details style="margin-top: 12px;">
         <summary style="cursor: pointer;"><small>Não tenho CPF brasileiro</small></summary>
-        <p style="margin-top: 10px;"><small>Informe seu email para continuar.
-        Se você já foi filiado(a) em anos anteriores, dê preferência ao email do
-        seu último cadastro. Note que o pagamento online exige CPF; se você não
-        tiver, escreva para
-        <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.</small></p>
+        <p style="margin-top: 10px;"><small>Informe seu email para continuar. No
+        formulário você poderá usar passaporte ou outro documento no lugar do CPF.
+        Se a inscrição for paga, a tesouraria entra em contato para combinar o
+        pagamento — o meio de pagamento online só aceita CPF.</small></p>
         <form method="POST" action="/eventos/<?= e($evento['slug']) ?>/inscrever"><?= campo_csrf() ?>
             <label for="email">Email</label>
             <input type="email" id="email" name="email" placeholder="seu@email.com" required>

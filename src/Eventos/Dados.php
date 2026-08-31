@@ -76,7 +76,7 @@ function inscritos_do_evento(int $evento_id, string $filtro = '', string $busca 
     }
 
     return db_fetch_all("
-        SELECT i.*, p.nome, p.cpf, p.id AS pessoa_id,
+        SELECT i.*, p.nome, p.cpf, p.documento, p.documento_tipo, p.id AS pessoa_id,
                e.email,
                c.nome AS categoria_nome, c.requer_comprovante
         FROM inscricoes i

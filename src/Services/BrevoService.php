@@ -372,6 +372,55 @@ class BrevoService {
     /**
      * Envia confirmação de inscrição em evento (paga ou gratuita)
      */
+    /**
+     * Avisa a TESOURARIA de que ha alguem esperando ordem de pagamento.
+     *
+     * Vai para o contato da organizacao, e nao para a pessoa: e a tesouraria
+     * que precisa agir — mandar um link de PayPal, combinar transferencia — e
+     * depois lancar como pago no admin.
+     *
+     * Existe porque inscricao sem CPF nao gera cobranca (o PagBank exige CPF ou
+     * CNPJ). Sem este email, a inscricao ficaria pendente ate alguem por acaso
+     * abrir o `/admin/log`, e a pessoa que preencheu tudo simplesmente sumiria.
+     * O log continua registrando `inscricao_sem_cpf`, que e a rede se o email
+     * falhar — mas rede nao substitui aviso.
+     */
+    public static function avisarTesourariaInscricaoSemCpf(
+        string $nome,
+        string $email_pessoa,
+        string $identificacao,
+        string $evento_nome,
+        string $categoria,
+        int $valor_centavos,
+        string $pais,
+        string $link_admin
+    ): bool {
+        $valor = formatar_valor($valor_centavos);
+        $html = '<p>Uma inscrição foi registrada <strong>sem CPF</strong> e não pode ser cobrada '
+              . 'pelo PagBank, que aceita apenas CPF ou CNPJ.</p>'
+              . '<table cellpadding="4">'
+              . '<tr><td><strong>Pessoa</strong></td><td>' . e($nome) . '</td></tr>'
+              . '<tr><td><strong>Email</strong></td><td>' . e($email_pessoa) . '</td></tr>'
+              . '<tr><td><strong>Identificação</strong></td><td>' . e($identificacao ?: '(não informada)') . '</td></tr>'
+              . '<tr><td><strong>País</strong></td><td>' . e($pais ?: '(não informado)') . '</td></tr>'
+              . '<tr><td><strong>Evento</strong></td><td>' . e($evento_nome) . '</td></tr>'
+              . '<tr><td><strong>Categoria</strong></td><td>' . e($categoria) . '</td></tr>'
+              . '<tr><td><strong>Valor</strong></td><td>' . e($valor) . '</td></tr>'
+              . '</table>'
+              . '<p><strong>O que fazer:</strong> enviar a ela uma ordem de pagamento (PayPal, '
+              . 'transferência) e, recebido o valor, abrir a lista de inscritos e clicar '
+              . '<em>lançar pago</em> — o comprovante em PDF sai automaticamente.</p>'
+              . '<p><a href="' . e($link_admin) . '">Abrir a lista de inscritos</a></p>'
+              . '<p><small>A pessoa já viu, na tela, que o pagamento online não estava disponível '
+              . 'e que a tesouraria entraria em contato.</small></p>';
+
+        return self::enviarEmail(
+            ORG_EMAIL_CONTATO,
+            'Inscrição sem CPF, aguardando ordem de pagamento — ' . $evento_nome,
+            $html
+        );
+    }
+
     public static function enviarConfirmacaoInscricao(
         string $email,
         string $nome,

@@ -937,6 +937,73 @@ class AdminEventosController extends AdminController {
      * caminho nenhum para remandar o comprovante. A pessoa pagava e nunca
      * recebia o PDF.
      */
+    /**
+     * Lanca a mao o pagamento de uma inscricao, e dispara a confirmacao.
+     *
+     * Existe para o caso que o PagBank nao atende: quem se inscreveu **sem
+     * CPF** (estrangeiro com passaporte) nao tem cobranca online, combina o
+     * pagamento com a tesouraria e alguem precisa registrar isso. Serve tambem
+     * a transferencia, dinheiro na mesa de credenciamento e qualquer pagamento
+     * fora do sistema.
+     *
+     * Ate 30/08/2026 nao havia ESSA acao para inscricao — so para filiacao
+     * (`AdminPessoasController::marcarPago`). Sem ela, uma inscricao sem CPF
+     * ficaria pendente para sempre, e a pessoa que preencheu tudo sumiria.
+     *
+     * Passa pelo mesmo `processarInscricaoConfirmada()` do webhook: o
+     * comprovante em PDF e o email saem iguais aos de quem pagou online. Um
+     * caminho paralelo aqui produziria documento diferente para a mesma coisa.
+     */
+    public static function marcarInscricaoPaga(string $inscricao_id): void {
+        self::exigirLogin();
+
+        $inscricao = db_fetch_one(
+            "SELECT id, pessoa_id, evento_id, status, valor FROM inscricoes WHERE id = ?",
+            [(int)$inscricao_id]
+        );
+        if (!$inscricao) {
+            flash('error', 'Inscrição não encontrada.');
+            redirect('/admin/eventos');
+            return;
+        }
+        if (in_array($inscricao['status'], ['pago', 'gratuita_confirmada'], true)) {
+            flash('error', 'Esta inscrição já está confirmada.');
+            redirect("/admin/eventos/{$inscricao['evento_id']}/inscritos");
+            return;
+        }
+
+        $metodo = trim($_POST['metodo'] ?? '') ?: 'Manual';
+
+        db_execute(
+            "UPDATE inscricoes SET status = 'pago', metodo = ?,
+                    data_pagamento = COALESCE(data_pagamento, datetime('now','localtime'))
+             WHERE id = ?",
+            [$metodo, (int)$inscricao['id']]
+        );
+
+        // Cancela os lembretes de cobranca: a pessoa pagou, e continuar
+        // avisando dela seria constrangedor.
+        db_execute("DELETE FROM lembretes_agendados WHERE inscricao_id = ? AND enviado = 0", [(int)$inscricao['id']]);
+
+        registrar_log('inscricao_paga_manual', (int)$inscricao['pessoa_id'],
+            "Inscricao {$inscricao['id']} lancada como paga pelo admin (metodo: $metodo, "
+            . formatar_valor((int)$inscricao['valor']) . ")");
+
+        require_once SRC_DIR . '/Controllers/WebhookController.php';
+        try {
+            WebhookController::processarInscricaoConfirmada((int)$inscricao['id']);
+            flash('success', 'Inscrição lançada como paga e confirmação enviada.');
+        } catch (Throwable $e) {
+            // O pagamento JA foi registrado; o que falhou foi o aviso. Dizer
+            // "erro" sem mais nada faria a pessoa lancar de novo.
+            registrar_log('erro_confirmacao_inscricao', (int)$inscricao['pessoa_id'],
+                "Inscricao {$inscricao['id']} paga, mas a confirmacao falhou: " . $e->getMessage());
+            flash('error', 'Pagamento registrado, mas o email de confirmação falhou. '
+                . 'Use "Reenviar confirmação" na lista.');
+        }
+        redirect("/admin/eventos/{$inscricao['evento_id']}/inscritos");
+    }
+
     public static function enviarConfirmacaoInscricao(string $inscricao_id): void {
         self::exigirLogin();
 

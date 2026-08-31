@@ -133,6 +133,45 @@
                    placeholder="000.000.000-00" inputmode="numeric">
             <small>Obrigatório para inscrições pagas (exigência do meio de pagamento).</small>
 
+            <?php
+            // Quem nao tem CPF usa outro documento. O bloco abre sozinho se ja
+            // houver documento gravado, ou se a pessoa nao tem CPF nenhum — e o
+            // caso em que ela vai precisar dele.
+            //
+            // Isto NAO substitui o CPF para pagar: o PagBank exige CPF ou CNPJ.
+            // Quem se inscrever assim tem a inscricao registrada como pendente e
+            // a tesouraria combina o pagamento por fora. O aviso esta na tela,
+            // para ninguem descobrir isso depois de preencher tudo.
+            $sem_cpf = trim((string)($pre['cpf'] ?? '')) === '';
+            $tem_doc = trim((string)($pre['documento'] ?? '')) !== '';
+            ?>
+            <details id="bloco-documento" <?= ($tem_doc || $sem_cpf) ? 'open' : '' ?> style="margin: .2rem 0 1rem;">
+                <summary style="cursor: pointer;"><small>Não tenho CPF brasileiro</small></summary>
+
+                <div class="grid" style="margin-top: .6rem;">
+                    <div>
+                        <label for="documento">Documento</label>
+                        <input type="text" id="documento" name="documento"
+                               value="<?= e($pre['documento'] ?? '') ?>" placeholder="número do passaporte">
+                    </div>
+                    <div>
+                        <label for="documento_tipo">Tipo</label>
+                        <input type="text" id="documento_tipo" name="documento_tipo" list="tipos-documento"
+                               value="<?= e($pre['documento_tipo'] ?? '') ?>" placeholder="passaporte">
+                        <datalist id="tipos-documento">
+                            <option value="passaporte">
+                            <option value="RNM">
+                            <option value="DNI">
+                            <option value="NIE">
+                        </datalist>
+                    </div>
+                </div>
+                <small id="aviso-sem-cpf">Preenchendo aqui, sua inscrição fica <strong>registrada e
+                pendente de pagamento</strong>: o pagamento online só aceita CPF, então a
+                tesouraria entra em contato com você para combinar. Você recebe a confirmação
+                por email quando o pagamento for lançado.</small>
+            </details>
+
             <label for="telefone">Telefone <span class="req-pago">*</span></label>
             <input type="tel" id="telefone" autocomplete="tel" name="telefone" value="<?= e($pre['telefone'] ?? '') ?>" placeholder="(00) 00000-0000">
         </fieldset>

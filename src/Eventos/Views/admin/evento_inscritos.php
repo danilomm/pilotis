@@ -136,6 +136,24 @@ $query = function (array $extra) use ($filtro, $busca): string {
                                     <button type="submit" class="secondary outline" style="padding: .2rem .5rem; font-size: .75rem;"
                                             onclick="return confirm('Reenviar o comprovante por email?')">reenviar</button>
                                 </form>
+                            <?php elseif ((int)($i['valor'] ?? 0) > 0): ?>
+                                <?php
+                                // Lancar pagamento feito fora do sistema. O caso que
+                                // OBRIGA isto e a inscricao sem CPF: o PagBank nao a
+                                // cobra, entao ela so sai de pendente por aqui. Serve
+                                // tambem a transferencia e ao dinheiro na credencial.
+                                $sem_cpf = trim((string)($i['cpf'] ?? '')) === '';
+                                ?>
+                                <form method="POST" action="/admin/eventos/inscricao/<?= (int)$i['id'] ?>/pagar" style="margin:0;"><?= campo_csrf() ?>
+                                    <input type="hidden" name="metodo" value="Manual">
+                                    <button type="submit" class="secondary outline" style="padding: .2rem .5rem; font-size: .75rem;"
+                                            onclick="return confirm('Lançar <?= e(formatar_valor((int)$i['valor'])) ?> como pago para <?= e(addslashes(trim($i['nome'] ?? ''))) ?>? O comprovante será enviado por email.')">lançar pago</button>
+                                </form>
+                                <?php if ($sem_cpf): ?>
+                                    <small style="color: #b71c1c; display: block; margin-top: .25rem;">sem CPF<?php
+                                        if (!empty($i['documento'])) echo ' · ' . e(trim(($i['documento_tipo'] ?? '') . ' ' . $i['documento']));
+                                    ?></small>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                     </tr>
