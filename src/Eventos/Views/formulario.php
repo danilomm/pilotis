@@ -302,6 +302,21 @@
             document.getElementById(id).required = valor > 0;
         });
 
+        // E o ASTERISCO acompanha. As classes `req-pago` e `cpf-req` existiam no
+        // HTML desde sempre para isto e nada as tocava: quem escolhia categoria
+        // gratuita continuava vendo "CPF *", "Telefone *", "Endereço *" em
+        // campos que nao eram exigidos dele. O `required` estava certo; o
+        // asterisco e que mentia.
+        //
+        // Antes de escolher categoria nada e mexido (o `return` acima), entao a
+        // marcacao conservadora do HTML e o que aparece — e ela se corrige no
+        // primeiro clique, que e o primeiro campo do formulario.
+        var mostra = valor > 0 ? '' : 'none';
+        document.getElementById('cpf-req').style.display = mostra;
+        document.querySelectorAll('.req-pago').forEach(function (el) {
+            el.style.display = mostra;
+        });
+
         btn.textContent = valor > 0 ? 'Continuar para pagamento' : 'Confirmar inscrição gratuita';
     }
     document.addEventListener('DOMContentLoaded', atualizarForm);
