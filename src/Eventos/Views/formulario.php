@@ -232,7 +232,14 @@
             <label for="profissao">Profissão</label>
             <input type="text" id="profissao" name="profissao" value="<?= e($pre['profissao'] ?? '') ?>">
 
-            <label for="instituicao">Instituição</label>
+            <?php
+            // O label aponta para o SELECT, que e o campo visivel. Ate
+            // 31/08/2026 apontava para o `instituicao`, que fica escondido ate
+            // a pessoa escolher "Outra": o leitor de tela anunciava
+            // "Instituição" para um campo oculto e chegava ao select sem nome
+            // nenhum. E havia dois labels para o mesmo id, o de baixo tambem.
+            ?>
+            <label for="instituicao_escolha">Instituição</label>
             <?php
             $inst_atual = $pre['instituicao'] ?? '';
             $inst_na_lista = $inst_atual !== '' && in_array($inst_atual, $instituicoes ?? [], true);
@@ -272,6 +279,12 @@
             <small style="display: block; margin-bottom: 1rem;">
                 PDF, JPG ou PNG, máximo 5MB.
             </small>
+            <?php
+            // O `<legend>` da o contexto do bloco, mas nao nomeia o campo: sem
+            // este label o leitor de tela chega a um "escolher arquivo" sem
+            // dizer arquivo de que.
+            ?>
+            <label for="comprovante">Arquivo do comprovante</label>
             <input type="file" id="comprovante" name="comprovante" accept=".pdf,.jpg,.jpeg,.png">
             <?php if (!empty($comprovante_existente)): ?>
                 <small style="color: green;">✓ Comprovante já enviado anteriormente.</small>
