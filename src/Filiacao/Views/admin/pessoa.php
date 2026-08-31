@@ -53,8 +53,17 @@
                     <label for="documento_tipo">Tipo</label>
                     <input type="text" id="documento_tipo" name="documento_tipo" list="tipos-documento"
                            placeholder="passaporte" value="<?= e($pessoa['documento_tipo'] ?? '') ?>">
+                    <?php
+                    // RNM (Registro Nacional Migratorio, ex-RNE) e a identidade
+                    // de estrangeiro emitida no Brasil, e e o caso mais provavel
+                    // depois do passaporte para quem se filia ao Docomomo
+                    // BRASIL. DNI e NIE ficam porque parte dos filiados vem da
+                    // Argentina e da Espanha. Sugestao, nao lista fechada.
+                    ?>
                     <datalist id="tipos-documento">
                         <option value="passaporte">
+                        <option value="RNM">
+                        <option value="RNE">
                         <option value="DNI">
                         <option value="NIE">
                     </datalist>

@@ -402,8 +402,10 @@ function init_extra_tables(PDO $db): void {
     // por CPF encontrar passaporte e o indice unico recusar cadastro legitimo.
     //
     // `documento_tipo` existe porque numero sem saber o que e nao serve para
-    // nada: 'passaporte' e o caso previsto, mas ha DNI, NIE e afins. Texto
-    // livre de proposito — enumerar paises aqui envelheceria mal.
+    // nada. 'passaporte' e o caso previsto; ha tambem a RNM (Registro Nacional
+    // Migratorio, ex-RNE), que e a identidade de estrangeiro emitida no Brasil,
+    // e DNI/NIE para quem vem da Argentina ou da Espanha. Texto livre de
+    // proposito — enumerar paises aqui envelheceria mal.
     //
     // SEM indice unico, e de proposito: nao ha formato para validar e dois
     // paises podem repetir numeracao. Um unico aqui recusaria cadastro
