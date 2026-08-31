@@ -708,8 +708,12 @@ class FiliacaoController {
                 LembreteService::agendarVencimento($filiacao['id'], $pix_data['expiration_date']);
 
             } catch (Exception $e) {
-                $erro_pagbank = $e->getMessage();
-                registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao criar PIX: $erro_pagbank");
+                // A tela recebe a frase em portugues; o LOG recebe o detalhe
+                // tecnico do PagBank, com o campo recusado. Sao duas leituras
+                // diferentes, e usar a mesma variavel nas duas perderia a que
+                // serve para diagnosticar — o log e a unica saida do servidor.
+                $erro_pagbank = PagBankService::mensagemParaPessoa($e);
+                registrar_log('erro_pagbank', $cadastrado['id'], "Erro ao criar PIX: " . $e->getMessage());
             }
         } else {
             // Já tem order_id, busca dados do PIX
@@ -726,7 +730,12 @@ class FiliacaoController {
                     ];
                 }
             } catch (Exception $e) {
-                $erro_pagbank = $e->getMessage();
+                // Este ramo consulta pedido que JA existe. Ate 30/08/2026 nao
+                // registrava nada: a pessoa via o erro na tela e o servidor
+                // ficava sem lembranca nenhuma de que a consulta falhou.
+                $erro_pagbank = PagBankService::mensagemParaPessoa($e);
+                registrar_log('erro_pagbank', $cadastrado['id'],
+                    "Erro ao consultar PIX ja gerado: " . $e->getMessage());
             }
         }
 

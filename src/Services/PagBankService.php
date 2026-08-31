@@ -8,7 +8,106 @@
 class PagBankService {
 
     /**
-     * Retorna CPF formatado ou erro se não informado
+     * Traduz a resposta de erro do PagBank em uma linha que sirva ao log.
+     *
+     * O PagBank devolve `error_messages` com `parameter_name`, `code` e
+     * `description`. Ate 30/08/2026 so a description era guardada, e a
+     * description sozinha NAO DIZ DE QUE CAMPO ELA FALA: os 80 `erro_pagbank`
+     * em producao trazem "must not be null" e "size must be between 5 and 60"
+     * sem nomear nada. Quem for diagnosticar isso depois nao tem por onde
+     * comecar — e o log e a unica saida do servidor, que nao tem SSH.
+     *
+     * Guarda TODAS as mensagens, e nao a primeira: um pedido recusado costuma
+     * ter mais de um campo errado, e corrigir um por vez custa uma tentativa
+     * de cobranca a cada rodada.
+     *
+     * Sem `error_messages` (5xx, HTML de proxy, resposta vazia), cai no corpo
+     * cru TRUNCADO: a resposta inteira num campo de log nao ajuda a ler e
+     * pode arrastar junto o que o PagBank ecoou do pedido.
+     */
+    private static function descreverErro(?array $result, string $bruto): string {
+        $msgs = $result['error_messages'] ?? null;
+        if (!is_array($msgs) || !$msgs) {
+            $bruto = trim($bruto);
+            if ($bruto === '') return '(resposta vazia)';
+            return mb_strimwidth($bruto, 0, 300, '…');
+        }
+
+        $partes = [];
+        foreach ($msgs as $m) {
+            if (!is_array($m)) continue;
+            $desc  = trim((string)($m['description'] ?? '')) ?: 'erro sem descricao';
+            $campo = trim((string)($m['parameter_name'] ?? ''));
+            $codigo = trim((string)($m['code'] ?? ''));
+
+            $parte = $campo !== '' ? "$campo: $desc" : $desc;
+            if ($codigo !== '') $parte .= " [$codigo]";
+            $partes[] = $parte;
+        }
+
+        return $partes ? implode(' | ', $partes) : '(erro sem mensagem)';
+    }
+
+    /**
+     * A mesma falha, dita a quem esta tentando pagar.
+     *
+     * O detalhe tecnico e para o LOG, nao para a tela: quem chegou aqui quer
+     * saber se pode consertar sozinho ou se e para escrever para a tesouraria.
+     * Ate 30/08/2026 a tela mostrava a mensagem crua do PagBank, em ingles —
+     * "must not be null", "size must be between 5 and 60" — que nao diz nem uma
+     * coisa nem outra.
+     *
+     * Traduz so o que a PESSOA pode resolver, e manda o resto para o contato.
+     * Inventar traducao para erro que ela nao pode consertar seria pior: daria
+     * a entender que ha o que fazer no formulario.
+     */
+    public static function mensagemParaPessoa(Throwable $e): string {
+        $m = $e->getMessage();
+        $contato = defined('ORG_EMAIL_CONTATO') ? ORG_EMAIL_CONTATO : '';
+        $escreva = $contato !== ''
+            ? " Se continuar, escreva para $contato."
+            : ' Se continuar, escreva para a tesouraria.';
+
+        // O CPF e o unico campo do formulario que o PagBank valida de verdade
+        // (11 ou 14 digitos, CPF ou CNPJ), e e o erro mais provavel.
+        if (stripos($m, 'CPF or CNPJ') !== false || stripos($m, 'tax_id') !== false) {
+            return 'O meio de pagamento não aceitou o CPF informado. '
+                 . 'Volte ao formulário e confira os números.';
+        }
+
+        // Nome fora da faixa que o PagBank aceita para o cliente ou o item.
+        if (stripos($m, 'size must be between') !== false) {
+            return 'Algum dado do cadastro está fora do tamanho que o meio de '
+                 . 'pagamento aceita. Confira o nome e tente de novo.' . $escreva;
+        }
+
+        // Sem rede, timeout, 5xx: nao ha o que a pessoa faca no formulario.
+        return 'Não foi possível gerar a cobrança agora.'
+             . ' Tente de novo em alguns minutos.' . $escreva;
+    }
+
+    /**
+     * Documento de quem paga, no formato que o PagBank aceita.
+     *
+     * A exigencia e DELE, nao nossa, e foi conferida em 30/08/2026 por duas
+     * vias independentes:
+     *
+     * - a documentacao do objeto `customer` marca `tax_id` como obrigatorio,
+     *   11 ou 14 digitos, CPF ou CNPJ, sem alternativa para estrangeiro
+     *   (developer.pagbank.com.br/reference/objeto-order);
+     * - o log de producao traz recusas reais:
+     *   `Erro PagBank (400): must be a valid CPF or CNPJ`.
+     *
+     * Ou seja, nao basta mandar alguma coisa: o valor e VALIDADO. Passaporte
+     * ali volta 400. Por isso `pessoas.documento` (ver CLAUDE.md) resolve o
+     * cadastro do filiado estrangeiro e NAO resolve a cobranca dele, que
+     * continua sendo feita fora do sistema.
+     *
+     * Nota para 2027: o `tax_id` e de quem PAGA, nao necessariamente do
+     * filiado — e o PagBank aceita CNPJ. Uma universidade pagando a inscricao
+     * de um professor estrangeiro e caso legitimo que hoje o sistema nao
+     * permite, porque o formulario amarra o CPF ao cadastro da pessoa. Isso e
+     * limitacao NOSSA, e nao do provedor.
      */
     private static function getTaxId(?string $cpf): string {
         if ($cpf) {
@@ -59,8 +158,7 @@ class PagBankService {
         $result = json_decode($response, true);
 
         if ($httpCode < 200 || $httpCode >= 300) {
-            $errorMsg = $result['error_messages'][0]['description'] ?? $response;
-            throw new Exception("Erro PagBank ($httpCode): $errorMsg");
+            throw new Exception("Erro PagBank ($httpCode): " . self::descreverErro($result, $response));
         }
 
         return $result ?? [];
