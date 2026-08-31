@@ -10,7 +10,11 @@
         <div class="alert alert-success" style="padding: 12px; background: #d4edda; color: #155724; border-radius: 6px;">
             Enviamos um link de inscrição para <strong><?= e($email_exibicao ?? $email) ?></strong>.
         </div>
-        <p>Abra o email e clique em <strong>Completar Inscrição</strong> para continuar.</p>
+        <?php
+        // O rotulo aqui tem de ser IGUAL ao botao do template `evento_acesso`.
+        // Divergindo, a pessoa abre o email procurando um botao que nao existe.
+        ?>
+        <p>Abra o email e clique em “Preencher minha inscrição” para continuar.</p>
         <p><small>Não recebeu? Confira a pasta de spam. O email chega em poucos minutos.</small></p>
     <?php endif; ?>
 </article>

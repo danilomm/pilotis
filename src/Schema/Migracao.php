@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30g';
+const SCHEMA_VERSION = '2026-08-31a';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -417,6 +417,37 @@ function init_extra_tables(PDO $db): void {
     // tesouraria, pelo /admin, ao cadastrar a mao um filiado estrangeiro.
     // O passo seguinte (campo no formulario publico, busca pelo documento) fica
     // para a campanha de 2027, que tem meses; ver CLAUDE.md.
+    // "Completar Inscricao" no email de acesso ao evento prometia o fim quando
+    // aquele e o comeco: depois do clique vem o formulario inteiro, a categoria,
+    // as vezes o comprovante de matricula, e o pagamento.
+    //
+    // Troca por FRAGMENTO, e nao comparando o HTML inteiro: o corpo do template
+    // carrega as cores do `.env` (ORG_COR_PRIMARIA), entao uma comparacao
+    // exata nao casaria em outra instalacao. So mexe quando os TRES trechos
+    // antigos estao presentes — se o tesoureiro editou o texto, algum deles ja
+    // nao esta, e nada e sobrescrito.
+    $tpl = $db->query("SELECT html FROM email_templates WHERE tipo = 'evento_acesso'")->fetchColumn();
+    if (is_string($tpl) && $tpl !== '') {
+        $trocas = [
+            '<p>Você solicitou inscrição no evento <strong>{{evento}}</strong>.</p>'
+                => '<p>Você pediu para se inscrever no evento <strong>{{evento}}</strong>.</p>',
+            '<p>Clique no botão abaixo para completar sua inscrição:</p>'
+                => '<p>No formulário você informa seus dados, escolhe a categoria e '
+                 . 'faz o pagamento. Leva alguns minutos.</p>',
+            '>Completar Inscrição<' => '>Preencher minha inscrição<',
+        ];
+        $todos = true;
+        foreach ($trocas as $de => $para) {
+            if (strpos($tpl, $de) === false) { $todos = false; break; }
+        }
+        if ($todos) {
+            $novo = strtr($tpl, $trocas);
+            $st = $db->prepare("UPDATE email_templates SET html = ? WHERE tipo = 'evento_acesso'");
+            $st->execute([$novo]);
+            error_log("Pilotis: template evento_acesso atualizado (botao 'Preencher minha inscricao')");
+        }
+    }
+
     // O template do comprovante trazia "CPF {{cpf}}" com o rotulo FIXO no
     // texto. Com `pessoas.documento`, isso passou a produzir "CPF Passaporte
     // XX0000000" — e ja produzia "CPF ," para quem nao tinha CPF. A frase certa

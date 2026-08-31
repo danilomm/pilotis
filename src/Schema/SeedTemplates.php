@@ -172,10 +172,16 @@ function seed_email_templates(PDO $db): void {
             'descricao' => 'Link de acesso ao formulário de inscrição em evento',
             'variaveis' => 'nome, evento, link',
             'html' => $wrap('Inscrição em Evento',
+                // "Completar Inscricao" prometia o fim quando este e o comeco:
+                // depois do clique ainda vem o formulario inteiro, a categoria,
+                // as vezes o comprovante de matricula, e o pagamento. Quem le
+                // "completar" acha que falta um passo, deixa para depois, e o
+                // link e o unico caminho de volta. O texto agora diz o que vem.
                 "<p>Olá <strong>{{nome}}</strong>,</p>" .
-                "<p>Você solicitou inscrição no evento <strong>{{evento}}</strong>.</p>" .
-                "<p>Clique no botão abaixo para completar sua inscrição:</p>" .
-                $btn('Completar Inscrição', 'link') .
+                "<p>Você pediu para se inscrever no evento <strong>{{evento}}</strong>.</p>" .
+                "<p>No formulário você informa seus dados, escolhe a categoria e " .
+                "faz o pagamento. Leva alguns minutos.</p>" .
+                $btn('Preencher minha inscrição', 'link') .
                 "<p><small>Se você não solicitou esta inscrição, ignore este email.</small></p>" .
                 "<p><small>Este link é pessoal e intransferível.</small></p>"
             ),
