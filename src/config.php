@@ -367,10 +367,13 @@ function palpite_nome_cracha(?string $nome): string {
  * um texto que a pessoa nunca leu, e ai a pergunta que o registro existe para
  * responder — "essas pessoas concordaram com o que?" — volta a nao ter resposta.
  *
- * Formato AAAA-MM-DD, a data da mudanca. Nao e semver: o que importa e achar o
- * texto daquele dia no historico do git.
+ * Formato AAAA-MM-DD, a data da mudanca, com letra quando ha mais de uma
+ * mudanca no mesmo dia (`2026-08-31b`) — mesma convencao do SCHEMA_VERSION.
+ * Sem a letra, dois textos diferentes teriam a mesma versao, que e justamente o
+ * que ela existe para impedir. Nao e semver: o que importa e achar o texto
+ * daquele dia no historico do git.
  */
-const POLITICA_PRIVACIDADE_VERSAO = '2026-08-31';
+const POLITICA_PRIVACIDADE_VERSAO = '2026-08-31b';
 
 /**
  * Como esta pessoa se identifica num documento: "CPF 000.000.000-00" ou

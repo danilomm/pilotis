@@ -96,8 +96,11 @@
     anos anteriores. Comprovantes de matrícula são guardados enquanto servirem à
     prestação de contas do ano a que se referem.</p>
 
-    <h3>Seus direitos</h3>
-    <p>Você pode pedir, a qualquer momento e sem justificar:</p>
+    <h3>Seus direitos, na LGPD</h3>
+    <p>A Lei Geral de Proteção de Dados Pessoais (LGPD, Lei 13.709/2018) garante
+    a você o direito de saber quais dados uma organização tem sobre você, de
+    corrigi-los e de pedir que sejam apagados. Você pode pedir, a qualquer
+    momento e sem justificar:</p>
     <ul>
         <li>uma cópia dos seus dados;</li>
         <li>a correção do que estiver errado;</li>
