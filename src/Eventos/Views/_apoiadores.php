@@ -38,6 +38,8 @@
  * duas vezes. Sem logotipo, sai o nome em texto, que e o comportamento de
  * qualquer evento que nao tenha subido marca.
  */
+$contato_evento = contato_partes($evento['email_contato'] ?? null);
+
 $linhas_apoio = array_values(array_filter(array_map('trim',
     preg_split('/\R/', (string)($evento['apoiadores'] ?? '')) ?: []
 ), fn($l) => $l !== ''));
@@ -46,11 +48,32 @@ $tem_faixa      = !empty($evento['imagem_apoiadores']);
 $logo_org       = trim((string)($evento['imagem_organizador'] ?? ''));
 $organizador    = trim((string)($evento['organizador'] ?? ''));
 
-if (!$linhas_apoio && !$tem_faixa && $logo_org === '' && $organizador === '') {
+if (!$linhas_apoio && !$tem_faixa && $logo_org === '' && $organizador === ''
+    && $contato_evento['email'] === '') {
     return;
 }
 ?>
 <footer style="margin-top: 2.5rem; padding-top: 1.2rem; border-top: 1px solid var(--pico-muted-border-color);">
+    <?php
+    // Contato do EVENTO, e nao da tesouraria. Sao duas pontas diferentes: quem
+    // pergunta sobre programacao, local ou trabalhos escreve para a organizacao;
+    // quem tem problema de pagamento escreve para a tesouraria, que e o que o
+    // rodape do sistema ja oferece.
+    //
+    // Ate 31/08/2026 o `email_contato` so aparecia no comprovante em PDF. Quem
+    // lia a pagina e queria perguntar alguma coisa achava apenas o email da
+    // tesouraria — a ponta errada, e que nao sabe responder sobre o evento.
+    ?>
+    <?php if ($contato_evento['email'] !== ''): ?>
+        <p style="margin: 0 0 .9rem; font-size: .9rem;">
+            Dúvidas sobre o evento:
+            <a href="mailto:<?= e($contato_evento['email']) ?>"><?= e($contato_evento['email']) ?></a>
+            <?php if ($contato_evento['nome'] !== ''): ?>
+                <br><small style="color: var(--pico-muted-color);"><?= e($contato_evento['nome']) ?></small>
+            <?php endif; ?>
+        </p>
+    <?php endif; ?>
+
     <?php if ($logo_org !== ''): ?>
         <div style="text-align: center; margin-bottom: 1.6rem;">
             <p style="margin: 0 0 .5rem; font-size: .9rem; font-weight: 600;">Organização</p>

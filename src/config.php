@@ -359,6 +359,30 @@ function palpite_nome_cracha(?string $nome): string {
 }
 
 /**
+ * Separa "Nome <email@dominio>" em nome e endereco.
+ *
+ * `eventos.email_contato` e escrito nesse formato porque no PDF ele sai como
+ * uma linha so, do jeito que se assina um email. Na PAGINA ele precisa virar
+ * link, e para isso o endereco tem de sair de dentro dos sinais.
+ *
+ * Sem os sinais, o valor inteiro e tratado como endereco — que e o caso de quem
+ * digitar so o email no admin. Devolve ['nome' => ..., 'email' => ...], com
+ * email vazio quando nao ha nada parecido com endereco.
+ */
+function contato_partes(?string $contato): array {
+    $c = trim((string)$contato);
+    if ($c === '') return ['nome' => '', 'email' => ''];
+
+    if (preg_match('/^(.*?)\s*<\s*([^<>\s]+@[^<>\s]+)\s*>$/', $c, $m)) {
+        return ['nome' => trim($m[1]), 'email' => trim($m[2])];
+    }
+    if (filter_var($c, FILTER_VALIDATE_EMAIL)) {
+        return ['nome' => '', 'email' => $c];
+    }
+    return ['nome' => $c, 'email' => ''];
+}
+
+/**
  * Modalidade do evento em texto corrido, para o comprovante.
  *
  * NULL ou vazio vale como presencial: e o caso dominante, e os eventos
