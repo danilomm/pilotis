@@ -48,7 +48,7 @@ class ValidacaoController {
     private static function inscricao(int $id): ?array {
         $i = db_fetch_one("
             SELECT i.id, i.pessoa_id, i.status, i.valor, i.metodo, i.data_pagamento,
-                   p.nome, p.cpf,
+                   p.nome, p.cpf, p.documento, p.documento_tipo,
                    e.nome AS evento_nome, e.data_inicio, e.data_fim,
                    c.nome AS categoria_nome
             FROM inscricoes i
@@ -68,7 +68,7 @@ class ValidacaoController {
             'valido' => $confirmada,
             'pessoa_id' => (int)$i['pessoa_id'],
             'nome' => $i['nome'],
-            'cpf' => mascarar_cpf($i['cpf']),
+            'cpf' => mascarar_documento($i['cpf'], $i['documento'] ?? null, $i['documento_tipo'] ?? null),
             'situacao' => $confirmada
                 ? ((int)$i['valor'] === 0 ? 'Inscrição confirmada (isenta de taxa)' : 'Inscrição confirmada, pagamento recebido')
                 : 'Inscrição registrada, mas sem pagamento confirmado',
@@ -87,7 +87,7 @@ class ValidacaoController {
     private static function filiacao(int $id): ?array {
         $f = db_fetch_one("
             SELECT f.id, f.pessoa_id, f.ano, f.status, f.valor, f.categoria, f.data_pagamento,
-                   p.nome, p.cpf
+                   p.nome, p.cpf, p.documento, p.documento_tipo
             FROM filiacoes f
             JOIN pessoas p ON p.id = f.pessoa_id
             WHERE f.id = ?
@@ -102,7 +102,7 @@ class ValidacaoController {
             'valido' => $paga,
             'pessoa_id' => (int)$f['pessoa_id'],
             'nome' => $f['nome'],
-            'cpf' => mascarar_cpf($f['cpf']),
+            'cpf' => mascarar_documento($f['cpf'], $f['documento'] ?? null, $f['documento_tipo'] ?? null),
             'situacao' => $paga
                 ? "Filiação {$f['ano']} quitada"
                 : "Não há filiação quitada em {$f['ano']} para este cadastro",

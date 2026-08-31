@@ -331,7 +331,7 @@ class WebhookController {
         try {
             $i = db_fetch_one("
                 SELECT i.id, i.pessoa_id, i.valor, i.data_pagamento, i.metodo,
-                       p.nome, p.cpf,
+                       p.nome, p.cpf, p.documento, p.documento_tipo,
                        ev.nome AS evento_nome, ev.assinantes, ev.email_contato, ev.imagem_path,
                        ec.nome AS categoria_nome,
                        (SELECT email FROM emails WHERE pessoa_id = p.id ORDER BY principal DESC, id DESC LIMIT 1) AS email
@@ -360,6 +360,8 @@ class WebhookController {
                     'nome' => $i['nome'] ?? '',
                     'email' => $i['email'],
                     'cpf' => $i['cpf'] ?? '',
+                    'documento' => $i['documento'] ?? null,
+                    'documento_tipo' => $i['documento_tipo'] ?? null,
                     'evento' => $i['evento_nome'],
                     'categoria' => $i['categoria_nome'] ?? '',
                     'valor' => (int)$i['valor'],

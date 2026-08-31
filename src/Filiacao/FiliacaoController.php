@@ -294,6 +294,24 @@ class FiliacaoController {
             'profissao' => 'Profissão',
         ];
 
+        // CPF: confere o DIGITO VERIFICADOR aqui, e nao so a presenca.
+        //
+        // Ate 30/08/2026 o formulario aceitava qualquer coisa e a recusa vinha
+        // do PagBank, em ingles, la na tela de pagamento. Producao registra 30
+        // ocorrencias de `must be a valid CPF or CNPJ` para SEIS pessoas — uma
+        // delas tentou 10 vezes em um minuto, outra 9, outra 7. Em todos os
+        // casos o cadastro foi corrigido um ou dois minutos depois do ultimo
+        // erro: era digitacao, e a pessoa descobriu sozinha, no lugar errado.
+        // Duas das seis nunca chegaram a pagar.
+        //
+        // O `cpf_valido()` ja existia desde sempre — aplicado no PdfService,
+        // para decidir se imprimia o numero. Guardava o papel, nao a pessoa.
+        if ($cpf !== '' && !cpf_valido($cpf)) {
+            flash('error', 'CPF inválido: confira os números digitados.');
+            redirect("/filiacao/$ano/$token");
+            return;
+        }
+
         foreach ($obrigatorios as $campo => $label) {
             if (empty($$campo)) {
                 flash('error', "$label é obrigatório.");

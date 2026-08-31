@@ -264,9 +264,16 @@ function seed_email_templates(PDO $db): void {
         'tipo' => 'evento_comprovante',
         'assunto' => 'Comprovante de inscrição — {{evento}}',
         'descricao' => 'Texto do comprovante de inscrição em PDF (assinaturas vêm do evento)',
-        'variaveis' => 'nome, cpf, evento, categoria, valor, data_pagamento, metodo',
-        'html' => "<p>Declaramos para os devidos fins que <strong>{{nome}}</strong>, " .
-            "CPF {{cpf}}, está inscrito(a) no evento <strong>{{evento}}</strong>, " .
+        // {{documento}} JA VEM COM A VIRGULA na frente (", CPF 000.000.000-00"
+        // ou ", Passaporte XX0000000") e fica VAZIO quando nao ha documento.
+        // E o unico jeito de a frase sair certa nos dois casos, porque template
+        // nao tem condicional: com "CPF {{cpf}}" fixo no texto, filiado
+        // estrangeiro saia "CPF ," e, depois que o documento passou a existir,
+        // "CPF Passaporte XX0000000".
+        // {{cpf}} continua valendo — so o numero — para template ja editado.
+        'variaveis' => 'nome, documento (já traz a vírgula; vazio se não houver), cpf, evento, categoria, valor, data_pagamento, metodo',
+        'html' => "<p>Declaramos para os devidos fins que <strong>{{nome}}</strong>{{documento}}" .
+            " está inscrito(a) no evento <strong>{{evento}}</strong>, " .
             "na categoria <strong>{{categoria}}</strong>.</p>" .
             "<p>Inscrição no valor de <strong>{{valor}}</strong>, com pagamento " .
             "confirmado em <strong>{{data_pagamento}}</strong> por <strong>{{metodo}}</strong>.</p>",

@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-30d';
+const SCHEMA_VERSION = '2026-08-30f';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -417,6 +417,31 @@ function init_extra_tables(PDO $db): void {
     // tesouraria, pelo /admin, ao cadastrar a mao um filiado estrangeiro.
     // O passo seguinte (campo no formulario publico, busca pelo documento) fica
     // para a campanha de 2027, que tem meses; ver CLAUDE.md.
+    // O template do comprovante trazia "CPF {{cpf}}" com o rotulo FIXO no
+    // texto. Com `pessoas.documento`, isso passou a produzir "CPF Passaporte
+    // XX0000000" — e ja produzia "CPF ," para quem nao tinha CPF. A frase certa
+    // usa {{documento}}, que traz a propria virgula e some quando nao ha nada.
+    //
+    // Troca SO se o texto gravado for identico ao semeado. Template e editavel
+    // pelo /admin, e sobrescrever o que o tesoureiro escreveu seria pior do que
+    // o defeito — quem tiver editado corrige a mao, e a variavel nova esta
+    // listada na tela.
+    $antigo_comprovante = "<p>Declaramos para os devidos fins que <strong>{{nome}}</strong>, "
+        . "CPF {{cpf}}, está inscrito(a) no evento <strong>{{evento}}</strong>, "
+        . "na categoria <strong>{{categoria}}</strong>.</p>"
+        . "<p>Inscrição no valor de <strong>{{valor}}</strong>, com pagamento "
+        . "confirmado em <strong>{{data_pagamento}}</strong> por <strong>{{metodo}}</strong>.</p>";
+    $novo_comprovante = str_replace(
+        '<strong>{{nome}}</strong>, CPF {{cpf}}, está',
+        '<strong>{{nome}}</strong>{{documento}} está',
+        $antigo_comprovante
+    );
+    $st = $db->prepare("UPDATE email_templates SET html = ? WHERE tipo = 'evento_comprovante' AND html = ?");
+    $st->execute([$novo_comprovante, $antigo_comprovante]);
+    if ($st->rowCount() > 0) {
+        error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
+    }
+
     garantir_coluna($db, 'pessoas', 'documento', 'TEXT');
     garantir_coluna($db, 'pessoas', 'documento_tipo', 'TEXT');
 
@@ -473,6 +498,50 @@ function init_extra_tables(PDO $db): void {
             WHERE cpf IS NOT NULL AND cpf != ''
             AND (cpf LIKE '%.%' OR cpf LIKE '%-%' OR cpf LIKE '%/%' OR cpf LIKE '% %')
         ");
+        // Zero a esquerda comido por planilha. Sao 41 cadastros (36 com 10
+        // digitos, 4 com 9, 1 com 8), todos com filiacao em 2025 ou 2026 — ou
+        // seja, gente que pode ir pagar. O CPF truncado sai para o PagBank como
+        // esta e volta `must be a valid CPF or CNPJ`, em ingles, na tela de
+        // pagamento; foi assim que seis pessoas bateram 30 vezes nessa recusa.
+        //
+        // So corrige quando o numero completado a esquerda PASSA no digito
+        // verificador. E o que distingue recuperar de inventar: dos 41, os 41
+        // passam. Qualquer outro fica como esta, para alguem olhar.
+        //
+        // Roda em PHP e nao em SQL porque o digito verificador nao se calcula
+        // em SQLite sem funcao propria. Sao dezenas de linhas, uma vez so.
+        $curtos = $db->query("
+            SELECT id, cpf FROM pessoas
+            WHERE cpf IS NOT NULL AND TRIM(cpf) <> '' AND LENGTH(cpf) < 11
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($curtos) {
+            $upd = $db->prepare("UPDATE pessoas SET cpf = ? WHERE id = ?");
+            $corrigidos = 0;
+            foreach ($curtos as $p) {
+                $d = preg_replace('/\D/', '', (string)$p['cpf']);
+                if ($d === '' || strlen($d) >= 11) continue;
+                $completo = str_pad($d, 11, '0', STR_PAD_LEFT);
+                if (!cpf_valido($completo)) continue;
+
+                // Nao atropela cadastro alheio: se o completo ja e de outra
+                // pessoa, sao duas linhas para consolidar a mao, e o indice
+                // unico recusaria de qualquer forma.
+                $ja = $db->prepare("SELECT id FROM pessoas WHERE cpf = ? AND id <> ? LIMIT 1");
+                $ja->execute([$completo, $p['id']]);
+                if ($ja->fetchColumn()) {
+                    error_log("Pilotis: CPF truncado da pessoa {$p['id']} colide com outro cadastro ao completar; deixado como esta");
+                    continue;
+                }
+
+                $upd->execute([$completo, $p['id']]);
+                $corrigidos++;
+            }
+            if ($corrigidos) {
+                error_log("Pilotis: $corrigidos CPF(s) truncado(s) recuperados com zero a esquerda");
+            }
+        }
+
         $db->exec("
             CREATE UNIQUE INDEX IF NOT EXISTS idx_pessoas_cpf_unico
             ON pessoas(cpf) WHERE cpf IS NOT NULL AND cpf != ''

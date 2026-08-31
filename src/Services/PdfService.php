@@ -81,8 +81,20 @@ class PdfService {
         // Inscricao isenta nao passa pelo template: o texto dele afirma
         // pagamento ("no valor de X, confirmado em D por M"), e nao ha
         // pagamento nenhum. Usa o texto proprio, que declara a isencao.
+        // Como a pessoa se identifica: CPF quando ha, senao o documento
+        // estrangeiro. Ate 30/08/2026 era so o CPF, e o comprovante de um
+        // filiado estrangeiro saia identificando-o apenas pelo nome — num papel
+        // que vai para setor de reembolso e secretaria de programa.
+        $identificacao = documento_identificacao(
+            $dados['cpf'] ?? '', $dados['documento'] ?? null, $dados['documento_tipo'] ?? null
+        );
+
         $tpl = (int)($dados['valor'] ?? 0) === 0 ? null : carregar_template('evento_comprovante', [
             'nome' => $dados['nome'] ?? '',
+            // {{documento}} carrega a propria virgula e some quando nao ha
+            // documento; {{cpf}} continua sendo so o numero, para template que
+            // o tesoureiro ja tenha editado. Ver a nota no SeedTemplates.
+            'documento' => $identificacao !== '' ? ', ' . $identificacao . ',' : '',
             'cpf' => self::formatarCpf($dados['cpf'] ?? ''),
             'evento' => $dados['evento'] ?? '',
             'categoria' => $dados['categoria'] ?? '',
@@ -92,7 +104,7 @@ class PdfService {
         ]);
 
         $html_corpo = $tpl ? $tpl['html'] : self::textoComprovantePadrao(
-            $dados['nome'] ?? '', self::formatarCpf($dados['cpf'] ?? ''),
+            $dados['nome'] ?? '', $identificacao,
             $dados['evento'] ?? '', $dados['categoria'] ?? '',
             $valor_formatado, $data_pag, $metodo
         );
@@ -158,8 +170,11 @@ class PdfService {
         $data      = self::pdfEscape($data);
         $metodo    = self::pdfEscape($metodo);
 
+        // $cpf ja chega pronto de documento_identificacao(): pode ser
+        // "CPF 000.000.000-00" ou "Passaporte XX0000000". Vazio, some a
+        // virgula toda — melhor sem identificacao do que com rotulo oco.
         $abertura = "<p>Declaramos para os devidos fins que <strong>$nome</strong>" .
-            ($cpf ? ", CPF $cpf," : ",") .
+            ($cpf ? ", $cpf," : "") .
             " está inscrito(a) no evento <strong>$evento</strong>, " .
             "na categoria <strong>$categoria</strong>.</p>";
 
@@ -276,6 +291,83 @@ class PdfService {
     }
 
     /**
+     * O TCPDF consegue desenhar esta imagem no ambiente em que estamos rodando?
+     *
+     * PNG com CANAL ALFA exige a extensao GD ou Imagick — sem uma delas o TCPDF
+     * nao devolve erro: ele chama Error(), que com
+     * K_TCPDF_THROW_EXCEPTION_ERROR vira excecao e **derruba a geracao inteira
+     * do documento**. Nao e o logotipo que se perde, e a declaracao ou o
+     * comprovante que a pessoa acabou de pagar.
+     *
+     * Isso ficou perigoso agora, em 30/08/2026, por um encadeamento:
+     *
+     * 1. o `.env` de producao traz `ORG_LOGO=logo-docomomo.png`, que e RGBA;
+     * 2. o `PUBLIC_DIR` resolvia errado no servidor, entao o `file_exists`
+     *    devolvia false e o bloco da imagem era PULADO — e por isso as
+     *    declaracoes saiam sem logotipo, defeito ja registrado no CLAUDE.md;
+     * 3. o `PUBLIC_DIR` foi consertado. **No proximo deploy o arquivo passa a
+     *    ser encontrado pela primeira vez.** Se o PHP do servidor nao tiver GD,
+     *    todo PDF passa a estourar — e o sintoma anterior, "sai sem logotipo",
+     *    vira "nao sai".
+     *
+     * O PHP local nao tem GD nem Imagick; o do servidor **nao foi verificado**.
+     * Por isso a defesa nao pergunta pelo servidor: ela se vira com o que ha.
+     *
+     * Havendo o mesmo arquivo em JPG ao lado — e ha: o projeto distribui
+     * `logo-docomomo.png` E `logo-docomomo.jpg` —, usa o JPG, que nao tem alfa
+     * e nao precisa de extensao nenhuma. Sem alternativa, devolve null e o
+     * documento sai sem cabecalho, que e o mal menor.
+     */
+    private static function imagemUsavelPeloTcpdf(?string $caminho): ?string {
+        if ($caminho === null || !file_exists($caminho)) return $caminho;
+        if (extension_loaded('gd') || extension_loaded('imagick')) return $caminho;
+
+        if (strtolower(pathinfo($caminho, PATHINFO_EXTENSION)) !== 'png') return $caminho;
+
+        // PNG sem alfa passa direto pelo TCPDF; so o alfa exige extensao.
+        $info = @getimagesize($caminho);
+        $tem_alfa = false;
+        if ($info && isset($info['channels']) && $info['channels'] === 4) {
+            $tem_alfa = true;
+        } else {
+            // getimagesize nem sempre traz 'channels' para PNG. O byte 25 do
+            // cabecalho IHDR e o color type: 4 (cinza+alfa) e 6 (RGBA) tem alfa.
+            $fh = @fopen($caminho, 'rb');
+            if ($fh) {
+                $cab = fread($fh, 26);
+                fclose($fh);
+                if (strlen($cab) === 26) {
+                    $tipo = ord($cab[25]);
+                    $tem_alfa = ($tipo === 4 || $tipo === 6);
+                }
+            }
+        }
+        if (!$tem_alfa) return $caminho;
+
+        $jpg = preg_replace('/\.png$/i', '.jpg', $caminho);
+        if (is_file($jpg)) return $jpg;
+
+        error_log("Pilotis: $caminho e PNG com alfa e falta GD/Imagick; PDF sai sem cabecalho");
+        return null;
+    }
+
+    /**
+     * Desenha a imagem, e segue sem ela se nao der.
+     *
+     * Rede de seguranca depois da checagem acima: imagem corrompida, formato
+     * que o TCPDF nao reconhece, arquivo cortado no meio de um upload por FTP.
+     * O documento importa mais do que o cabecalho dele — e o comprovante vai
+     * anexado ao email de quem acabou de pagar.
+     */
+    private static function imagemOuNada(TCPDF $pdf, string $arquivo, float $x, float $y, float $largura, string $ext): void {
+        try {
+            $pdf->Image($arquivo, $x, $y, $largura, 0, $ext, '', '', false, 300);
+        } catch (Throwable $e) {
+            error_log("Pilotis: cabecalho do PDF nao pode ser desenhado ($arquivo): " . $e->getMessage());
+        }
+    }
+
+    /**
      * CPF so-digitos -> 000.000.000-00
      */
     private static function formatarCpf(string $cpf): string {
@@ -355,7 +447,9 @@ class PdfService {
             ? $imagem_cabecalho
             : PUBLIC_DIR . '/assets/img/' . ORG_LOGO;
 
-        if (file_exists($cabecalho)) {
+        $cabecalho = self::imagemUsavelPeloTcpdf($cabecalho);
+
+        if ($cabecalho !== null && file_exists($cabecalho)) {
             $ext = strtoupper(pathinfo($cabecalho, PATHINFO_EXTENSION));
             $info = @getimagesize($cabecalho);
             $proporcao = ($info && $info[1] > 0) ? $info[0] / $info[1] : 1;
@@ -363,7 +457,7 @@ class PdfService {
             if ($proporcao >= 2) {
                 $largura = 160;                       // largura util (A4 - margens de 25mm)
                 $altura = $largura / $proporcao;
-                $pdf->Image($cabecalho, 25, 18, $largura, 0, $ext, '', '', false, 300);
+                self::imagemOuNada($pdf, $cabecalho, 25, 18, $largura, $ext);
                 $topo = 18 + $altura + 14;
             } else {
                 // Cartaz mais quadrado ou em retrato. $topo TEM de acompanhar a
@@ -381,7 +475,7 @@ class PdfService {
                     $largura = $altura * $proporcao;
                 }
                 $x = (210 - $largura) / 2;            // centralizado em A4
-                $pdf->Image($cabecalho, $x, 20, $largura, 0, $ext, '', '', false, 300);
+                self::imagemOuNada($pdf, $cabecalho, $x, 20, $largura, $ext);
                 $topo = 20 + $altura + 14;
             }
         }

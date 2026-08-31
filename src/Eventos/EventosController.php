@@ -705,6 +705,17 @@ class EventosController {
             return;
         }
 
+        // CPF: confere o DIGITO VERIFICADOR, e nao so a presenca. Ver a nota
+        // extensa no FiliacaoController — o mesmo defeito, e foi ele que
+        // produziu as 30 recusas do PagBank em producao. Aqui vale sempre que
+        // houver CPF preenchido: categoria gratuita nao o exige, mas numero
+        // errado gravado hoje vira recusa na proxima inscricao paga.
+        if ($cpf !== '' && !cpf_valido($cpf)) {
+            flash('error', 'CPF inválido: confira os números digitados.');
+            redirect("/eventos/$slug/$token");
+            return;
+        }
+
         // Categoria paga: CPF (exigência PagBank) e dados de contato/endereço (boleto)
         if ($valor > 0) {
             $obrigatorios = [
@@ -889,6 +900,8 @@ class EventosController {
                     'nome' => $nome,
                     'email' => $cadastrado['email'] ?? '',
                     'cpf' => $cpf ?: ($cadastrado['cpf'] ?? ''),
+                    'documento' => $cadastrado['documento'] ?? null,
+                    'documento_tipo' => $cadastrado['documento_tipo'] ?? null,
                     'evento' => $evento['nome'],
                     'categoria' => $categoria['nome'],
                     'valor' => 0,

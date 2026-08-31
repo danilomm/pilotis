@@ -41,6 +41,37 @@ function mascarar_email(string $email): string {
  * mostra o bastante para quem tem o documento na mao conferir que e da
  * mesma pessoa, sem entregar o numero a quem so tem o link.
  */
+/**
+ * O documento da pessoa, mascarado, para a pagina publica de validacao.
+ *
+ * Quem abre `/validar/{codigo}` e um TERCEIRO — setor de reembolso, secretaria
+ * de programa. Ele precisa casar o papel com o registro, nao ficar com o
+ * numero: por isso o meio aparece e as pontas nao.
+ *
+ * Existe desde 30/08/2026, quando `pessoas.documento` passou a guardar o
+ * documento de quem nao tem CPF. Sem isto, a validacao do comprovante de um
+ * filiado estrangeiro nao mostra documento NENHUM, e quem confere fica so com
+ * o nome.
+ */
+function mascarar_documento(?string $cpf, ?string $documento = null, ?string $tipo = null): string {
+    $m = mascarar_cpf($cpf);
+    if ($m !== '') return $m;
+
+    $doc = trim((string)$documento);
+    if ($doc === '') return '';
+
+    // Mesma ideia do CPF: mostra o miolo, esconde as pontas. Documento curto
+    // (4 caracteres ou menos) sai inteiro mascarado — nao ha miolo a mostrar
+    // sem entregar quase tudo.
+    $rotulo = trim((string)$tipo) !== '' ? ucfirst(trim((string)$tipo)) . ' ' : '';
+    $n = mb_strlen($doc);
+    if ($n <= 4) return $rotulo . str_repeat('*', $n);
+
+    $mostra = max(1, (int)floor($n / 3));
+    $ini = (int)floor(($n - $mostra) / 2);
+    return $rotulo . str_repeat('*', $ini) . mb_substr($doc, $ini, $mostra) . str_repeat('*', $n - $ini - $mostra);
+}
+
 function mascarar_cpf(?string $cpf): string {
     $d = preg_replace('/\D/', '', (string)$cpf);
     if (strlen($d) !== 11) return '';

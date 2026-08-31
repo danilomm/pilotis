@@ -359,6 +359,49 @@ function palpite_nome_cracha(?string $nome): string {
 }
 
 /**
+ * Como esta pessoa se identifica num documento: "CPF 000.000.000-00" ou
+ * "Passaporte XX0000000".
+ *
+ * Existe porque `pessoas.cpf` deixou de ser o unico documento em 30/08/2026
+ * (ver `pessoas.documento` no CLAUDE.md). Sem isto, o comprovante de um filiado
+ * estrangeiro identifica a pessoa **so pelo nome** — e esse papel vai para setor
+ * de reembolso e secretaria de programa, onde nome sozinho nao casa com
+ * cadastro nenhum.
+ *
+ * CPF tem precedencia porque e o que a maior parte de quem RECEBE o documento
+ * espera conferir. Devolve string vazia quando nao ha nada: quem chama omite o
+ * trecho inteiro, em vez de imprimir rotulo sem valor.
+ *
+ * So imprime CPF que passa no digito verificador — a mesma regra que o
+ * `PdfService` ja aplicava. Numero invalido num documento de prestacao de
+ * contas e pior do que documento sem numero.
+ */
+function documento_identificacao(?string $cpf, ?string $documento = null, ?string $tipo = null): string {
+    $d = preg_replace('/\D/', '', (string)$cpf);
+
+    // Zero a esquerda comido por planilha: 41 cadastros da base. Completar e
+    // conferir recupera o numero certo sem inventar nenhum.
+    if ($d !== '' && strlen($d) < 11 && cpf_valido(str_pad($d, 11, '0', STR_PAD_LEFT))) {
+        $d = str_pad($d, 11, '0', STR_PAD_LEFT);
+    }
+    if (cpf_valido($d)) {
+        return 'CPF ' . formatar_cpf($d);
+    }
+
+    $documento = trim((string)$documento);
+    if ($documento !== '') {
+        $tipo = trim((string)$tipo);
+        // Tipo em minusculas na base ('passaporte'); no documento vai com
+        // inicial maiuscula. Siglas (RNM, DNI) ja vem em caixa alta e a
+        // ucfirst nao as estraga.
+        $rotulo = $tipo !== '' ? ucfirst($tipo) : 'Documento';
+        return $rotulo . ' ' . $documento;
+    }
+
+    return '';
+}
+
+/**
  * CPF valido? Confere os dois digitos verificadores.
  *
  * Serve para decidir se um numero pode ser IMPRESSO num documento oficial. A

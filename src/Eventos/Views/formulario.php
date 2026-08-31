@@ -261,4 +261,51 @@
         });
     })();
     </script>
+
+        <?php
+        // Aviso de CPF invalido NO CAMPO, enquanto a pessoa ainda esta olhando
+        // para ele. O servidor tambem confere (EventosController) — isto aqui
+        // e para a pessoa nao chegar ao pagamento com o numero errado, que foi
+        // o que produziu 30 recusas do PagBank em producao, uma delas com 10
+        // tentativas em um minuto. O erro vinha em ingles, na tela seguinte,
+        // sem dizer que era o CPF.
+        ?>
+        <script>
+        (function () {
+            var cpf = document.getElementById('cpf');
+            if (!cpf) return;
+
+            var aviso = document.createElement('small');
+            aviso.style.color = 'var(--pico-del-color, #b00)';
+            aviso.style.display = 'none';
+            aviso.textContent = 'Esse CPF não confere. Verifique os números.';
+            cpf.parentNode.insertBefore(aviso, cpf.nextSibling);
+
+            function valido(d) {
+                if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+                for (var n = 9; n <= 10; n++) {
+                    var soma = 0;
+                    for (var i = 0; i < n; i++) soma += parseInt(d[i], 10) * ((n + 1) - i);
+                    var dv = (soma * 10) % 11;
+                    if (dv === 10) dv = 0;
+                    if (dv !== parseInt(d[n], 10)) return false;
+                }
+                return true;
+            }
+
+            function conferir() {
+                var d = cpf.value.replace(/\D/g, '');
+                // Enquanto digita, so avisa quando ja ha 11 numeros: acusar aos
+                // 3 digitos seria ruido, e o campo ficaria vermelho o tempo todo.
+                var ruim = d.length === 11 && !valido(d);
+                aviso.style.display = ruim ? 'block' : 'none';
+                cpf.setAttribute('aria-invalid', ruim ? 'true' : 'false');
+                if (!ruim && d.length !== 11) cpf.removeAttribute('aria-invalid');
+            }
+
+            cpf.addEventListener('input', conferir);
+            cpf.addEventListener('blur', conferir);
+            conferir();
+        })();
+        </script>
 </article>
