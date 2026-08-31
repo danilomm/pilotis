@@ -194,7 +194,14 @@
             </details>
 
             <label for="telefone">Telefone <span class="req-pago">*</span></label>
-            <input type="tel" id="telefone" autocomplete="tel" name="telefone" value="<?= e($pre['telefone'] ?? '') ?>" placeholder="(00) 00000-0000">
+            <?php
+            // `type="tel"` NAO garante teclado numerico — em parte dos
+            // navegadores ele so muda o autofill. O `inputmode` e o que troca o
+            // teclado do celular, e a maioria se inscreve pelo celular. O CPF e
+            // o CEP ja tinham; o telefone passou batido.
+            ?>
+            <input type="tel" id="telefone" autocomplete="tel" name="telefone" value="<?= e($pre['telefone'] ?? '') ?>"
+                   placeholder="(00) 00000-0000" inputmode="tel">
         </fieldset>
 
         <fieldset id="fs-endereco">
