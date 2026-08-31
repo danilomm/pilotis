@@ -8,9 +8,9 @@
     <p>Sem problema — você pode se inscrever mesmo assim. Informe seu email e
     enviaremos um link para completar a inscrição.</p>
 
-    <p><strong>Se você já foi filiado(a) em anos anteriores, dê preferência ao
-    email do seu último cadastro.</strong> Assim reaproveitamos seus dados e
-    evitamos criar um cadastro duplicado.</p>
+    <p>Se você já foi filiado(a) em anos anteriores, dê preferência ao email do
+    seu último cadastro. Assim reaproveitamos seus dados e evitamos criar um
+    cadastro duplicado.</p>
 
     <form method="POST" action="/eventos/<?= e($evento['slug']) ?>/inscrever"><?= campo_csrf() ?>
         <input type="hidden" name="cpf_pendente" value="<?= e($cpf_pendente ?? '') ?>">
@@ -21,10 +21,19 @@
         <button type="submit">Continuar</button>
     </form>
 
+    <?php
+    // "Volte" e LINK, e aponta para a tela do CPF — nao para a pagina do evento.
+    // Quem chega aqui provavelmente errou um digito, e o caminho de volta tem
+    // de ser o campo onde ele digitou, num clique. Ate 31/08/2026 o texto dizia
+    // "confira o CPF digitado" sem dizer como, e o unico "Voltar" da tela ficava
+    // no rodape e levava a pagina do evento: a pessoa tinha de achar o botao de
+    // inscricao de novo.
+    ?>
     <p><small>
-        Se você é filiado(a) adimplente neste ano e acha que houve engano, confira o CPF digitado ou
-        escreva para <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.
+        Se você é filiado(a) adimplente neste ano e acha que houve engano,
+        <a href="/eventos/<?= e($evento['slug']) ?>/inscricao">volte e confira o CPF digitado</a>,
+        ou escreva para <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.
     </small></p>
 
-    <p><a href="/eventos/<?= e($evento['slug']) ?>">Voltar</a></p>
+    <p><small><a href="/eventos/<?= e($evento['slug']) ?>">&larr; Página do evento</a></small></p>
 </article>
