@@ -1,9 +1,23 @@
 <article>
     <h2>Inscrição — <?= e($evento['nome']) ?></h2>
 
+    <?php
+    // A frase e sobre POR QUE OS CAMPOS VEM PREENCHIDOS, e nao sobre quem a
+    // pessoa e.
+    //
+    // Ate 31/08/2026 dizia "Encontramos seu cadastro no Docomomo Brasil", e
+    // isso estava errado de duas maneiras. Primeira: boa parte de quem tem
+    // cadastro nunca se filiou nem se cadastrou — 258 pessoas vieram da lista
+    // de um seminario e 222 de contatos importados. Elas nao reconhecem esse
+    // vinculo, e a frase afirma um. Segunda: `nome` passa a existir assim que a
+    // pessoa preenche o formulario UMA vez, entao na segunda visita alguem
+    // totalmente novo lia "encontramos seu cadastro" sobre dados que ela mesma
+    // acabara de digitar.
+    ?>
     <?php if ($tem_cadastro_previo): ?>
         <div class="alert alert-success" style="padding: 12px; background: #d4edda; color: #155724; border-radius: 6px; margin-bottom: 16px;">
-            Encontramos seu cadastro no Docomomo Brasil. Confira e atualize seus dados abaixo.
+            Alguns campos já vêm preenchidos com o que temos registrado.
+            Confira e corrija o que estiver desatualizado.
         </div>
     <?php endif; ?>
 

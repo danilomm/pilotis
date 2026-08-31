@@ -758,13 +758,20 @@ class EventosController {
         // 30/08/2026 aqui exigia CPF e ponto: estrangeiro preenchia o
         // formulario inteiro para levar "CPF é obrigatório para inscrição paga".
         if ($valor > 0) {
+            // A frase INTEIRA, e nao so o rotulo: "Cidade" e feminino, e o
+            // texto montado com "$label é obrigatório" saia "Cidade é
+            // obrigatório". Ver a mesma lista no FiliacaoController.
             $obrigatorios = [
-                'telefone' => 'Telefone', 'endereco' => 'Endereço',
-                'cep' => 'CEP', 'cidade' => 'Cidade', 'estado' => 'Estado', 'pais' => 'País',
+                'telefone' => 'Telefone é obrigatório',
+                'endereco' => 'Endereço é obrigatório',
+                'cep'      => 'CEP é obrigatório',
+                'cidade'   => 'Cidade é obrigatória',
+                'estado'   => 'Estado é obrigatório',
+                'pais'     => 'País é obrigatório',
             ];
-            foreach ($obrigatorios as $campo => $label) {
+            foreach ($obrigatorios as $campo => $frase) {
                 if (empty($$campo)) {
-                    flash('error', "$label é obrigatório para inscrição paga.");
+                    flash('error', "$frase para inscrição paga.");
                     redirect("/eventos/$slug/$token");
                     return;
                 }

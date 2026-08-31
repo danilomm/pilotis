@@ -292,15 +292,19 @@ class FiliacaoController {
 
         // Validações dos campos obrigatórios
         $obrigatorios = [
-            'nome' => 'Nome',
-            'cpf' => 'CPF',
-            'telefone' => 'Telefone',
-            'endereco' => 'Endereço',
-            'cep' => 'CEP',
-            'cidade' => 'Cidade',
-            'estado' => 'Estado',
-            'pais' => 'País',
-            'profissao' => 'Profissão',
+            // A frase INTEIRA, e nao so o rotulo: "Cidade" e "Profissão" sao
+            // femininos, e o texto montado com "$label é obrigatório" saia
+            // "Cidade é obrigatório". Deduzir genero por heuristica erraria em
+            // nome proprio; escrever a frase resolve e se le de uma vez.
+            'nome' => 'Nome é obrigatório',
+            'cpf' => 'CPF é obrigatório',
+            'telefone' => 'Telefone é obrigatório',
+            'endereco' => 'Endereço é obrigatório',
+            'cep' => 'CEP é obrigatório',
+            'cidade' => 'Cidade é obrigatória',
+            'estado' => 'Estado é obrigatório',
+            'pais' => 'País é obrigatório',
+            'profissao' => 'Profissão é obrigatória',
         ];
 
         // Consentimento conferido NO SERVIDOR. O `required` do HTML e conforto de
@@ -338,9 +342,9 @@ class FiliacaoController {
             return;
         }
 
-        foreach ($obrigatorios as $campo => $label) {
+        foreach ($obrigatorios as $campo => $frase) {
             if (empty($$campo)) {
-                flash('error', "$label é obrigatório.");
+                flash('error', "$frase.");
                 redirect("/filiacao/$ano/$token");
                 return;
             }
