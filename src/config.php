@@ -359,6 +359,19 @@ function palpite_nome_cracha(?string $nome): string {
 }
 
 /**
+ * Modalidade do evento em texto corrido, para o comprovante.
+ *
+ * NULL ou vazio vale como presencial: e o caso dominante, e os eventos
+ * cadastrados antes da coluna existir nao seriam reeditados so por isso.
+ */
+function modalidade_evento(?string $modalidade): string {
+    $m = strtolower(trim((string)$modalidade));
+    if ($m === 'online')  return 'online';
+    if ($m === 'hibrido' || $m === 'híbrido') return 'híbrido (presencial e online)';
+    return 'presencial';
+}
+
+/**
  * Versao do aviso de privacidade em vigor.
  *
  * **Trocar SEMPRE que o texto de `/privacidade` mudar.** O consentimento e

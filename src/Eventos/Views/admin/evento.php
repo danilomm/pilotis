@@ -84,6 +84,22 @@
                   placeholder="IAB-RJ&#10;Rua do Pinheiro, 10 — Flamengo&#10;Rio de Janeiro, RJ"><?= e($evento['local'] ?? '') ?></textarea>
         <small>Nome e endereço, uma linha cada.</small>
 
+        <?php
+        // A modalidade sai IMPRESSA no comprovante, porque as pessoas o usam
+        // para pedir dispensa de ponto no trabalho: sem a palavra "presencial"
+        // e sem data e local, o papel prova que alguem se inscreveu, e nao que
+        // precisou se deslocar.
+        $mod_atual = strtolower(trim((string)($evento['modalidade'] ?? '')));
+        ?>
+        <label for="modalidade">Modalidade</label>
+        <select id="modalidade" name="modalidade">
+            <?php foreach (['presencial' => 'Presencial', 'online' => 'Online', 'hibrido' => 'Híbrido'] as $v => $rot): ?>
+                <option value="<?= e($v) ?>" <?= ($mod_atual ?: 'presencial') === $v ? 'selected' : '' ?>><?= e($rot) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <small>Sai impressa no comprovante de inscrição, junto com a data e o local —
+        é o que permite usá-lo para justificar ausência no trabalho.</small>
+
         <label for="conteudo">Página do evento</label>
         <textarea id="conteudo" name="conteudo" rows="18"
                   style="font-family: var(--pico-font-family-monospace); font-size: .85rem;"

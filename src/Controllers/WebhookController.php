@@ -333,6 +333,7 @@ class WebhookController {
                 SELECT i.id, i.pessoa_id, i.valor, i.data_pagamento, i.metodo,
                        p.nome, p.cpf, p.documento, p.documento_tipo,
                        ev.nome AS evento_nome, ev.assinantes, ev.email_contato, ev.imagem_path,
+                       ev.data_inicio, ev.data_fim, ev.local, ev.modalidade,
                        ec.nome AS categoria_nome,
                        (SELECT email FROM emails WHERE pessoa_id = p.id ORDER BY principal DESC, id DESC LIMIT 1) AS email
                 FROM inscricoes i
@@ -370,6 +371,12 @@ class WebhookController {
                     'assinantes' => $i['assinantes'] ?? '',
                     'email_contato' => $i['email_contato'] ?? '',
                     'imagem_path' => $i['imagem_path'] ?? '',
+                    // Data, local e modalidade: o comprovante e usado para
+                    // pedir dispensa de ponto no trabalho.
+                    'data_inicio' => $i['data_inicio'] ?? null,
+                    'data_fim' => $i['data_fim'] ?? null,
+                    'local' => $i['local'] ?? '',
+                    'modalidade' => $i['modalidade'] ?? null,
                 ]);
             } catch (Exception $e) {
                 registrar_log('erro_comprovante_inscricao', (int)$i['pessoa_id'],

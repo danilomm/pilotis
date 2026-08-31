@@ -976,6 +976,10 @@ class EventosController {
                     'assinantes' => $evento['assinantes'] ?? '',
                     'email_contato' => $evento['email_contato'] ?? '',
                     'imagem_path' => $evento['imagem_path'] ?? '',
+                    'data_inicio' => $evento['data_inicio'] ?? null,
+                    'data_fim' => $evento['data_fim'] ?? null,
+                    'local' => $evento['local'] ?? '',
+                    'modalidade' => $evento['modalidade'] ?? null,
                 ]);
             } catch (Throwable $e) {
                 registrar_log('erro_comprovante_inscricao', $cadastrado['id'],

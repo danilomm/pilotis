@@ -101,12 +101,17 @@ class PdfService {
             'valor' => $valor_formatado,
             'data_pagamento' => $data_pag,
             'metodo' => $metodo,
+        ], [
+            // Vai como HTML porque a frase leva <strong> no que o RH procura:
+            // a modalidade, as datas e o local.
+            'quando_onde' => self::frasePresenca($dados),
         ]);
 
         $html_corpo = $tpl ? $tpl['html'] : self::textoComprovantePadrao(
             $dados['nome'] ?? '', $identificacao,
             $dados['evento'] ?? '', $dados['categoria'] ?? '',
-            $valor_formatado, $data_pag, $metodo
+            $valor_formatado, $data_pag, $metodo,
+            self::frasePresenca($dados)
         );
 
         $html_corpo .= self::blocoAssinaturas($dados['assinantes'] ?? '');
@@ -159,9 +164,43 @@ class PdfService {
         return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8');
     }
 
+    /**
+     * Onde e quando o evento acontece, e em que modalidade.
+     *
+     * Vai no comprovante porque as pessoas o usam para pedir DISPENSA DE PONTO
+     * no trabalho: sem data, local e a palavra "presencial", o papel prova que
+     * alguem se inscreveu, e nao que precisou se deslocar em tais dias.
+     *
+     * O `local` e multilinha no cadastro ("IAB-RJ / Rua tal / Cidade, UF");
+     * aqui vira uma linha so, separada por virgula, porque e uma frase.
+     */
+    private static function frasePresenca(array $dados): string {
+        $modalidade = modalidade_evento($dados['modalidade'] ?? null);
+
+        $quando = '';
+        if (!empty($dados['data_inicio'])) {
+            $quando = data_por_extenso($dados['data_inicio'], $dados['data_fim'] ?? null);
+        }
+
+        $onde = trim((string)($dados['local'] ?? ''));
+        if ($onde !== '') {
+            $partes = array_values(array_filter(array_map('trim', preg_split('/\R/', $onde))));
+            $onde = implode(', ', $partes);
+        }
+
+        if ($quando === '' && $onde === '') {
+            return "<p>O evento é <strong>" . self::pdfEscape($modalidade) . "</strong>.</p>";
+        }
+
+        $frase = "<p>O evento é <strong>" . self::pdfEscape($modalidade) . "</strong>";
+        if ($quando !== '') $frase .= ", e acontece em <strong>" . self::pdfEscape($quando) . "</strong>";
+        if ($onde !== '')   $frase .= ($quando !== '' ? ', ' : ', ') . "no <strong>" . self::pdfEscape($onde) . "</strong>";
+        return $frase . ".</p>";
+    }
+
     private static function textoComprovantePadrao(
         string $nome, string $cpf, string $evento, string $categoria,
-        string $valor, string $data, string $metodo
+        string $valor, string $data, string $metodo, string $quando_onde = ''
     ): string {
         $nome      = self::pdfEscape($nome);
         $cpf       = self::pdfEscape($cpf);
@@ -183,11 +222,11 @@ class PdfService {
         // R$ 0,00" seria falso, e e justamente este documento que vai para a
         // prestacao de contas.
         if ($valor === '' || $valor === 'Gratuita' || preg_match('/^R\$ ?0[,.]00$/', $valor)) {
-            return $abertura . "<p>Inscrição <strong>isenta de taxa</strong>, " .
+            return $abertura . $quando_onde . "<p>Inscrição <strong>isenta de taxa</strong>, " .
                 "confirmada em <strong>$data</strong>.</p>";
         }
 
-        return $abertura .
+        return $abertura . $quando_onde .
             "<p>Inscrição no valor de <strong>$valor</strong>, com pagamento " .
             "confirmado em <strong>$data</strong>" .
             ($metodo ? " por <strong>$metodo</strong>" : '') . ".</p>";

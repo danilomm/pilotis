@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-31a';
+const SCHEMA_VERSION = '2026-08-31b';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -448,6 +448,19 @@ function init_extra_tables(PDO $db): void {
         }
     }
 
+    // Data, local e modalidade no comprovante: as pessoas o usam para pedir
+    // dispensa de ponto no trabalho. Acrescenta {{quando_onde}} logo apos a
+    // frase de abertura, e so se o trecho anterior estiver intacto.
+    $tpl = $db->query("SELECT html FROM email_templates WHERE tipo = 'evento_comprovante'")->fetchColumn();
+    if (is_string($tpl) && $tpl !== '' && strpos($tpl, '{{quando_onde}}') === false) {
+        $de = 'na categoria <strong>{{categoria}}</strong>.</p>';
+        if (strpos($tpl, $de) !== false) {
+            $st = $db->prepare("UPDATE email_templates SET html = ? WHERE tipo = 'evento_comprovante'");
+            $st->execute([str_replace($de, $de . '{{quando_onde}}', $tpl)]);
+            error_log("Pilotis: template evento_comprovante ganhou {{quando_onde}}");
+        }
+    }
+
     // O template do comprovante trazia "CPF {{cpf}}" com o rotulo FIXO no
     // texto. Com `pessoas.documento`, isso passou a produzir "CPF Passaporte
     // XX0000000" — e ja produzia "CPF ," para quem nao tinha CPF. A frase certa
@@ -472,6 +485,18 @@ function init_extra_tables(PDO $db): void {
     if ($st->rowCount() > 0) {
         error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
     }
+
+    // Modalidade do evento: presencial, online ou hibrido.
+    //
+    // Existe por causa do COMPROVANTE. Ele e usado para pedir dispensa de ponto
+    // no trabalho, e para isso o papel tem de dizer que o evento e presencial e
+    // quando e onde acontece — senao nao prova deslocamento nenhum. Sem coluna,
+    // a alternativa seria fixar "presencial" no codigo, e o proximo evento
+    // online sairia com um comprovante que afirma o contrario.
+    //
+    // NULL vale como 'presencial': e o caso dominante e o dos eventos ja
+    // cadastrados, que ninguem vai reeditar so por isso.
+    garantir_coluna($db, 'eventos', 'modalidade', 'TEXT');
 
     // Consentimento com o aviso de privacidade: QUAL versao e QUANDO.
     //

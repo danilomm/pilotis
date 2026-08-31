@@ -277,10 +277,16 @@ function seed_email_templates(PDO $db): void {
         // estrangeiro saia "CPF ," e, depois que o documento passou a existir,
         // "CPF Passaporte XX0000000".
         // {{cpf}} continua valendo — so o numero — para template ja editado.
-        'variaveis' => 'nome, documento (já traz a vírgula; vazio se não houver), cpf, evento, categoria, valor, data_pagamento, metodo',
+        // {{quando_onde}} traz a frase pronta, com <strong>: "O evento é
+        // presencial, e acontece em 12 e 13 de novembro de 2026, no IAB-RJ,
+        // Rua ...". Vai no comprovante porque as pessoas o usam para pedir
+        // DISPENSA DE PONTO no trabalho — sem data, local e modalidade o papel
+        // prova que alguem se inscreveu, e nao que precisou se deslocar.
+        'variaveis' => 'nome, documento (já traz a vírgula; vazio se não houver), cpf, evento, categoria, quando_onde (frase pronta com data, local e modalidade), valor, data_pagamento, metodo',
         'html' => "<p>Declaramos para os devidos fins que <strong>{{nome}}</strong>{{documento}}" .
             " está inscrito(a) no evento <strong>{{evento}}</strong>, " .
             "na categoria <strong>{{categoria}}</strong>.</p>" .
+            "{{quando_onde}}" .
             "<p>Inscrição no valor de <strong>{{valor}}</strong>, com pagamento " .
             "confirmado em <strong>{{data_pagamento}}</strong> por <strong>{{metodo}}</strong>.</p>",
     ];
