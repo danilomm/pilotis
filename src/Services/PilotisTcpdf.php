@@ -28,6 +28,9 @@ class PilotisTcpdf extends TCPDF {
     /** @var string[] Linhas do rodape de identificacao. Vazio = sem rodape. */
     private $rodape_pilotis = [];
 
+    /** @var string Nota de emissao eletronica, impressa acima do timbre. */
+    private $nota_emissao = '';
+
     public function __construct(
         $orientation = 'P',
         $unit = 'mm',
@@ -55,6 +58,20 @@ class PilotisTcpdf extends TCPDF {
     }
 
     /**
+     * Nota de emissao eletronica, desenhada NO PE DA PAGINA, logo acima do
+     * timbre. Ate 31/08/2026 ela ia no fluxo do texto, encostada nas
+     * assinaturas: ali disputava a atencao com o que o documento afirma, e a
+     * posicao dela variava com o tamanho do corpo. Ela e nota de rodape — diz
+     * que o papel dispensa assinatura — e nota de rodape fica no rodape.
+     */
+    public function setNotaEmissao(string $nota): void {
+        $this->nota_emissao = trim($nota);
+        if ($this->nota_emissao !== '') {
+            $this->setPrintFooter(true);
+        }
+    }
+
+    /**
      * Uma linha so, miuda, com os trechos separados por ponto — mais timbre
      * que rodape. O corpo em tres linhas competia com o texto do documento.
      *
@@ -65,6 +82,16 @@ class PilotisTcpdf extends TCPDF {
      * em 6,25pt — repeticao de nome aqui custa corpo de fonte.
      */
     public function Footer() {
+        // A nota vem PRIMEIRO, em italico e cinza, acima do timbre: ela fala do
+        // documento, e o timbre fala de quem o emitiu.
+        if ($this->nota_emissao !== '') {
+            $this->SetY(-21);
+            $this->SetFont('helvetica', 'I', 7.5);
+            $this->SetTextColor(130, 130, 130);
+            $this->Cell(0, 4, $this->nota_emissao, 0, 1, 'C');
+            $this->SetTextColor(0, 0, 0);
+        }
+
         if (empty($this->rodape_pilotis)) {
             return;
         }

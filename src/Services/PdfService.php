@@ -111,7 +111,8 @@ class PdfService {
 
         $html_corpo .= self::blocoAssinaturas($dados['assinantes'] ?? '');
         $html_corpo .= self::blocoContatoEvento($dados['email_contato'] ?? '');
-        $html_corpo .= self::notaEmissaoEletronica();
+        // A nota de emissao eletronica NAO entra no corpo: ela e desenhada no
+        // pe da pagina pelo PilotisTcpdf, acima do timbre. Ver setNotaEmissao().
 
         // Codigo de validacao: so existe quando sabemos de qual inscricao o
         // documento fala. Amostra avulsa sai sem QR, e nao com QR quebrado.
@@ -249,11 +250,15 @@ class PdfService {
      * devolver o comprovante pedindo assinatura.
      */
     private static function notaEmissaoEletronica(): string {
-        return "<p style='margin-top: 34px; font-size: 9pt; color: #555555;'>" .
-               "Documento emitido eletronicamente em " . date('d/m/Y') .
-               " pelo sistema de inscrições do " . htmlspecialchars(ORG_NOME, ENT_QUOTES, 'UTF-8') .
-               ", dispensando assinatura." .
-               "</p>";
+        // TEXTO puro, e nao HTML: quem desenha e o Cell() do rodape, no pe da
+        // pagina. Ate 31/08/2026 isto voltava um <p> que ia no fluxo do corpo,
+        // encostado nas assinaturas — disputando a atencao com o que o
+        // documento afirma, e com a posicao variando conforme o tamanho do texto.
+        // "sistema do", e nao "sistema de inscrições": a mesma nota vale para a
+        // declaracao de filiacao, que nao e inscricao nenhuma. Ela passou a
+        // aparecer nos dois documentos em 31/08/2026, ao ir para o rodape.
+        return 'Documento emitido eletronicamente em ' . date('d/m/Y')
+             . ' pelo sistema do ' . ORG_NOME . ', dispensando assinatura.';
     }
 
     /**
@@ -437,6 +442,7 @@ class PdfService {
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
         $pdf->setRodapePilotis($rodape_pagina);
+        $pdf->setNotaEmissao(self::notaEmissaoEletronica());
 
         $pdf->AddPage();
 
