@@ -11,8 +11,8 @@
  *
  *   - a lista de campos e a das colunas de `filiacoes` e `inscricoes`;
  *   - PagBank e Brevo sao os dois unicos servicos externos que recebem dado;
- *   - o painel da organizacao nao mostra CPF nem valores (ver
- *     PainelOrganizacaoService e organizacao_inscritos.php);
+ *   - o painel da organizacao nao mostra CPF, e mostra valor e total
+ *     arrecadado desde 30/08/2026 (ver organizacao_inscritos.php);
  *   - a planilha anual aos coordenadores de nucleo sai SEM CPF (ver o
  *     procedimento de fim de campanha no CLAUDE.md);
  *   - a lista publica de filiados do Pilotis foi REMOVIDA em 29/08/2026.
@@ -30,29 +30,29 @@
 
     <h3>O que é coletado</h3>
     <ul>
-        <li><strong>Identificação:</strong> nome, CPF (ou passaporte, para quem
+        <li>Identificação: nome, CPF (ou passaporte, para quem
         não tem CPF) e email.</li>
-        <li><strong>Contato e endereço:</strong> telefone, endereço, CEP, cidade,
+        <li>Contato e endereço: telefone, endereço, CEP, cidade,
         estado e país.</li>
-        <li><strong>Dados acadêmicos e profissionais:</strong> profissão,
+        <li>Dados acadêmicos e profissionais: profissão,
         formação e instituição.</li>
-        <li><strong>Comprovante de matrícula</strong>, apenas de quem se inscreve
+        <li>Comprovante de matrícula, apenas de quem se inscreve
         em categoria de estudante — é o documento que comprova o desconto.</li>
-        <li><strong>Nas inscrições em eventos:</strong> o nome que você quer no
+        <li>Nas inscrições em eventos: o nome que você quer no
         crachá e o registro de presença, quando houver.</li>
-        <li><strong>Pagamento:</strong> valor, forma e data. O sistema
-        <strong>não</strong> guarda número de cartão: os dados do cartão vão
+        <li>Pagamento: valor, forma e data. O sistema
+        não guarda número de cartão: os dados do cartão vão
         direto para o provedor de pagamento e não passam por aqui.</li>
     </ul>
 
     <h3>Por que o CPF é pedido logo na entrada</h3>
-    <p>Por dois motivos, e nenhum deles é cadastro de marketing:</p>
+    <p>Por dois motivos:</p>
     <ul>
-        <li><strong>Para encontrar você</strong> no cadastro sem que precise
+        <li>Para encontrar você no cadastro sem que precise
         lembrar com qual email se inscreveu em anos anteriores. Se o CPF
         constar, o link de acesso vai para o email que já está registrado —
         nunca para um endereço digitado por quem tem apenas o número.</li>
-        <li><strong>Porque o meio de pagamento exige.</strong> O PagBank só
+        <li>Porque o meio de pagamento exige. O PagBank só
         aceita CPF ou CNPJ para gerar PIX, boleto ou cobrança em cartão. É
         exigência dele. Quem não tem CPF pode se inscrever mesmo assim,
         informando passaporte, e a tesouraria combina o pagamento por outro
@@ -61,23 +61,24 @@
 
     <h3>Quem vê</h3>
     <ul>
-        <li><strong>A tesouraria do <?= e(ORG_NOME) ?></strong>, que administra o
+        <li>A tesouraria do <?= e(ORG_NOME) ?>, que administra o
         sistema.</li>
-        <li><strong>A coordenação do evento</strong> em que você se inscreveu, por
-        um painel próprio que mostra nome, contato e endereço —
-        <strong>sem CPF e sem valores</strong>, porque ela precisa falar com as
-        pessoas, não identificá-las na Receita nem saber quanto cada uma pagou.</li>
-        <li><strong>A coordenação do seu núcleo regional</strong>, ao fim de cada
+        <li>A coordenação do evento em que você se inscreveu, por
+        um painel próprio que mostra nome, contato, endereço, categoria, valor e
+        situação da inscrição — sem CPF. A coordenação precisa
+        falar com as pessoas e prestar contas do próprio evento; identificar
+        alguém na Receita não faz parte disso.</li>
+        <li>A coordenação do seu núcleo regional, ao fim de cada
         campanha anual, numa planilha de filiados da região — também
-        <strong>sem CPF</strong>.</li>
+        sem CPF.</li>
     </ul>
 
     <h3>Serviços externos</h3>
     <p>Dois, e só o necessário vai para cada um:</p>
     <ul>
-        <li><strong>PagBank (PagSeguro)</strong> — recebe nome, CPF, email,
+        <li>PagBank (PagSeguro) — recebe nome, CPF, email,
         telefone e endereço para emitir a cobrança. É quem processa o pagamento.</li>
-        <li><strong>Brevo</strong> — recebe nome e email para entregar as
+        <li>Brevo — recebe nome e email para entregar as
         mensagens do sistema.</li>
     </ul>
     <p>Fora esses dois, os dados não são vendidos, cedidos nem compartilhados
@@ -85,8 +86,8 @@
 
     <h3>O que é público</h3>
     <p>Nada deste sistema é publicado automaticamente. As listas de filiados que
-    existem no site do <?= e(ORG_NOME) ?> trazem apenas <strong>nome e
-    instituição</strong> de quem está em dia, são publicadas por decisão da
+    existem no site do <?= e(ORG_NOME) ?> trazem apenas nome e
+    instituição de quem está em dia, são publicadas por decisão da
     diretoria e não incluem CPF, endereço, telefone nem email.</p>
 
     <h3>Por quanto tempo</h3>
@@ -105,9 +106,7 @@
         pagamentos.</li>
     </ul>
     <p>Escreva para <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.
-    Hoje esses pedidos são atendidos <strong>manualmente</strong> pela tesouraria —
-    não há um botão no sistema para isso, e preferimos dizer isso a dar a
-    entender o contrário.</p>
+    Hoje esses pedidos são atendidos manualmente pela tesouraria.</p>
 
     <h3>Segurança</h3>
     <p>O site funciona apenas por HTTPS, o banco de dados fica fora da área

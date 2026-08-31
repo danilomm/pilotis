@@ -50,6 +50,24 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
         <div style="color: #777;"><strong><?= (int)$totais['sem_resposta'] ?></strong> sem resposta</div>
     </div>
 
+    <?php
+    // Quanto o evento arrecadou. Ate 30/08/2026 o painel escondia valores, por
+    // minimizacao de dados — decisao minha, e errada: a coordenacao precisa
+    // saber quanto o proprio seminario rendeu, e e a tesouraria quem repassa.
+    // Esconder so obrigava a pedir o numero a cada vez.
+    //
+    // O CPF continua fora: aquele nao serve a trabalho nenhum da organizacao.
+    ?>
+    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0 0 1rem; font-size: .95rem;
+                padding: .7rem .9rem; border: 1px solid var(--pico-muted-border-color); border-radius: 6px;">
+        <div style="color: #2E7D32;"><strong><?= formatar_valor((int)($totais['arrecadado'] ?? 0)) ?></strong> arrecadado</div>
+        <?php if ((int)($totais['a_receber'] ?? 0) > 0): ?>
+            <div style="color: #8a6d1f;"><strong><?= formatar_valor((int)$totais['a_receber']) ?></strong> a receber
+                <small>(inscrições aguardando pagamento)</small></div>
+        <?php endif; ?>
+        <div style="color: var(--pico-muted-color);"><small>O repasse é feito pela tesouraria.</small></div>
+    </div>
+
     <form method="GET" action="<?= e($base) ?>" style="display: flex; gap: .6rem; align-items: end; flex-wrap: wrap; margin-bottom: 1rem;">
         <div style="flex: 1; min-width: 200px;">
             <label for="q" style="font-size: .85em;">Buscar por nome ou email</label>
@@ -82,6 +100,7 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
                     <th>Nome</th>
                     <th>Contato</th>
                     <th>Categoria</th>
+                    <th>Valor</th>
                     <th>Situação</th>
                     <th>Matrícula</th>
                 </tr>
@@ -106,6 +125,7 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
                             <?php endif; ?>
                         </td>
                         <td><?= e($i['categoria_nome'] ?? '—') ?></td>
+                        <td><?= $i['valor'] !== null ? formatar_valor((int)$i['valor']) : '—' ?></td>
                         <td style="color: <?= $cor ?>;">
                             <?= e($rotulo) ?>
                             <?php if ($i['data_pagamento']): ?>

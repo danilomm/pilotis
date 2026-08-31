@@ -439,7 +439,9 @@ class EventosController {
                    SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) AS pagas,
                    SUM(CASE WHEN status = 'gratuita_confirmada' THEN 1 ELSE 0 END) AS isentas,
                    SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
-                   SUM(CASE WHEN status IN ('enviado','acesso') THEN 1 ELSE 0 END) AS sem_resposta
+                   SUM(CASE WHEN status IN ('enviado','acesso') THEN 1 ELSE 0 END) AS sem_resposta,
+                   SUM(CASE WHEN status = 'pago' THEN valor ELSE 0 END) AS arrecadado,
+                   SUM(CASE WHEN status = 'pendente' THEN valor ELSE 0 END) AS a_receber
             FROM inscricoes WHERE evento_id = ?
         ", [(int)$evento['id']]);
 
@@ -459,6 +461,11 @@ class EventosController {
      * O CPF fica fora por nao servir ao trabalho da organizacao: ela precisa
      * falar com as pessoas e mandar correspondencia, nao identifica-las na
      * Receita. Quem lida com pagamento e a tesouraria, e la o CPF esta.
+     *
+     * O VALOR, ao contrario, esta aqui desde 30/08/2026. Ate entao eu o havia
+     * escondido por minimizacao de dados, e estava errado: a coordenacao
+     * precisa saber quanto o proprio seminario arrecadou — e a tesouraria quem
+     * repassa. Esconder so obrigava a pedir o numero a cada vez.
      */
     private static function exportarPainel(string $slug, string $formato): void {
         require_once SRC_DIR . '/Eventos/PainelOrganizacaoService.php';
@@ -483,7 +490,7 @@ class EventosController {
         ];
 
         $cabecalho = [
-            'Nome', 'Email', 'Telefone', 'Categoria', 'Situação', 'Data do pagamento',
+            'Nome', 'Email', 'Telefone', 'Categoria', 'Valor', 'Situação', 'Data do pagamento',
             'Instituição', 'Profissão', 'Endereço', 'CEP', 'Cidade', 'Estado', 'País',
             'Comprovante de matrícula',
         ];
@@ -496,6 +503,7 @@ class EventosController {
                 $r['email'] ?? '',
                 $r['telefone'] ?? '',
                 $r['categoria_nome'] ?? '',
+                $r['valor'] !== null ? formatar_valor((int)$r['valor']) : '',
                 $situacoes[$r['status']] ?? $r['status'],
                 $r['data_pagamento'] ? date('d/m/Y', strtotime($r['data_pagamento'])) : '',
                 $r['instituicao'] ?? '',

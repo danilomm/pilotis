@@ -166,8 +166,8 @@
                         </datalist>
                     </div>
                 </div>
-                <small id="aviso-sem-cpf">Preenchendo aqui, sua inscrição fica <strong>registrada e
-                pendente de pagamento</strong>: o pagamento online só aceita CPF, então a
+                <small id="aviso-sem-cpf">Preenchendo aqui, sua inscrição fica registrada e
+                pendente de pagamento: o pagamento online só aceita CPF, então a
                 tesouraria entra em contato com você para combinar. Você recebe a confirmação
                 por email quando o pagamento for lançado.</small>
             </details>

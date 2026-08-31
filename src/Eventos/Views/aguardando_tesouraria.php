@@ -13,18 +13,18 @@
 <article>
     <h2>Inscrição registrada</h2>
 
-    <p>Sua inscrição no <strong><?= e($evento['nome']) ?></strong> está registrada
-    na categoria <strong><?= e($categoria['nome'] ?? '') ?></strong><?php
+    <p>Sua inscrição no <?= e($evento['nome']) ?> está registrada
+    na categoria <?= e($categoria['nome'] ?? '') ?><?php
         if ((int)($inscricao['valor'] ?? 0) > 0) {
-            echo ', no valor de <strong>' . formatar_valor((int)$inscricao['valor']) . '</strong>';
+            echo ', no valor de ' . formatar_valor((int)$inscricao['valor']);
         }
     ?>.</p>
 
     <div class="alert alert-warning">
-        <p style="margin: 0 0 .6rem;"><strong>Não há pagamento online nesta inscrição, e não é falha do sistema.</strong></p>
+        <p style="margin: 0 0 .6rem;">Não há pagamento online nesta inscrição, e não é falha do sistema.</p>
         <p style="margin: 0;">Você se identificou com
-        <?= $identificacao !== '' ? '<strong>' . e($identificacao) . '</strong>' : 'documento estrangeiro' ?>,
-        e o meio de pagamento que usamos aceita <strong>apenas CPF ou CNPJ brasileiro</strong> —
+        <?= $identificacao !== '' ? e($identificacao) : 'documento estrangeiro' ?>,
+        e o meio de pagamento que usamos aceita apenas CPF ou CNPJ brasileiro —
         é exigência dele, não do Docomomo. Por isso não aparecem aqui as opções de
         PIX, boleto e cartão: elas seriam recusadas.</p>
     </div>
@@ -32,7 +32,7 @@
     <h3>O que acontece agora</h3>
     <p>A tesouraria entra em contato
     <?php if (!empty($cadastrado['email'])): ?>
-        pelo email <strong><?= e($cadastrado['email']) ?></strong>
+        pelo email <?= e($cadastrado['email']) ?>
     <?php endif; ?>
     para combinar como você paga. Quando o pagamento for lançado, você recebe a
     confirmação e o comprovante em PDF, por email.</p>

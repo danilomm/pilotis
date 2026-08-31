@@ -370,7 +370,7 @@ function palpite_nome_cracha(?string $nome): string {
  * Formato AAAA-MM-DD, a data da mudanca. Nao e semver: o que importa e achar o
  * texto daquele dia no historico do git.
  */
-const POLITICA_PRIVACIDADE_VERSAO = '2026-08-30';
+const POLITICA_PRIVACIDADE_VERSAO = '2026-08-31';
 
 /**
  * Como esta pessoa se identifica num documento: "CPF 000.000.000-00" ou
