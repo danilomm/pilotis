@@ -148,18 +148,25 @@
             <small>Obrigatório para inscrições pagas (exigência do meio de pagamento).</small>
 
             <?php
-            // Quem nao tem CPF usa outro documento. O bloco abre sozinho se ja
-            // houver documento gravado, ou se a pessoa nao tem CPF nenhum — e o
-            // caso em que ela vai precisar dele.
+            // Quem nao tem CPF usa outro documento. Bloco FECHADO por padrao: e
+            // a excecao, e quem precisa dele clica.
+            //
+            // Ate 31/08/2026 ele abria tambem quando o campo de CPF estava
+            // vazio, e isso confundia CAMPO VAZIO com NAO TER CPF. Campo vazio
+            // e o estado normal de toda pessoa nova — brasileira, com CPF, que
+            // so ainda nao digitou. Ela abria o formulario com o campo de
+            // passaporte escancarado, sugerindo um caminho que nao e o dela.
+            //
+            // So abre sozinho quando JA HA documento gravado: ai a pessoa (ou a
+            // tesouraria) ja usou esse caminho, e esconder o dado seria pior.
             //
             // Isto NAO substitui o CPF para pagar: o PagBank exige CPF ou CNPJ.
             // Quem se inscrever assim tem a inscricao registrada como pendente e
             // a tesouraria combina o pagamento por fora. O aviso esta na tela,
             // para ninguem descobrir isso depois de preencher tudo.
-            $sem_cpf = trim((string)($pre['cpf'] ?? '')) === '';
             $tem_doc = trim((string)($pre['documento'] ?? '')) !== '';
             ?>
-            <details id="bloco-documento" <?= ($tem_doc || $sem_cpf) ? 'open' : '' ?> style="margin: .2rem 0 1rem;">
+            <details id="bloco-documento" <?= $tem_doc ? 'open' : '' ?> style="margin: .2rem 0 1rem;">
                 <summary style="cursor: pointer;"><small>Não tenho CPF brasileiro</small></summary>
 
                 <div class="grid" style="margin-top: .6rem;">
