@@ -239,6 +239,23 @@
                         Independe de filiação
                     </label>
                 </div>
+                <?php
+                // "Independe de filiacao" desliga a regra do desconto para esta
+                // categoria: ela passa a aparecer para TODO MUNDO, inclusive
+                // para quem tem anuidade em dia. Serve a acompanhante, visitante,
+                // ouvinte — categoria que vale para os dois.
+                //
+                // Marcada por engano numa categoria de PRECO CHEIO, o filiado
+                // adimplente volta a ver a opcao cara ao lado da com desconto.
+                // O nome do campo nao avisa isso, entao a dica avisa.
+                ?>
+                <small style="display: block; margin: -.3rem 0 .6rem; color: var(--muted-color);">
+                    <em>Só filiado adimplente</em>: categoria com desconto — quem não está em dia não a vê.
+                    <em>Independe de filiação</em>: vale para os dois (acompanhante, visitante).
+                    Deixe as duas desmarcadas nas categorias de preço cheio, senão o filiado
+                    continua vendo a opção mais cara.
+                </small>
+
                 <?php if ((int)$cat['valor'] === 0 && trim((string)($cat['cpfs_liberados'] ?? '')) === ''): ?>
                     <div style="flex: 1 0 100%; font-size: 0.85em; color: var(--muted-color);">
                         Gratuita e aberta: qualquer visitante pode se inscrever por ela.
@@ -301,6 +318,23 @@
                 <input type="checkbox" name="independe_filiacao"> Independe de filiação
             </label>
         </div>
+            <?php
+            // "Independe de filiacao" desliga a regra do desconto para esta
+            // categoria: ela passa a aparecer para TODO MUNDO, inclusive
+            // para quem tem anuidade em dia. Serve a acompanhante, visitante,
+            // ouvinte — categoria que vale para os dois.
+            //
+            // Marcada por engano numa categoria de PRECO CHEIO, o filiado
+            // adimplente volta a ver a opcao cara ao lado da com desconto.
+            // O nome do campo nao avisa isso, entao a dica avisa.
+            ?>
+            <small style="display: block; margin: -.3rem 0 .6rem; color: var(--muted-color);">
+                <em>Só filiado adimplente</em>: categoria com desconto — quem não está em dia não a vê.
+                <em>Independe de filiação</em>: vale para os dois (acompanhante, visitante).
+                Deixe as duas desmarcadas nas categorias de preço cheio, senão o filiado
+                continua vendo a opção mais cara.
+            </small>
+
         <div style="flex: 1 0 100%; min-width: 220px;">
             <label style="font-size: 0.85em;">Lista de liberados — CPF ou email (vazio = categoria aberta a todos)</label>
             <textarea name="cpfs_liberados" rows="2" placeholder="Um convidado por linha, com CPF e email quando tiver os dois:&#10;111.444.777-35 convidada@universidade.edu&#10;palestrante@exemplo.org&#10;529.982.247-25"
