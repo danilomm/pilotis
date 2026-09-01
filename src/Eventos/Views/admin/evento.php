@@ -161,6 +161,7 @@
             <div>
                 <label for="data_fim">Fim do evento</label>
                 <input type="date" id="data_fim" name="data_fim" value="<?= e($evento['data_fim'] ?? '') ?>">
+                <small>Vazio para evento de um dia só.</small>
             </div>
             <div>
                 <label for="prazo_inscricao">Prazo de inscrição</label>
@@ -275,23 +276,31 @@
             <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/categoria"
                   style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap; border-bottom: 1px solid #eee; padding-bottom: 12px; margin-bottom: 12px;"><?= campo_csrf() ?>
                 <input type="hidden" name="categoria_id" value="<?= (int)$cat['id'] ?>">
+                <?php
+                // O `for` precisa de id UNICO, e o bloco se repete por
+                // categoria — dai o id do proprio registro no sufixo. Sem isso
+                // os rotulos nao apontavam para nada: eram <label> soltos, ao
+                // lado do campo em vez de ligados a ele, e leitor de tela
+                // chegava a quatro caixas de texto sem nome.
+                $cid = (int)$cat['id'];
+                ?>
                 <div style="flex: 2; min-width: 180px;">
-                    <label>Nome</label>
-                    <input type="text" name="nome" value="<?= e($cat['nome']) ?>" required style="margin-bottom: 0;">
+                    <label for="cat<?= $cid ?>_nome">Nome</label>
+                    <input type="text" id="cat<?= $cid ?>_nome" name="nome" value="<?= e($cat['nome']) ?>" required style="margin-bottom: 0;">
                 </div>
                 <div style="flex: 1; min-width: 100px;">
-                    <label>Valor (R$)</label>
-                    <input type="text" name="valor" value="<?= number_format($cat['valor'] / 100, 2, ',', '') ?>"
-                           <?= $tem_pagos ? 'readonly' : '' ?> style="margin-bottom: 0;">
+                    <label for="cat<?= $cid ?>_valor">Valor (R$)</label>
+                    <input type="text" id="cat<?= $cid ?>_valor" name="valor" value="<?= number_format($cat['valor'] / 100, 2, ',', '') ?>"
+                           inputmode="decimal" <?= $tem_pagos ? 'readonly' : '' ?> style="margin-bottom: 0;">
                 </div>
                 <div style="flex: 1; min-width: 100px;">
-                    <label>Valor cheio</label>
-                    <input type="text" name="valor_cheio" value="<?= !empty($cat['valor_cheio']) ? number_format($cat['valor_cheio'] / 100, 2, ',', '') : '' ?>"
-                           placeholder="—" <?= $tem_pagos ? 'readonly' : '' ?> style="margin-bottom: 0;">
+                    <label for="cat<?= $cid ?>_cheio">Valor cheio</label>
+                    <input type="text" id="cat<?= $cid ?>_cheio" name="valor_cheio" value="<?= !empty($cat['valor_cheio']) ? number_format($cat['valor_cheio'] / 100, 2, ',', '') : '' ?>"
+                           placeholder="—" inputmode="decimal" <?= $tem_pagos ? 'readonly' : '' ?> style="margin-bottom: 0;">
                 </div>
                 <div style="flex: 0; min-width: 70px;">
-                    <label>Ordem</label>
-                    <input type="number" name="ordem" value="<?= (int)$cat['ordem'] ?>" style="margin-bottom: 0; width: 70px;">
+                    <label for="cat<?= $cid ?>_ordem">Ordem</label>
+                    <input type="number" id="cat<?= $cid ?>_ordem" name="ordem" value="<?= (int)$cat['ordem'] ?>" style="margin-bottom: 0; width: 70px;">
                 </div>
                 <div style="min-width: 160px;">
                     <label style="font-size: 0.85em;">
@@ -363,17 +372,19 @@
     <h4>Adicionar categoria</h4>
     <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/categoria"
           style="display: flex; gap: 10px; align-items: end; flex-wrap: wrap;"><?= campo_csrf() ?>
+        <?php // Prefixo `nova_` porque o bloco de cima ja usa `cat{id}_`. ?>
         <div style="flex: 2; min-width: 180px;">
-            <label>Nome</label>
-            <input type="text" name="nome" required placeholder="Ex.: Filiado, Estudante, Geral" style="margin-bottom: 0;">
+            <label for="nova_nome">Nome</label>
+            <input type="text" id="nova_nome" name="nome" required placeholder="Ex.: Filiado, Estudante, Geral" style="margin-bottom: 0;">
         </div>
         <div style="flex: 1; min-width: 100px;">
-            <label>Valor (R$)</label>
-            <input type="text" name="valor" required placeholder="0 = gratuita" style="margin-bottom: 0;">
+            <label for="nova_valor">Valor (R$)</label>
+            <input type="text" id="nova_valor" name="valor" required placeholder="0 = gratuita"
+                   inputmode="decimal" style="margin-bottom: 0;">
         </div>
         <div style="flex: 0; min-width: 70px;">
-            <label>Ordem</label>
-            <input type="number" name="ordem" value="0" style="margin-bottom: 0; width: 70px;">
+            <label for="nova_ordem">Ordem</label>
+            <input type="number" id="nova_ordem" name="ordem" value="0" style="margin-bottom: 0; width: 70px;">
         </div>
         <div style="min-width: 160px;">
             <label style="font-size: 0.85em;">
