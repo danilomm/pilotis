@@ -156,7 +156,17 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
             para o trabalho do evento. Use para contato e correspondência do seminário, e não repasse a
             lista nem este acesso — cada pessoa da organização pede o seu próprio.
             <br>
-            O valor pago e o CPF ficam com a tesouraria do <?= e(ORG_NOME) ?>; dúvida de pagamento é com
+            <?php
+            // A frase dizia "o valor pago e o CPF ficam com a tesouraria" — e
+            // ficou falsa em 30/08/2026, quando o valor passou a aparecer aqui
+            // a pedido do tesoureiro. O CPF continua fora, e e o que importa
+            // dizer: e o dado que nao serve a trabalho nenhum da organizacao.
+            //
+            // Aviso que descreve errado o que a tela mostra e pior do que aviso
+            // nenhum: ensina a nao ler os outros.
+            ?>
+            O <strong>CPF não aparece aqui</strong> e fica com a tesouraria do <?= e(ORG_NOME) ?>.
+            Os valores são os desta lista; o repasse e qualquer dúvida de pagamento são com
             <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.
             <br><br>
             Acesso aberto por <strong><?= e($email_sessao) ?></strong> ·
