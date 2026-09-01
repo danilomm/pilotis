@@ -91,7 +91,7 @@
     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;">
         <h3 style="margin: 0 0 .4rem;">Filiação</h3>
         <div>
-            <a href="/admin/campanha" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">Campanha</a>
+            <a href="/admin/campanha" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">Campanhas</a>
             <a href="/admin/contatos" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">Contatos</a>
             <a href="/admin/novo" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">+ Novo</a>
         </div>
