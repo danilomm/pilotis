@@ -130,6 +130,15 @@
             <div>
                 <label for="prazo_inscricao">Prazo de inscrição</label>
                 <input type="date" id="prazo_inscricao" name="prazo_inscricao" value="<?= e($evento['prazo_inscricao'] ?? '') ?>">
+            </div>
+        </div>
+
+        <?php
+        // A grade das TRES DATAS fecha aqui. Ate 31/08/2026 a terceira celula
+        // dela nunca era fechada: contato, assinantes, cartaz, apoiadores,
+        // painel da organizacao e valor cheio caiam todos dentro da coluna do
+        // prazo, espremidos a direita da tela, com metade da largura vazia.
+        ?>
 
                 <label for="email_contato">Contato do evento</label>
                 <input type="text" id="email_contato" name="email_contato"
@@ -208,8 +217,6 @@
                 <label for="data_valor_cheio">Início do valor cheio</label>
                 <input type="date" id="data_valor_cheio" name="data_valor_cheio" value="<?= e($evento['data_valor_cheio'] ?? '') ?>">
                 <small>A partir desta data vale o "Valor cheio" de cada categoria. Deixe vazio para preço único.</small>
-            </div>
-        </div>
 
         <button type="submit">Salvar dados</button>
     </form>

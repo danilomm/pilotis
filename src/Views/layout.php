@@ -108,19 +108,31 @@ if (!headers_sent() && http_response_code() === 200) {
         article {
             border-top: 4px solid var(--org-cor-secundaria);
         }
-        button[type="submit"],
-        input[type="submit"],
+        /* A regra pinta o botao de acao com o verde da instituicao — mas NAO
+           pode alcancar as variantes `.outline` e `.secondary` do Pico. Sem o
+           :not(), o fundo virava verde e o texto continuava verde (que e o que
+           `outline` faz): os botoes "reenviar" e "lançar pago" da lista de
+           inscritos sumiam, verde no verde. */
+        button[type="submit"]:not(.outline):not(.secondary),
+        input[type="submit"]:not(.outline):not(.secondary),
         [role="button"].primary,
         .btn-primary {
             background-color: var(--org-cor-primaria);
             border-color: var(--org-cor-primaria);
         }
-        button[type="submit"]:hover,
-        input[type="submit"]:hover,
+        button[type="submit"]:not(.outline):not(.secondary):hover,
+        input[type="submit"]:not(.outline):not(.secondary):hover,
         [role="button"].primary:hover,
         .btn-primary:hover {
             background-color: var(--org-cor-secundaria);
             border-color: var(--org-cor-secundaria);
+        }
+
+        /* Botao vazado: fundo transparente, texto e borda na cor. O Pico ja faz
+           isso, mas a regra acima ganhava dele pela especificidade. */
+        button[type="submit"].outline,
+        input[type="submit"].outline {
+            background-color: transparent;
         }
         mark {
             background-color: var(--org-cor-secundaria);

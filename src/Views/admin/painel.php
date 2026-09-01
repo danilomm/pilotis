@@ -64,8 +64,15 @@
                 <tbody>
                 <?php foreach ($eventos_painel as $ev): ?>
                     <tr>
+                        <?php
+                        // O NOME leva a pagina do evento, que e onde se edita
+                        // tudo; os NUMEROS levam a lista de inscritos, que e o
+                        // que esta atras deles. Ate 31/08/2026 o nome levava a
+                        // lista, e quem queria mexer no evento caia no lugar
+                        // errado.
+                        ?>
                         <td>
-                            <a href="/admin/eventos/<?= (int)$ev['id'] ?>/inscritos"><?= e($ev['nome']) ?></a>
+                            <a href="/admin/eventos/<?= (int)$ev['id'] ?>"><?= e($ev['nome']) ?></a>
                             <br><small style="color: var(--muted-color);"><?= e($ev['slug']) ?></small>
                         </td>
                         <td><small><?= $ev['data_inicio']
@@ -75,9 +82,17 @@
                                 <br>inscrições até <?= date('d/m/Y', strtotime($ev['prazo_inscricao'])) ?>
                             <?php endif; ?>
                         </small></td>
-                        <td style="text-align: right; color: #2E7D32;"><strong><?= (int)$ev['confirmadas'] ?></strong></td>
-                        <td style="text-align: right; <?= (int)$ev['pendentes'] ? 'color: #8a6d1f;' : 'color: var(--muted-color);' ?>">
-                            <?= (int)$ev['pendentes'] ?>
+                        <td style="text-align: right;">
+                            <a href="/admin/eventos/<?= (int)$ev['id'] ?>/inscritos"
+                               style="color: #2E7D32;"><strong><?= (int)$ev['confirmadas'] ?></strong></a>
+                        </td>
+                        <td style="text-align: right;">
+                            <?php if ((int)$ev['pendentes']): ?>
+                                <a href="/admin/eventos/<?= (int)$ev['id'] ?>/inscritos?status=pendente"
+                                   style="color: #8a6d1f;"><?= (int)$ev['pendentes'] ?></a>
+                            <?php else: ?>
+                                <span style="color: var(--muted-color);">0</span>
+                            <?php endif; ?>
                         </td>
                         <td style="text-align: right;"><strong><?= formatar_valor((int)$ev['arrecadado']) ?></strong></td>
                     </tr>
