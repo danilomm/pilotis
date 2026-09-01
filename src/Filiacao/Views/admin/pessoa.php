@@ -183,6 +183,71 @@
 
     <hr>
 
+    <?php
+    // Eventos da pessoa. `pessoas` e a unica tabela compartilhada pelos dois
+    // modulos, entao esta ficha e onde filiacao e evento se encontram — e ela
+    // so mostrava um dos dois lados ate 31/08/2026.
+    //
+    // A CATEGORIA vem junto porque e ela que diz o PAPEL: palestrante
+    // convidado, estudante de pos, professor filiado. Sem ela, "sdrj05, pago"
+    // esconde justamente o que se quer saber ao abrir a ficha.
+    ?>
+    <h3>Eventos</h3>
+
+    <?php if (empty($inscricoes_pessoa)): ?>
+        <p><small>Nenhuma inscrição em evento.</small></p>
+    <?php else: ?>
+        <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Evento</th>
+                    <th>Papel / categoria</th>
+                    <th>Situação</th>
+                    <th style="text-align: right;">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php
+            $rot_insc = [
+                'pago' => ['Pago', '#2E7D32'],
+                'gratuita_confirmada' => ['Isento confirmado', '#2E7D32'],
+                'pendente' => ['Aguardando pagamento', '#8a6d1f'],
+                'acesso' => ['Abriu o formulário', '#8a6d1f'],
+                'enviado' => ['Link enviado', '#777'],
+                'cancelado' => ['Cancelado', '#b00'],
+            ];
+            ?>
+            <?php foreach ($inscricoes_pessoa as $i): ?>
+                <?php [$rot, $cor] = $rot_insc[$i['status']] ?? [$i['status'], '#555']; ?>
+                <tr>
+                    <td>
+                        <a href="/admin/eventos/<?= (int)$i['evento_id'] ?>/inscritos"><?= e($i['evento_nome']) ?></a>
+                        <?php if ($i['data_inicio']): ?>
+                            <br><small style="color: var(--muted-color);"><?= date('d/m/Y', strtotime($i['data_inicio'])) ?></small>
+                        <?php endif; ?>
+                    </td>
+                    <td><?= e($i['categoria_nome'] ?? '—') ?></td>
+                    <td style="color: <?= $cor ?>;">
+                        <?= e($rot) ?>
+                        <?php if ($i['data_pagamento']): ?>
+                            <br><small><?= date('d/m/Y', strtotime($i['data_pagamento'])) ?><?php
+                                if ($i['metodo']) echo ' · ' . e($i['metodo']); ?></small>
+                        <?php endif; ?>
+                        <?php if (!empty($i['presenca_em'])): ?>
+                            <br><small style="color: #2E7D32;">presença registrada</small>
+                        <?php endif; ?>
+                    </td>
+                    <td style="text-align: right;"><?= $i['valor'] !== null ? formatar_valor((int)$i['valor']) : '—' ?></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+    <?php endif; ?>
+
+    <hr>
+
     <!-- Excluir pessoa -->
     <form method="POST" action="/admin/excluir/pessoa/<?= e($pessoa['id']) ?>"
           onsubmit="return confirm('ATENÇÃO: Esta ação excluirá a pessoa e todas as suas filiações. Continuar?')"><?= campo_csrf() ?>

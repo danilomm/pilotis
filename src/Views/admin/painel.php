@@ -18,22 +18,82 @@
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h2>Painel Admin - <?= e($ano) ?></h2>
         <div>
-            <a href="/admin/campanha" role="button" class="outline">Campanha</a>
-            <a href="/admin/eventos" role="button" class="outline">Eventos</a>
-            <a href="/admin/templates" role="button" class="outline">Templates</a>
-            <a href="/admin/contatos" role="button" class="outline">Contatos</a>
-            <a href="/admin/buscar" role="button" class="outline">Buscar</a>
             <?php
             // Contagem ao lado do link: sem ela o log continua sendo uma pagina
             // que ninguem tem motivo para abrir. A lista de tipos mora em
             // tipos_log_criticos(), no db.php, para nao divergir da tela de log.
             $n_log = contar_log_criticos(30);
             ?>
+            <a href="/admin/buscar" role="button" class="outline">Buscar</a>
+            <a href="/admin/templates" role="button" class="outline">Templates</a>
             <a href="/admin/log" role="button" class="outline"<?= $n_log ? ' style="border-color:#b00;color:#b00;"' : '' ?>>
                 Log<?= $n_log ? ' (' . e((string)$n_log) . ')' : '' ?>
             </a>
-            <a href="/admin/novo" role="button" class="outline">+ Novo</a>
             <a href="/admin/logout" role="button" class="secondary outline">Sair</a>
+        </div>
+    </div>
+
+    <?php
+    // EVENTOS primeiro. A pergunta do dia, em novembro, e quantas inscricoes
+    // chegaram e quanto entrou — e ela estava a dois cliques, atras de um botao
+    // no meio dos da campanha. A filiacao continua logo abaixo, inteira.
+    ?>
+    <section style="margin-bottom: 2.2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+            <h3 style="margin: 0;">Eventos</h3>
+            <a href="/admin/eventos" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">
+                Todos os eventos
+            </a>
+        </div>
+
+        <?php if (empty($eventos_painel)): ?>
+            <p><small>Nenhum evento publicado.
+            <a href="/admin/eventos/novo">Criar um evento</a>.</small></p>
+        <?php else: ?>
+            <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Evento</th>
+                        <th>Quando</th>
+                        <th style="text-align: right;">Confirmadas</th>
+                        <th style="text-align: right;">Pendentes</th>
+                        <th style="text-align: right;">Arrecadado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($eventos_painel as $ev): ?>
+                    <tr>
+                        <td>
+                            <a href="/admin/eventos/<?= (int)$ev['id'] ?>/inscritos"><?= e($ev['nome']) ?></a>
+                            <br><small style="color: var(--muted-color);"><?= e($ev['slug']) ?></small>
+                        </td>
+                        <td><small><?= $ev['data_inicio']
+                            ? e(data_por_extenso($ev['data_inicio'], $ev['data_fim']))
+                            : '—' ?>
+                            <?php if ($ev['prazo_inscricao']): ?>
+                                <br>inscrições até <?= date('d/m/Y', strtotime($ev['prazo_inscricao'])) ?>
+                            <?php endif; ?>
+                        </small></td>
+                        <td style="text-align: right; color: #2E7D32;"><strong><?= (int)$ev['confirmadas'] ?></strong></td>
+                        <td style="text-align: right; <?= (int)$ev['pendentes'] ? 'color: #8a6d1f;' : 'color: var(--muted-color);' ?>">
+                            <?= (int)$ev['pendentes'] ?>
+                        </td>
+                        <td style="text-align: right;"><strong><?= formatar_valor((int)$ev['arrecadado']) ?></strong></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
+        <?php endif; ?>
+    </section>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;">
+        <h3 style="margin: 0 0 .4rem;">Filiação</h3>
+        <div>
+            <a href="/admin/campanha" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">Campanha</a>
+            <a href="/admin/contatos" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">Contatos</a>
+            <a href="/admin/novo" role="button" class="outline" style="padding: .3rem .8rem; font-size: .85rem;">+ Novo</a>
         </div>
     </div>
 
@@ -92,7 +152,7 @@
     </div>
 
     <!-- Lista de filiações -->
-    <h3>Filiações <?= e($ano) ?></h3>
+    <?php // O ano ja esta no filtro logo acima; repetir aqui era ruido. ?>
 
     <?php if (empty($pagamentos)): ?>
         <p>Nenhuma filiação encontrada para <?= e($ano) ?>.</p>

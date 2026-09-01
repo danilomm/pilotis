@@ -212,6 +212,29 @@ class AdminController {
             usort($pagamentos, fn($a, $b) => $collator->compare($a['nome'] ?? '', $b['nome'] ?? ''));
         }
 
+        // Eventos, no topo do painel.
+        //
+        // Ate 31/08/2026 o /admin abria direto na filiacao do ano e os eventos
+        // ficavam atras de um botao. Isso descrevia o sistema de antes, quando
+        // ele so processava a campanha anual — mas em novembro a pergunta do dia
+        // e "quantas inscricoes chegaram e quanto entrou", e ela estava a dois
+        // cliques.
+        //
+        // So os PUBLICADOS: rascunho e do tesoureiro montando, e nao tem numero
+        // que interesse. Ordenados pelo que acontece primeiro.
+        $eventos_painel = db_fetch_all("
+            SELECT e.id, e.nome, e.slug, e.data_inicio, e.data_fim, e.prazo_inscricao,
+                   (SELECT COUNT(*) FROM inscricoes i WHERE i.evento_id = e.id
+                     AND i.status IN ('pago','gratuita_confirmada')) AS confirmadas,
+                   (SELECT COUNT(*) FROM inscricoes i WHERE i.evento_id = e.id
+                     AND i.status = 'pendente') AS pendentes,
+                   (SELECT COALESCE(SUM(i.valor), 0) FROM inscricoes i WHERE i.evento_id = e.id
+                     AND i.status = 'pago') AS arrecadado
+            FROM eventos e
+            WHERE e.status = 'publicado'
+            ORDER BY COALESCE(e.data_inicio, e.prazo_inscricao) ASC, e.id ASC
+        ");
+
         $titulo = "Admin - Painel";
 
         ob_start();
@@ -361,7 +384,17 @@ class AdminController {
             // principal na coluna.
             $resultados = db_fetch_all("
                 SELECT p.id, p.nome, e.email, p.token,
-                       GROUP_CONCAT(DISTINCT f.ano || ':' || f.status) as filiacoes
+                       GROUP_CONCAT(DISTINCT f.ano || ':' || f.status) as filiacoes,
+                       -- A busca acha a PESSOA, e ate 31/08/2026 so mostrava as
+                       -- filiacoes dela: quem se inscreveu num evento e nunca se
+                       -- filiou aparecia sem nada ao lado do nome, como se o
+                       -- sistema nao soubesse de nada. Sao dois vinculos, e a
+                       -- ferramenta e comum aos dois modulos.
+                       (SELECT GROUP_CONCAT(ev.slug || ' — ' || COALESCE(c.nome, 'sem categoria'), '; ')
+                          FROM inscricoes i
+                          JOIN eventos ev ON ev.id = i.evento_id
+                          LEFT JOIN evento_categorias c ON c.id = i.categoria_id
+                         WHERE i.pessoa_id = p.id) as inscricoes
                 FROM pessoas p
                 LEFT JOIN emails e ON e.pessoa_id = p.id AND e.principal = 1
                 LEFT JOIN emails busca ON busca.pessoa_id = p.id

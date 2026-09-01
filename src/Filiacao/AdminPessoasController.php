@@ -47,6 +47,24 @@ class AdminPessoasController extends AdminController {
             ORDER BY ano DESC
         ", [(int)$id]);
 
+        // Eventos da pessoa. `pessoas` e a unica tabela que os dois modulos
+        // compartilham, entao esta ficha e o lugar onde filiacao e evento se
+        // encontram — e ate 31/08/2026 ela so mostrava um dos dois lados.
+        //
+        // Traz a CATEGORIA, e nao so o status: e ela que diz o PAPEL da pessoa
+        // naquele evento (palestrante convidado, estudante, professor filiado).
+        // "sdrj05: pago" esconde exatamente o que se quer saber ao abrir a ficha.
+        $inscricoes_pessoa = db_fetch_all("
+            SELECT i.id, i.status, i.valor, i.data_pagamento, i.metodo, i.presenca_em,
+                   ev.id AS evento_id, ev.nome AS evento_nome, ev.slug, ev.data_inicio,
+                   c.nome AS categoria_nome
+            FROM inscricoes i
+            JOIN eventos ev ON ev.id = i.evento_id
+            LEFT JOIN evento_categorias c ON c.id = i.categoria_id
+            WHERE i.pessoa_id = ?
+            ORDER BY COALESCE(ev.data_inicio, ev.created_at) DESC, i.id DESC
+        ", [(int)$id]);
+
         $salvo = isset($_GET['salvo']);
         $titulo = "Admin - " . ($pessoa['nome'] ?: 'Pessoa');
 

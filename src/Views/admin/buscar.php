@@ -29,6 +29,7 @@
                     <th>Nome</th>
                     <th>Email</th>
                     <th>Filiações</th>
+                    <th>Inscrições em eventos</th>
                 </tr>
             </thead>
             <tbody>
@@ -40,7 +41,14 @@
                             </a>
                         </td>
                         <td><?= e($r['email']) ?></td>
-                        <td><?= e($r['filiacoes'] ?? '-') ?></td>
+                        <td><?= e($r['filiacoes'] ?? '') ?: '—' ?></td>
+                        <?php
+                        // A busca acha a PESSOA. Sem esta coluna, quem se
+                        // inscreveu num evento e nunca se filiou aparecia com o
+                        // nome e nada ao lado — parecia que o sistema nao sabia
+                        // de nada sobre ela.
+                        ?>
+                        <td><small><?= e($r['inscricoes'] ?? '') ?: '—' ?></small></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
