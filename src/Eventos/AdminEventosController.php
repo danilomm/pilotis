@@ -117,6 +117,7 @@ class AdminEventosController extends AdminController {
             trim($_POST['conteudo'] ?? '') ?: null,
             trim($_POST['local'] ?? '') ?: null,
             trim($_POST['modalidade'] ?? '') ?: 'presencial',
+            trim($_POST['url_anais'] ?? '') ?: null,
             trim($_POST['organizador'] ?? '') ?: null,
             ($_POST['data_inicio'] ?? '') ?: null,
             ($_POST['data_fim'] ?? '') ?: null,
@@ -246,7 +247,7 @@ class AdminEventosController extends AdminController {
 
         db_execute("
             UPDATE eventos SET nome = ?, slug = ?, descricao = ?, conteudo = ?,
-                local = ?, modalidade = ?, organizador = ?,
+                local = ?, modalidade = ?, url_anais = ?, organizador = ?,
                 data_inicio = ?, data_fim = ?, prazo_inscricao = ?, data_valor_cheio = ?,
                 email_contato = ?, assinantes = ?, apoiadores = ?,
                 emails_organizacao = ?, organizacao_expira_em = ?,

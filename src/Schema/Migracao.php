@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-31b';
+const SCHEMA_VERSION = '2026-08-31c';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -485,6 +485,17 @@ function init_extra_tables(PDO $db): void {
     if ($st->rowCount() > 0) {
         error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
     }
+
+    // Link para os anais do evento, publicados DEPOIS que ele acontece.
+    //
+    // O sistema de anais existe a parte (anais.docomomobrasil.com, Hugo, PDFs
+    // no Zenodo com DOI) e o SLUG e a chave comum aos dois — sdrj04 la e
+    // sdrj04 aqui. Mesmo assim o link e GRAVADO, e nao deduzido do slug: o
+    // padrao de URL e do outro sistema, e um link montado por adivinhacao leva
+    // a lugar nenhum no dia em que ele mudar.
+    //
+    // Vazio nao mostra nada. E o caso de todo evento que ainda nao aconteceu.
+    garantir_coluna($db, 'eventos', 'url_anais', 'TEXT');
 
     // Modalidade do evento: presencial, online ou hibrido.
     //

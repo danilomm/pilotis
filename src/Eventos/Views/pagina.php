@@ -136,5 +136,22 @@
         </div>
     <?php endif; ?>
 
+    <?php
+    // Anais, quando ja publicados: e o que a pagina tem a oferecer depois que o
+    // evento passa. Fica FORA do if de inscricoes — o preenchimento do campo e
+    // que decide, e ele so acontece quando os anais saem, semanas ou meses
+    // depois. A pagina deixa de convidar para a inscricao e passa a apontar
+    // para o que ficou do evento, sem sair do ar e sem trocar de URL.
+    ?>
+    <?php if (!empty($evento['url_anais'])): ?>
+        <p style="margin: 1.5rem 0;">
+            <a href="<?= e($evento['url_anais']) ?>" role="button" class="primary"
+               style="display: inline-block; padding: .9rem 2rem; font-size: 1.05rem;"
+               target="_blank" rel="noopener">
+                Ler os anais do evento
+            </a>
+        </p>
+    <?php endif; ?>
+
     <?php require SRC_DIR . '/Eventos/Views/_apoiadores.php'; ?>
 </article>

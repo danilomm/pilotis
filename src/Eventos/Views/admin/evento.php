@@ -123,6 +123,18 @@
         <small>Sai impressa no comprovante de inscrição, junto com a data e o local —
         é o que permite usá-lo para justificar ausência no trabalho.</small>
 
+        <?php
+        // O link so aparece na pagina publica quando esta preenchido, e e o
+        // caminho natural depois que o evento acontece: a pagina deixa de
+        // convidar para a inscricao e passa a apontar para o que ficou dele.
+        ?>
+        <label for="url_anais">Anais do evento</label>
+        <input type="url" id="url_anais" name="url_anais"
+               value="<?= e($evento['url_anais'] ?? '') ?>"
+               placeholder="https://anais.docomomobrasil.com/se/<?= e($evento['slug'] ?? '') ?>/">
+        <small>Preencha quando os anais forem publicados. O link aparece na página do evento,
+        e é o que ela mostra depois que as inscrições encerram. Vazio não mostra nada.</small>
+
         <label for="conteudo">Página do evento</label>
         <textarea id="conteudo" name="conteudo" rows="18"
                   style="font-family: var(--pico-font-family-monospace); font-size: .85rem;"
@@ -221,10 +233,17 @@
                 <strong>PNG com fundo transparente</strong> é o que fica bem em qualquer fundo.
                 Sem arquivo, sai o nome escrito no campo <em>Organizador</em>.</small>
 
+                <?php
+                // O `emails_organizacao()` aceita quebra de linha, virgula,
+                // ponto-e-virgula ou espaco. A dica precisa DIZER isso: o
+                // placeholder some assim que ha um email escrito, entao quem
+                // edita a lista depois nao ve instrucao nenhuma.
+                ?>
                 <label for="emails_organizacao">Acesso da organização ao painel</label>
                 <textarea id="emails_organizacao" name="emails_organizacao" rows="3"
-                          placeholder="Um email por linha. Quem estiver aqui pede o próprio link de acesso."><?= e($evento['emails_organizacao'] ?? '') ?></textarea>
-                <small>Cada pessoa da lista entra em <code>/eventos/<?= e($evento['slug']) ?>/organizacao</code>,
+                          placeholder="maria@universidade.br&#10;joao@outra.br"><?= e($evento['emails_organizacao'] ?? '') ?></textarea>
+                <small><strong>Um email por linha</strong> — vírgula ou ponto-e-vírgula também servem.
+                Cada pessoa da lista entra em <code>/eventos/<?= e($evento['slug']) ?>/organizacao</code>,
                 informa o email e recebe um link de acesso. O painel mostra a lista de inscritos com contato,
                 endereço e valores, <strong>sem CPF</strong>, e permite baixar planilha. Todo acesso fica
                 registrado no log com o email de quem fez. Vazio = painel desligado.
