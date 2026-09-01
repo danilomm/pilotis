@@ -162,6 +162,7 @@ post('/admin/pagar/{filiacao_id}', 'AdminPessoasController::marcarPago');
 post('/admin/enviar-email/{filiacao_id}', 'AdminPessoasController::enviarEmail');
 post('/admin/enviar-confirmacao/{filiacao_id}', 'AdminPessoasController::enviarConfirmacao');
 post('/admin/eventos/inscricao/{inscricao_id}/pagar', 'AdminEventosController::marcarInscricaoPaga');
+post('/admin/eventos/inscricao/{inscricao_id}/excluir', 'AdminEventosController::excluirInscricao');
 post('/admin/eventos/inscricao/{inscricao_id}/enviar-confirmacao', 'AdminEventosController::enviarConfirmacaoInscricao');
 post('/admin/excluir/pagamento/{filiacao_id}', 'AdminPessoasController::excluirPagamento');
 post('/admin/excluir/pessoa/{pessoa_id}', 'AdminPessoasController::excluirPessoa');

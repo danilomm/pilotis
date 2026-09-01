@@ -39,7 +39,8 @@ $query = function (array $extra) use ($filtro, $busca): string {
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h2>Inscritos — <?= e($evento['nome']) ?></h2>
         <div>
-            <a href="/admin/eventos/<?= (int)$evento['id'] ?>/inscritos.xlsx<?= $query([]) ?>" role="button">Baixar planilha</a>
+            <?php // class="primary" e o que o layout pinta com o verde do Docomomo. ?>
+            <a href="/admin/eventos/<?= (int)$evento['id'] ?>/inscritos.xlsx<?= $query([]) ?>" role="button" class="primary">Baixar planilha</a>
             <a href="/admin/eventos/<?= (int)$evento['id'] ?>/inscritos.csv<?= $query([]) ?>" role="button" class="outline">CSV</a>
             <a href="/admin/eventos/<?= (int)$evento['id'] ?>" role="button" class="outline">Voltar ao evento</a>
         </div>
@@ -67,7 +68,12 @@ $query = function (array $extra) use ($filtro, $busca): string {
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" style="margin-bottom: 0;">Filtrar</button>
+        <?php
+        // width:auto porque o Pico faz `button` ocupar 100%: ao quebrar a linha
+        // do filtro, "Filtrar" caia sozinho e virava uma barra verde de largura
+        // inteira, com mais peso visual que qualquer acao de verdade da tela.
+        ?>
+        <button type="submit" style="margin-bottom: 0; width: auto;">Filtrar</button>
         <?php if ($filtro !== '' || $busca !== ''): ?>
             <a href="/admin/eventos/<?= (int)$evento['id'] ?>/inscritos" role="button" class="outline"
                style="margin-bottom: 0;">Limpar</a>
@@ -154,6 +160,21 @@ $query = function (array $extra) use ($filtro, $busca): string {
                                         if (!empty($i['documento'])) echo ' · ' . e(trim(($i['documento_tipo'] ?? '') . ' ' . $i['documento']));
                                     ?></small>
                                 <?php endif; ?>
+                            <?php endif; ?>
+
+                            <?php
+                            // Excluir so o que NAO foi pago: apagar linha com
+                            // dinheiro atras deixa o pagamento do PagBank sem
+                            // dono do nosso lado — e o caso Maisa, R$ 460 orfaos
+                            // por 15 meses. A confirmacao diz o nome, porque a
+                            // linha certa e a errada sao vizinhas na tabela.
+                            ?>
+                            <?php if ($i['status'] !== 'pago'): ?>
+                                <form method="POST" action="/admin/eventos/inscricao/<?= (int)$i['id'] ?>/excluir" style="margin: .25rem 0 0;"
+                                      onsubmit="return confirm('Excluir a inscrição de <?= e(addslashes(trim($i['nome'] ?? ''))) ?>? Não há como desfazer.');"><?= campo_csrf() ?>
+                                    <button type="submit" class="secondary outline"
+                                            style="padding: .2rem .5rem; font-size: .75rem; color: #b71c1c; border-color: #b71c1c;">excluir</button>
+                                </form>
                             <?php endif; ?>
                         </td>
                     </tr>

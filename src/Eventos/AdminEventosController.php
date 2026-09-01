@@ -1017,6 +1017,67 @@ class AdminEventosController extends AdminController {
         redirect("/admin/eventos/{$inscricao['evento_id']}/inscritos");
     }
 
+    /**
+     * Exclui uma inscricao.
+     *
+     * Nao existia, e a falta apareceu ao planejar o dia de teste com grupo
+     * controlado: as inscricoes de teste ficariam para sempre na lista da
+     * coordenacao e nos totais, porque o evento tambem nao volta a rascunho
+     * depois da primeira inscricao. Serve tambem ao caso comum — desistencia
+     * antes de pagar, inscricao duplicada, engano de categoria.
+     *
+     * RECUSA inscricao PAGA. Apagar uma linha que tem dinheiro atras deixa o
+     * pagamento no PagBank sem dono no nosso lado, que e exatamente o caso
+     * Maisa: R$ 460 orfaos por 15 meses. Quem precisa desfazer um pagamento
+     * resolve com o PagBank primeiro.
+     *
+     * O comprovante de matricula vai junto: e dado pessoal, e guardar arquivo
+     * de uma inscricao que nao existe mais nao serve a nada.
+     */
+    public static function excluirInscricao(string $inscricao_id): void {
+        self::exigirLogin();
+
+        $i = db_fetch_one("
+            SELECT i.*, p.nome, ev.slug, ev.id AS evento_id
+            FROM inscricoes i
+            JOIN pessoas p ON p.id = i.pessoa_id
+            JOIN eventos ev ON ev.id = i.evento_id
+            WHERE i.id = ?
+        ", [(int)$inscricao_id]);
+
+        if (!$i) {
+            flash('error', 'Inscrição não encontrada.');
+            redirect('/admin/eventos');
+            return;
+        }
+
+        if ($i['status'] === 'pago') {
+            flash('error', 'Inscrição paga não pode ser excluída — o pagamento ficaria sem dono. '
+                . 'Resolva o estorno com o PagBank antes.');
+            redirect("/admin/eventos/{$i['evento_id']}/inscritos");
+            return;
+        }
+
+        db_execute("DELETE FROM lembretes_agendados WHERE inscricao_id = ?", [(int)$i['id']]);
+
+        // O comprovante de matricula e arquivo em disco, fora do banco.
+        if (!empty($i['comprovante_path'])) {
+            $arq = COMPROVANTES_DIR . '/' . basename($i['comprovante_path']);
+            if (is_file($arq)) @unlink($arq);
+        }
+
+        db_execute("DELETE FROM inscricoes WHERE id = ?", [(int)$i['id']]);
+
+        // No log com nome e situacao: depois se vai querer saber o que sumiu da
+        // lista, e uma linha apagada nao conta a propria historia.
+        registrar_log('inscricao_excluida', (int)$i['pessoa_id'],
+            "Inscricao {$i['id']} de {$i['nome']} no evento {$i['slug']} excluida pelo admin"
+            . " (situacao: {$i['status']}, " . formatar_valor((int)$i['valor']) . ")");
+
+        flash('success', 'Inscrição excluída.');
+        redirect("/admin/eventos/{$i['evento_id']}/inscritos");
+    }
+
     public static function enviarConfirmacaoInscricao(string $inscricao_id): void {
         self::exigirLogin();
 

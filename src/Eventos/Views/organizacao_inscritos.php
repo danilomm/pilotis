@@ -37,7 +37,7 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <h2>Inscritos — <?= e($evento['nome']) ?></h2>
         <div>
-            <a href="<?= e($base) ?>/planilha<?= e($sufixo) ?>" role="button">Baixar planilha</a>
+            <a href="<?= e($base) ?>/planilha<?= e($sufixo) ?>" role="button" class="primary">Baixar planilha</a>
             <a href="<?= e($base) ?>/csv<?= e($sufixo) ?>" role="button" class="outline">CSV</a>
         </div>
     </div>
@@ -81,7 +81,9 @@ $sufixo = $parametros ? '?' . http_build_query($parametros) : '';
                 <?php endforeach; ?>
             </select>
         </div>
-        <button type="submit" style="margin-bottom: 0;">Filtrar</button>
+        <?php // width:auto: sem isso o Pico estica o botao para 100% quando a
+              // linha do filtro quebra. Mesmo ajuste da tela do admin. ?>
+        <button type="submit" style="margin-bottom: 0; width: auto;">Filtrar</button>
         <?php if ($filtro !== '' || $busca !== ''): ?>
             <a href="<?= e($base) ?>" role="button" class="outline" style="margin-bottom: 0;">Limpar</a>
         <?php endif; ?>
