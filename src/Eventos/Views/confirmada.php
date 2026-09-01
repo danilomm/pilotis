@@ -20,7 +20,19 @@
         </p>
     <?php endif; ?>
 
-    <p>Você também recebeu esta confirmação por email. Informações operacionais do evento (links, instruções, material) serão enviadas pela organização.</p>
+    <?php
+    // "Você também recebeu" afirmava um envio que a tela nao tem como conhecer:
+    // se o email falhar, a falha vai para o log e a pagina segue afirmando o
+    // contrario. E se o email nao chegou, nao havia como obter o comprovante
+    // senao escrevendo a tesouraria.
+    ?>
+    <p>A confirmação e o comprovante em PDF também são enviados para
+    <?= !empty($cadastrado['email']) ? '<strong>' . e($cadastrado['email']) . '</strong>' : 'o seu email' ?>.
+    Não chegou em alguns minutos? Confira a caixa de spam, ou escreva para
+    <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.</p>
+
+    <p>Informações operacionais do evento (links, instruções, material) serão
+    enviadas pela organização.</p>
 
     <p><small>Dúvidas: <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a></small></p>
 </article>

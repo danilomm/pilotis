@@ -9,6 +9,13 @@
             ? 'width: 100%; height: auto; display: block; margin: 0 0 20px; border-radius: 6px;'
             : 'width: 100%; max-width: 460px; height: auto; display: block; margin: 0 auto 24px; border-radius: 8px;';
     ?>
+        <?php
+        // O `alt` vazio da FAIXA e decisao, nao esquecimento: o titulo do
+        // evento vem em <h1> na linha seguinte, e descrever a faixa com o mesmo
+        // nome faria o leitor de tela dize-lo duas vezes. Faixa larga ali e
+        // ornamento do cabecalho. O CARTAZ, que aparece sozinho e centralizado,
+        // ganha texto — nesse caso a imagem e o conteudo.
+        ?>
         <img src="<?= e(EVENTOS_IMG_URL . '/' . $evento['imagem_path']) ?>"
              alt="<?= $eh_faixa ? '' : 'Cartaz — ' . e($evento['nome']) ?>"
              style="<?= $img_estilo ?>">

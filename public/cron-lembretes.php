@@ -27,6 +27,26 @@ if (!hash_equals($token_esperado, $token)) {
     die(json_encode(["erro" => "Acesso negado"]));
 }
 require_once __DIR__ . "/src/db.php";
+
+// ---------------------------------------------------------------------------
+// Manutencao: este arquivo NAO passa pelo index.php, entao a checagem tem de
+// estar aqui.
+//
+// Ate 31/08/2026 nao estava: com o site "fora do ar", os endpoints avulsos
+// continuavam respondendo — o de verificar pagamentos escreve no banco e manda
+// email a cada 15 minutos. "Fora do ar" nao queria dizer "banco parado", e o
+// interruptor dava a impressao de que sim.
+//
+// 503 e o codigo certo: diz ao GitHub Actions que a chamada nao valeu e que ele
+// pode tentar de novo, em vez de registrar sucesso sobre trabalho nao feito.
+// ---------------------------------------------------------------------------
+if (function_exists('em_manutencao') && em_manutencao()) {
+    http_response_code(503);
+    header('Retry-After: 1800');
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'manutencao', 'motivo' => 'Sistema em manutencao; nada foi processado.']);
+    exit;
+}
 require_once SRC_DIR . "/Services/LembreteService.php";
 
 header("Content-Type: application/json; charset=utf-8");

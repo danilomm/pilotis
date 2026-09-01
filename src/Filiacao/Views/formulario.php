@@ -24,7 +24,17 @@
             <legend>Dados Pessoais</legend>
 
             <label for="nome">Nome Completo *</label>
-            <input type="text" id="nome" autocomplete="name" name="nome" value="<?= e($cadastrado['nome'] ?? '') ?>" required>
+            <input type="text" id="nome" autocomplete="name" name="nome" value="<?= e($cadastrado['nome'] ?? '') ?>" required
+                   minlength="5" maxlength="60"
+                   title="Nome completo, entre 5 e 60 caracteres.">
+            <?php
+            // 5 e 60 sao do PagBank, nao nossos: `customer.name` fora
+            // dessa faixa faz a cobranca voltar 400 ("size must be
+            // between 5 and 60"), e o erro so apareceria na tela de
+            // pagamento, depois de o formulario inteiro ter sido
+            // aceito. Aqui a pessoa ve no campo. O maior nome da base
+            // tem 50 caracteres, entao o teto nao corta ninguem.
+            ?>
 
             <label for="email">Email *</label>
             <input type="email" id="email" autocomplete="email" name="email" value="<?= e($cadastrado['email'] ?? '') ?>" required>

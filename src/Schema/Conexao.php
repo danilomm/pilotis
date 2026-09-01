@@ -27,8 +27,11 @@ function get_db(): PDO {
         $_db = new PDO("sqlite:$dbPath");
         $_db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $_db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        $_db->exec("PRAGMA journal_mode = WAL");
+        // O timeout vem ANTES do journal_mode: a troca de journal e ela propria
+        // uma operacao que pode encontrar o banco ocupado, e sem timeout ela
+        // falha de imediato em vez de esperar.
         $_db->exec("PRAGMA busy_timeout = 5000");
+        $_db->exec("PRAGMA journal_mode = WAL");
 
         // Garante que tabelas auxiliares existam — so quando o schema mudou.
         garantir_schema($_db);

@@ -68,6 +68,10 @@ function tipos_log_criticos(): array {
         // preencheu tudo e some.
         'inscricao_sem_cpf'          => 'Inscricao sem CPF: combinar pagamento e lancar a mao',
         'erro_aviso_sem_cpf'         => 'Inscricao sem CPF registrada e a TESOURARIA NAO FOI AVISADA',
+        'cpf_de_terceiro'            => 'CPF informado pertence a outro cadastro e a fusao foi recusada',
+        'inscricao_excluida_com_cobranca' => 'Inscricao apagada COM cobranca aberta: conferir o extrato do PagBank',
+        'post_grande_demais'         => 'Envio descartado por exceder o limite do PHP — provavelmente foto de comprovante',
+        'exclusao_inscricao_confirmada' => 'Pessoa excluida TINHA inscricao paga ou isenta: conferir no extrato',
     ];
 }
 

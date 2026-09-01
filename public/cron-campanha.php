@@ -22,6 +22,25 @@ require_once is_file(__DIR__ . '/src/config.php')
     : __DIR__ . '/../src/config.php';
 require_once SRC_DIR . '/db.php';
 
+// ---------------------------------------------------------------------------
+// Manutencao: este arquivo NAO passa pelo index.php, entao a checagem tem de
+// estar aqui.
+//
+// Ate 31/08/2026 nao estava: com o site "fora do ar" os endpoints avulsos
+// continuavam respondendo. Aqui a consequencia seria a pior das cinco — este e
+// o que dispara LOTE DE EMAIL de campanha.
+//
+// 503 e o codigo certo: diz ao GitHub Actions que a chamada nao valeu e que ele
+// pode tentar de novo, em vez de registrar sucesso sobre trabalho nao feito.
+// ---------------------------------------------------------------------------
+if (em_manutencao()) {
+    http_response_code(503);
+    header('Retry-After: 1800');
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'manutencao', 'motivo' => 'Sistema em manutencao; nada foi enviado.']);
+    exit;
+}
+
 header('Content-Type: application/json');
 
 // Verifica token (obrigatorio via .env, sem fallback)

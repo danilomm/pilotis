@@ -205,7 +205,11 @@ define('EMAIL_FROM', env('EMAIL_FROM', ORG_EMAIL_CONTATO));
 define('EMAIL_FROM_NAME', ORG_NOME);
 
 // App
-define('BASE_URL', env('BASE_URL', 'http://localhost:8000'));
+// `rtrim` na origem: `BASE_URL` com barra no fim produzia `//webhook/pagbank`
+// na `notification_url` do PagBank — caminho que da 404, e que nao casa nem com
+// a isencao de CSRF nem com a de manutencao, as duas por comparacao exata.
+// Normalizar aqui conserta os tres lugares que concatenam sem pensar.
+define('BASE_URL', rtrim(env('BASE_URL', 'http://localhost:8000'), '/'));
 define('SECRET_KEY', env('SECRET_KEY', 'chave_secreta_padrao'));
 
 // Admin
@@ -383,6 +387,26 @@ function contato_partes(?string $contato): array {
 }
 
 /**
+ * Converte "8M", "512K", "2G" do php.ini em bytes.
+ *
+ * As diretivas de tamanho do PHP aceitam sufixo, e `(int)` sobre elas devolve
+ * 8 para "8M" — numero que nao serve para comparar com CONTENT_LENGTH. Devolve
+ * 0 quando nao ha limite (`post_max_size = 0`), que e o que o PHP entende por
+ * ilimitado.
+ */
+function tamanho_para_bytes(?string $valor): int {
+    $v = trim((string)$valor);
+    if ($v === '') return 0;
+    $n = (int)$v;
+    switch (strtolower(substr($v, -1))) {
+        case 'g': $n *= 1024; // cai para M
+        case 'm': $n *= 1024; // cai para K
+        case 'k': $n *= 1024;
+    }
+    return max(0, $n);
+}
+
+/**
  * O sistema esta em manutencao?
  *
  * Chave LIGADA PELO ADMIN, guardada em `configuracoes`. Fica atras da senha do
@@ -398,11 +422,32 @@ function contato_partes(?string $contato): array {
 function em_manutencao(): bool {
     static $cache = null;
     if ($cache !== null) return $cache;
+    $cache = false;
+    // Conexao PROPRIA, somente leitura, SEM passar por get_db().
+    //
+    // Passando por get_db() esta funcao dispararia garantir_schema() — e a
+    // migracao reconstroi `pagbank_pedidos` e `lembretes_agendados`, com dados
+    // reais, em BEGIN IMMEDIATE. A pergunta "o site esta fora do ar?" e feita
+    // em TODA requisicao publica, inclusive as do robo: seria a visita de um
+    // desconhecido disparando a reconstrucao destrutiva, justamente enquanto o
+    // sistema esta declarado fora do ar. Ler a chave nao precisa de migracao —
+    // `configuracoes` existe desde a primeira versao do banco.
+    //
+    // Banco ausente, ilegivel ou sem a tabela vale como NAO em manutencao: o
+    // erro maior aparece adiante, com mensagem propria, e nao se troca um
+    // defeito de banco por uma pagina que mente dizendo "voltamos ja".
     try {
-        $v = db_fetch_one("SELECT valor FROM configuracoes WHERE chave = 'manutencao'");
-        $cache = ($v['valor'] ?? '') === '1';
+        $caminho = DATABASE_PATH;
+        if (!is_file($caminho)) return $cache;
+        $ro = new PDO('sqlite:' . $caminho, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_TIMEOUT => 2,
+        ]);
+        $st = $ro->query("SELECT valor FROM configuracoes WHERE chave = 'manutencao'");
+        $v = $st ? $st->fetchColumn() : null;
+        if ($st) $st->closeCursor();
+        $cache = ((string)$v) === '1';
     } catch (Throwable $e) {
-        // Banco fora do ar ja e problema maior; nao e a manutencao que resolve.
         $cache = false;
     }
     return $cache;
@@ -436,7 +481,7 @@ function modalidade_evento(?string $modalidade): string {
  * que ela existe para impedir. Nao e semver: o que importa e achar o texto
  * daquele dia no historico do git.
  */
-const POLITICA_PRIVACIDADE_VERSAO = '2026-08-31b';
+const POLITICA_PRIVACIDADE_VERSAO = '2026-09-01';
 
 /**
  * Como esta pessoa se identifica num documento: "CPF 000.000.000-00" ou

@@ -384,7 +384,9 @@ class FiliacaoController {
                 $comprovante_path = salvar_comprovante($_FILES['comprovante'], $cadastrado['id'], (int)$ano);
 
                 if ($comprovante_path === null) {
-                    flash('error', 'Erro ao processar comprovante. Verifique se o arquivo é PDF, JPG ou PNG e tem no máximo 5MB.');
+                    flash('error', 'Não foi possível receber o comprovante. Use PDF, JPG ou PNG de até 5MB. '
+                        . 'Foto tirada por iPhone costuma sair em HEIC, que não serve: '
+                        . 'ao anexar, escolha "Formatos mais compatíveis", ou abra a foto e salve como JPG.');
                     redirect("/filiacao/$ano/$token");
                     return;
                 }

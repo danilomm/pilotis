@@ -14,7 +14,12 @@
     // totalmente novo lia "encontramos seu cadastro" sobre dados que ela mesma
     // acabara de digitar.
     ?>
-    <?php if ($tem_cadastro_previo): ?>
+    <?php
+    // Sai de cena quando o formulario voltou por recusa: ali os campos vem do
+    // que a PESSOA acabou de digitar, e nao do cadastro. Dizer "com o que temos
+    // registrado" logo abaixo do erro mandaria conferir a fonte errada.
+    ?>
+    <?php if ($tem_cadastro_previo && empty($repovoado)): ?>
         <div class="alert alert-success" style="padding: 12px; background: #d4edda; color: #155724; border-radius: 6px; margin-bottom: 16px;">
             Alguns campos já vêm preenchidos com o que temos registrado.
             Confira e corrija o que estiver desatualizado.
@@ -114,8 +119,17 @@
                                    data-comprovante="<?= (int)$cat['requer_comprovante'] ?>"
                                    onchange="atualizarForm()"
                                    style="margin: 0; flex: 0 0 auto;"
-                                   disabled
-                                   <?= ((int)($inscricao['categoria_id'] ?? 0) === (int)$cat['id']) ? 'checked' : '' ?>>
+                                   disabled>
+                            <?php
+                            // Sem `checked`. Ate 31/08/2026 a categoria
+                            // indisponivel saia `disabled` E `checked` quando ja
+                            // estava gravada na inscricao: o `:checked` fazia o
+                            // JS trata-la como escolhida e a validacao do grupo
+                            // passar, mas controle desabilitado NAO e enviado —
+                            // o formulario ia sem `categoria_id` e voltava
+                            // "Escolha uma categoria", sem dizer qual, com a
+                            // marcada escondida dentro do <details> fechado.
+                            ?>
                             <span>
                                 <?= e($cat['nome']) ?> — <?= $v > 0 ? formatar_valor($v) : 'Gratuita' ?>
                                 <?php if ($cat['requer_comprovante']): ?>
@@ -132,15 +146,47 @@
             <legend>Dados pessoais</legend>
 
             <label for="nome">Nome completo *</label>
-            <input type="text" id="nome" autocomplete="name" name="nome" value="<?= e($pre['nome'] ?? '') ?>" required>
+            <input type="text" id="nome" autocomplete="name" name="nome" value="<?= e($pre['nome'] ?? '') ?>" required
+                   minlength="5" maxlength="60"
+                   title="Nome completo, entre 5 e 60 caracteres.">
+            <?php
+            // 5 e 60 sao do PagBank, nao nossos: `customer.name` fora
+            // dessa faixa faz a cobranca voltar 400 ("size must be
+            // between 5 and 60"), e o erro so apareceria na tela de
+            // pagamento, depois de o formulario inteiro ter sido
+            // aceito. Aqui a pessoa ve no campo. O maior nome da base
+            // tem 50 caracteres, entao o teto nao corta ninguem.
+            ?>
 
             <label for="nome_cracha">Nome no crachá</label>
             <input type="text" id="nome_cracha" name="nome_cracha" maxlength="40"
                    value="<?= e($pre['nome_cracha'] ?? palpite_nome_cracha($pre['nome'] ?? '')) ?>">
             <small>Como você quer ser chamado(a) no evento. Já vem preenchido — corrija se quiser.</small>
 
-            <label for="email">Email *</label>
-            <input type="email" id="email" autocomplete="email" name="email" value="<?= e($pre['email'] ?? '') ?>" required>
+            <?php
+            // SOMENTE LEITURA, e a dica diz por que.
+            //
+            // Ate 31/08/2026 o campo era editavel e obrigatorio — e o que a
+            // pessoa escrevesse era DESCARTADO: `$email_form` e lido no
+            // controller e usado num lugar so, para procurar cadastro antigo.
+            // Nao ha coluna `email` em `inscricoes`, o UPDATE de `pessoas` nao
+            // toca em email, e nada escreve na tabela `emails`.
+            //
+            // Quem corrigisse um endereco desatualizado saia convencida de que
+            // corrigiu, e a confirmacao, o comprovante e os lembretes
+            // continuavam indo para o endereco velho — que e tambem o que vai
+            // para o PagBank.
+            //
+            // Trocar de email nao e coisa de formulario de inscricao: e
+            // identidade, o link de acesso foi enviado PARA ele, e
+            // `emails.email` e UNIQUE. Passa pela tesouraria.
+            ?>
+            <label for="email">Email</label>
+            <input type="email" id="email" autocomplete="email" name="email"
+                   value="<?= e($pre['email'] ?? '') ?>" readonly>
+            <small>É para este endereço que vão a confirmação e o comprovante — é o mesmo
+            que recebeu o link desta página. Para trocar, escreva para
+            <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.</small>
 
             <label for="cpf">CPF <span id="cpf-req">*</span></label>
             <input type="text" id="cpf" autocomplete="off" name="cpf" value="<?= e(formatar_cpf($pre['cpf'] ?? '')) ?>"
@@ -283,8 +329,17 @@
 
         <fieldset id="fs-comprovante" style="display: none;">
             <legend>Comprovante de matrícula *</legend>
+            <?php
+            // O teto REAL e o menor entre o nosso (5 MB, em
+            // salvar_comprovante_evento) e o `upload_max_filesize` do PHP, que
+            // costuma ser 2 MB e corta ANTES de o codigo rodar. Afirmar 5 MB
+            // fazia a pessoa descobrir o limite verdadeiro depois de subir a
+            // foto, provavelmente no celular e no 4G.
+            $teto_php = (int)ini_get('upload_max_filesize');
+            $teto = $teto_php > 0 ? min(5, $teto_php) : 5;
+            ?>
             <small style="display: block; margin-bottom: 1rem;">
-                PDF, JPG ou PNG, máximo 5MB.
+                PDF, JPG ou PNG, máximo <?= (int)$teto ?>MB.
             </small>
             <?php
             // O `<legend>` da o contexto do bloco, mas nao nomeia o campo: sem
@@ -293,6 +348,15 @@
             ?>
             <label for="comprovante">Arquivo do comprovante</label>
             <input type="file" id="comprovante" name="comprovante" accept=".pdf,.jpg,.jpeg,.png">
+            <?php if (!empty($repovoado) && empty($comprovante_existente)): ?>
+                <?php
+                // O texto voltou da tentativa anterior; o arquivo nao volta —
+                // navegador nenhum repovoa <input type=file>. Dizer isso evita
+                // a pessoa enviar de novo achando que o anexo continua ali.
+                ?>
+                <small style="color: var(--pico-del-color);">Escolha o arquivo de novo: o
+                anexo não é guardado entre as tentativas.</small>
+            <?php endif; ?>
             <?php if (!empty($comprovante_existente)): ?>
                 <small style="color: green;">✓ Comprovante já enviado anteriormente.</small>
             <?php endif; ?>
@@ -337,11 +401,27 @@
         fsComprovante.style.display = precisaComprovante ? 'block' : 'none';
         inputComp.required = precisaComprovante && <?= !empty($comprovante_existente) ? 'false' : 'true' ?>;
 
-        // Campos obrigatórios de inscrição paga
-        var pagos = ['cpf', 'telefone', 'endereco', 'cep', 'cidade', 'estado', 'pais'];
+        // Campos obrigatórios de inscrição paga.
+        //
+        // O CPF fica de FORA desta lista: ele e o unico que tem substituto. O
+        // servidor aceita CPF *ou* documento estrangeiro (EventosController, na
+        // checagem de categoria paga), e ate 31/08/2026 o navegador nao sabia
+        // disso: marcava `#cpf` como required e nada o desmarcava quando a
+        // pessoa preenchia o passaporte.
+        //
+        // O efeito era o pior possivel — a tela /aguardando, o aviso a
+        // tesouraria e o botao "lancar pago" existiam, funcionavam, e NINGUEM
+        // chegava neles: o balao nativo do navegador apontava para o campo que a
+        // pessoa nao tem como preencher, sem mensagem nossa e sem log.
+        //
+        // Passou despercebido porque o caminho foi testado por POST direto, que
+        // fala com o servidor. Quem recusava era o cliente.
+        var pagos = ['telefone', 'endereco', 'cep', 'cidade', 'estado', 'pais'];
         pagos.forEach(function(id) {
             document.getElementById(id).required = valor > 0;
         });
+
+        atualizarIdentificacao(valor > 0);
 
         // E o ASTERISCO acompanha. As classes `req-pago` e `cpf-req` existiam no
         // HTML desde sempre para isto e nada as tocava: quem escolhia categoria
@@ -353,14 +433,42 @@
         // marcacao conservadora do HTML e o que aparece — e ela se corrige no
         // primeiro clique, que e o primeiro campo do formulario.
         var mostra = valor > 0 ? '' : 'none';
-        document.getElementById('cpf-req').style.display = mostra;
         document.querySelectorAll('.req-pago').forEach(function (el) {
             el.style.display = mostra;
         });
 
         btn.textContent = valor > 0 ? 'Continuar para pagamento' : 'Confirmar inscrição gratuita';
     }
-    document.addEventListener('DOMContentLoaded', atualizarForm);
+
+    /**
+     * CPF e documento se substituem: um preenchido dispensa o outro.
+     *
+     * Espelha a regra do servidor, que exige identificacao — CPF OU documento —
+     * so em categoria paga. O asterisco do CPF acompanha: com documento
+     * preenchido ele deixa de ser obrigatorio, e dizer o contrario seria a
+     * mesma mentira que o `required` era.
+     */
+    function atualizarIdentificacao(categoriaPaga) {
+        var cpf = document.getElementById('cpf');
+        var doc = document.getElementById('documento');
+        var req = document.getElementById('cpf-req');
+        if (!cpf) return;
+
+        var temDoc = doc && doc.value.trim() !== '';
+        cpf.required = categoriaPaga && !temDoc;
+        if (req) req.style.display = cpf.required ? '' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        atualizarForm();
+        var doc = document.getElementById('documento');
+        // Digitar o documento tem de liberar o CPF na hora, e nao so na proxima
+        // troca de categoria: quem abre o bloco ja escolheu a categoria antes.
+        if (doc) doc.addEventListener('input', function () {
+            var sel = document.querySelector('input[name="categoria_id"]:checked');
+            atualizarIdentificacao(sel ? parseInt(sel.getAttribute('data-valor')) > 0 : false);
+        });
+    });
 
     // Mesma mascara da tela de entrada: a pessoa digita so numeros e o campo
     // pontua sozinho.

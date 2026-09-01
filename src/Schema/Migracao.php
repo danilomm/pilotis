@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-08-31c';
+const SCHEMA_VERSION = '2026-09-01';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -91,11 +91,27 @@ function garantir_schema(PDO $db): void {
         chave TEXT PRIMARY KEY, valor TEXT, updated_at DATETIME
     )");
 
+    // ATENCAO ao `closeCursor()`: sem ele o statement fica VIVO, com cursor de
+    // leitura aberto, durante toda a `init_extra_tables()` — e o SQLite recusa
+    // `DROP TABLE` enquanto ha query pendente na mesma conexao, devolvendo
+    // SQLITE_LOCKED, que o `busy_timeout` nao retenta.
+    //
+    // O `fetch()` de uma linha nao esgota o statement: so quando a linha NAO
+    // existe e que ele se encerra sozinho. Por isso o defeito era invisivel —
+    // em banco sem `schema_version` (o de producao em 31/08, e o que o
+    // `tests/migracao.php` cria) tudo passa; com a linha gravada, qualquer
+    // migracao que precise reconstruir tabela falha em TODA requisicao, para
+    // sempre, porque a marca de versao so e escrita no fim.
+    //
+    // Achado pela quarta revisao, 31/08/2026, com reproducao deterministica.
     $versao = null;
     try {
         $st = $db->query("SELECT valor FROM configuracoes WHERE chave = 'schema_version'");
-        $row = $st ? $st->fetch() : null;
-        $versao = $row['valor'] ?? null;
+        if ($st) {
+            $row = $st->fetch();
+            $st->closeCursor();
+            $versao = $row['valor'] ?? null;
+        }
     } catch (PDOException $e) {
         $versao = null;
     }
@@ -448,19 +464,6 @@ function init_extra_tables(PDO $db): void {
         }
     }
 
-    // Data, local e modalidade no comprovante: as pessoas o usam para pedir
-    // dispensa de ponto no trabalho. Acrescenta {{quando_onde}} logo apos a
-    // frase de abertura, e so se o trecho anterior estiver intacto.
-    $tpl = $db->query("SELECT html FROM email_templates WHERE tipo = 'evento_comprovante'")->fetchColumn();
-    if (is_string($tpl) && $tpl !== '' && strpos($tpl, '{{quando_onde}}') === false) {
-        $de = 'na categoria <strong>{{categoria}}</strong>.</p>';
-        if (strpos($tpl, $de) !== false) {
-            $st = $db->prepare("UPDATE email_templates SET html = ? WHERE tipo = 'evento_comprovante'");
-            $st->execute([str_replace($de, $de . '{{quando_onde}}', $tpl)]);
-            error_log("Pilotis: template evento_comprovante ganhou {{quando_onde}}");
-        }
-    }
-
     // O template do comprovante trazia "CPF {{cpf}}" com o rotulo FIXO no
     // texto. Com `pessoas.documento`, isso passou a produzir "CPF Passaporte
     // XX0000000" — e ja produzia "CPF ," para quem nao tinha CPF. A frase certa
@@ -484,6 +487,21 @@ function init_extra_tables(PDO $db): void {
     $st->execute([$novo_comprovante, $antigo_comprovante]);
     if ($st->rowCount() > 0) {
         error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
+    }
+
+    // Data, local e modalidade no comprovante: as pessoas o usam para pedir
+    // dispensa de ponto no trabalho. Acrescenta {{quando_onde}} logo apos a
+    // frase de abertura, e so se o trecho anterior estiver intacto.
+    // A guarda e por IGUALDADE com o texto que a migracao ANTERIOR produz, e nao
+    // "o fragmento existe e ainda nao ha {{quando_onde}}". Com a guarda fraca,
+    // tirar a frase pelo /admin era desfeito no deploy seguinte, sem aviso: a
+    // migracao a reinseria toda vez, contra a politica que este arquivo enuncia.
+    $tpl = $db->query("SELECT html FROM email_templates WHERE tipo = 'evento_comprovante'")->fetchColumn();
+    if (is_string($tpl) && $tpl === $novo_comprovante) {
+        $de = 'na categoria <strong>{{categoria}}</strong>.</p>';
+        $st = $db->prepare("UPDATE email_templates SET html = ? WHERE tipo = 'evento_comprovante'");
+        $st->execute([str_replace($de, $de . '{{quando_onde}}', $tpl)]);
+        error_log("Pilotis: template evento_comprovante ganhou {{quando_onde}}");
     }
 
     // Link para os anais do evento, publicados DEPOIS que ele acontece.
@@ -636,9 +654,18 @@ function init_extra_tables(PDO $db): void {
 
     // pagbank_pedidos: pedidos de evento têm filiacao_id NULL e inscricao_id preenchido.
     // A tabela original tinha filiacao_id NOT NULL — rebuild único para relaxar.
+    // A decisao de reconstruir e RECONFERIDA dentro do lock. Lida antes do
+    // BEGIN IMMEDIATE, ela e uma leitura suja: dois processos veem a tabela
+    // velha, os dois entram, e o segundo reconstroi sobre a tabela que o
+    // primeiro acabou de criar. Aqui a pergunta e feita ja com a escrita
+    // reservada, e quem chega depois desiste sem tocar em nada.
     $colunas = colunas_da_tabela($db, 'pagbank_pedidos');
     if ($colunas && !in_array('inscricao_id', $colunas, true)) {
         $db->exec("BEGIN IMMEDIATE");
+        $colunas = colunas_da_tabela($db, 'pagbank_pedidos');
+        if (in_array('inscricao_id', $colunas, true)) {
+            $db->exec("ROLLBACK");
+        } else {
         try {
             $db->exec("
                 CREATE TABLE pagbank_pedidos_new (
@@ -675,12 +702,22 @@ function init_extra_tables(PDO $db): void {
             try { $db->exec("ROLLBACK"); } catch (PDOException $ignorado) {}
             throw $e;
         }
+        }
     }
 
     // lembretes_agendados: mesmo caso (lembretes de inscrição têm filiacao_id NULL)
+    // A decisao de reconstruir e RECONFERIDA dentro do lock. Lida antes do
+    // BEGIN IMMEDIATE, ela e uma leitura suja: dois processos veem a tabela
+    // velha, os dois entram, e o segundo reconstroi sobre a tabela que o
+    // primeiro acabou de criar. Aqui a pergunta e feita ja com a escrita
+    // reservada, e quem chega depois desiste sem tocar em nada.
     $colunas = colunas_da_tabela($db, 'lembretes_agendados');
     if ($colunas && !in_array('inscricao_id', $colunas, true)) {
         $db->exec("BEGIN IMMEDIATE");
+        $colunas = colunas_da_tabela($db, 'lembretes_agendados');
+        if (in_array('inscricao_id', $colunas, true)) {
+            $db->exec("ROLLBACK");
+        } else {
         try {
             $db->exec("
                 CREATE TABLE lembretes_agendados_new (
@@ -715,6 +752,7 @@ function init_extra_tables(PDO $db): void {
             // o diagnostico para o lado errado.
             try { $db->exec("ROLLBACK"); } catch (PDOException $ignorado) {}
             throw $e;
+        }
         }
     }
 

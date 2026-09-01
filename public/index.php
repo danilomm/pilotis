@@ -185,7 +185,7 @@ get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminPessoasController::downloadCom
 // monitor "estou fora temporariamente", enquanto 200 finge que esta tudo bem —
 // o mesmo defeito que a pagina de erro tinha ate 29/08.
 //
-// Duas excecoes, e nenhuma e conveniencia:
+// Quatro excecoes, e nenhuma e conveniencia:
 //
 //   /admin  — sem ela quem ligou a chave se tranca do lado de fora e nao
 //             consegue desliga-la. A manutencao vive no banco justamente para
@@ -194,13 +194,29 @@ get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminPessoasController::downloadCom
 //             pagamento, levaria 503, e o dinheiro ficaria sem dono ate a
 //             proxima retentativa dele. Dinheiro que entrou tem de ser
 //             registrado mesmo com o site parado.
+//   /validar — quem le esse QR esta NA PORTA do evento, com o crachá na mao, e
+//             nao tem como esperar. E a manutencao serve justamente a incidente
+//             DURANTE o seminario: derrubar a conferencia de credencial junto
+//             com o resto seria desligar a portaria para consertar a bilheteria.
+//             So le o banco, e a resposta e a mesma com ou sem manutencao.
+//   /privacidade — o consentimento e gravado por VERSAO e aponta para este
+//             texto; ele tem de ser recuperavel a qualquer momento, inclusive
+//             enquanto o resto esta parado. Pagina estatica, sem escrita.
 // ---------------------------------------------------------------------------
+// Mesma normalizacao do `dispatch()` em routes.php, INCLUSIVE o rtrim da barra
+// final: sem ele `/webhook/pagbank/` levava 503 enquanto `/webhook/pagbank`
+// passava, porque a isencao e por comparacao exata.
 $rota_atual = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 if (BASE_PATH !== '' && strpos($rota_atual, BASE_PATH) === 0) {
     $rota_atual = substr($rota_atual, strlen(BASE_PATH)) ?: '/';
 }
+if ($rota_atual !== '/') {
+    $rota_atual = rtrim($rota_atual, '/') ?: '/';
+}
 $isento_manutencao = strpos($rota_atual, '/admin') === 0
-                  || $rota_atual === '/webhook/pagbank';
+                  || $rota_atual === '/webhook/pagbank'
+                  || strpos($rota_atual, '/validar/') === 0
+                  || $rota_atual === '/privacidade';
 
 if (!$isento_manutencao && em_manutencao()) {
     http_response_code(503);

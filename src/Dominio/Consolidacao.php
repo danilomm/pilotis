@@ -238,6 +238,30 @@ function consolidar_pessoas_interno(int $id_antigo, int $id_atual, int $ano_atua
         db_execute("DELETE FROM inscricoes WHERE id=?", [$i['id']]);
     };
 
+    // O arquivo do comprovante de matricula acompanha a inscricao.
+    //
+    // O nome dele e derivado — `evt{evento}_{pessoa}.{ext}` — e nao lido da
+    // coluna. Mudar a inscricao de dono sem renomear o arquivo desliga os dois
+    // lados de uma vez: a leitura procura pelo id NOVO e nao acha, e a exclusao
+    // apaga pelo id novo, que nao existe, deixando o arquivo do id velho orfao
+    // na pasta para sempre. Quem paga por isso e o estudante, cuja inscricao
+    // passa a parecer sem comprovante depois de uma fusao que ele nao viu
+    // acontecer.
+    $mover_comprovante = function (int $evento_id) use ($id_atual, $id_antigo) {
+        foreach (['pdf', 'jpg', 'png'] as $ext) {
+            $de = COMPROVANTES_DIR . "/evt{$evento_id}_{$id_atual}.{$ext}";
+            if (!is_file($de)) continue;
+            $para = COMPROVANTES_DIR . "/evt{$evento_id}_{$id_antigo}.{$ext}";
+            // Comprovante ja existente no cadastro que FICA tem precedencia:
+            // e o do dono do registro que sobrevive.
+            if (is_file($para)) { @unlink($de); continue; }
+            if (!@rename($de, $para)) {
+                registrar_log('erro_consolidacao', $id_antigo,
+                    "Nao foi possivel mover o comprovante evt{$evento_id}_{$id_atual}.{$ext}");
+            }
+        }
+    };
+
     $insA = db_fetch_all("SELECT id, evento_id, status FROM inscricoes WHERE pessoa_id=?", [$id_antigo]);
     $insN = db_fetch_all("SELECT id, evento_id, status FROM inscricoes WHERE pessoa_id=?", [$id_atual]);
     $byEvA = []; foreach ($insA as $i) $byEvA[$i['evento_id']] = $i;
@@ -247,11 +271,13 @@ function consolidar_pessoas_interno(int $id_antigo, int $id_atual, int $ano_atua
             if ($rankI($i['status']) >= $rankI($ia['status'])) {
                 $descartar_inscricao($ia);
                 db_execute("UPDATE inscricoes SET pessoa_id=? WHERE id=?", [$id_antigo, $i['id']]);
+                $mover_comprovante((int)$i['evento_id']);
             } else {
                 $descartar_inscricao($i);
             }
         } else {
             db_execute("UPDATE inscricoes SET pessoa_id=? WHERE id=?", [$id_antigo, $i['id']]);
+            $mover_comprovante((int)$i['evento_id']);
         }
     }
 

@@ -187,6 +187,21 @@ class EventosController {
             return;
         }
 
+        // O DIGITO VERIFICADOR tambem aqui, e nao so no formulario longo.
+        //
+        // Ate 31/08/2026 esta tela conferia so o comprimento: um CPF impossivel
+        // como 111.111.111-11 recebia "Nao encontramos esse CPF no cadastro" —
+        // diagnostico FALSO, porque o numero nao existe — e o filiado que
+        // trocou um digito era encaminhado a criar um cadastro paralelo. Pior:
+        // na segunda tela o numero era gravado em `pessoas.cpf` sem validacao,
+        // e a base ganhava CPFs aritmeticamente impossiveis.
+        if ($entrou_por_cpf && !cpf_valido($so_digitos)) {
+            registrar_log('evento_cpf_invalido', null, "CPF invalido na entrada do evento {$evento['slug']}");
+            flash('error', 'Esse CPF não confere — confira os números digitados.');
+            redirect("/eventos/$slug/inscricao");
+            return;
+        }
+
         $pessoa = null;
         $email = '';
 
@@ -604,6 +619,24 @@ class EventosController {
                 if (!empty($inscricao[$c])) $pre[$c] = $inscricao[$c];
             }
         }
+
+        // O que a pessoa acabou de digitar tem precedencia sobre o cadastro:
+        // se ela esta de volta aqui e porque `salvar()` recusou, e a correcao
+        // se faz sobre o que ela escreveu. Ver CAMPOS_LEMBRADOS.
+        $lembrado = self::consumirFormulario($slug, $token);
+        $repovoado = $lembrado !== [];
+        if ($repovoado) {
+            foreach ($lembrado as $c => $v) {
+                if ($c === 'categoria_id' || $c === 'consentimento') continue;
+                $pre[$c] = $v;
+            }
+            if (!empty($lembrado['consentimento'])) {
+                $pre_consentimento = POLITICA_PRIVACIDADE_VERSAO;
+            }
+            if (!empty($lembrado['categoria_id'])) {
+                $inscricao['categoria_id'] = (int)$lembrado['categoria_id'];
+            }
+        }
         $tem_cadastro_previo = !empty(trim($cadastrado['nome'] ?? '')) || !empty($cadastrado['endereco']);
 
         $categorias = db_fetch_all(
@@ -640,8 +673,56 @@ class EventosController {
     /**
      * Submete a inscrição
      */
+    /**
+     * O formulario preenchido sobrevive ao erro de validacao.
+     *
+     * `salvar()` recusa por treze motivos diferentes, e todos terminam em
+     * flash + redirect para o GET — que remonta a tela a partir do CADASTRO.
+     * Sem isto, um erro em qualquer campo apaga nome, endereco, telefone,
+     * CEP, cidade, profissao e instituicao, e a pessoa redigita tudo. Em tela
+     * de celular esse e o desfecho mais provavel do dia a dia.
+     *
+     * Guarda-se so o que e texto: o arquivo do comprovante nao cabe na sessao
+     * e o navegador nao deixa repovoar `<input type=file>` — por isso a tela
+     * avisa, quando ha lembranca, que o anexo precisa ser escolhido de novo.
+     *
+     * A chave inclui slug e token: lembranca de um evento nao vaza para outro,
+     * nem para outra pessoa que use a mesma sessao.
+     */
+    private const CAMPOS_LEMBRADOS = [
+        'categoria_id', 'nome', 'nome_cracha', 'cpf', 'documento', 'documento_tipo',
+        'email', 'telefone', 'endereco', 'cep', 'cidade', 'estado', 'pais',
+        'profissao', 'instituicao', 'instituicao_escolha', 'consentimento',
+    ];
+
+    private static function chaveLembranca(string $slug, string $token): string {
+        return 'form_evento_' . $slug . '_' . substr(hash('sha256', $token), 0, 16);
+    }
+
+    private static function lembrarFormulario(string $slug, string $token): void {
+        $guardar = [];
+        foreach (self::CAMPOS_LEMBRADOS as $c) {
+            if (isset($_POST[$c])) $guardar[$c] = (string)$_POST[$c];
+        }
+        $_SESSION[self::chaveLembranca($slug, $token)] = $guardar;
+    }
+
+    private static function esquecerFormulario(string $slug, string $token): void {
+        unset($_SESSION[self::chaveLembranca($slug, $token)]);
+    }
+
+    /** Le e APAGA: a lembranca serve a uma remontagem so. */
+    private static function consumirFormulario(string $slug, string $token): array {
+        $k = self::chaveLembranca($slug, $token);
+        $v = $_SESSION[$k] ?? [];
+        unset($_SESSION[$k]);
+        return is_array($v) ? $v : [];
+    }
+
     public static function salvar(string $slug, string $token): void {
         require_once SRC_DIR . '/Services/BrevoService.php';
+
+        self::lembrarFormulario($slug, $token);
 
         $evento = buscar_evento_por_slug($slug);
         if (!$evento) {
@@ -858,7 +939,9 @@ class EventosController {
             if ($erro_upload === UPLOAD_ERR_OK) {
                 $comprovante_path = salvar_comprovante_evento($_FILES['comprovante'], (int)$evento['id'], (int)$cadastrado['id']);
                 if ($comprovante_path === null) {
-                    flash('error', 'Erro no comprovante. Use PDF, JPG ou PNG de até 5MB.');
+                    flash('error', 'Não foi possível receber o comprovante. Use PDF, JPG ou PNG de até 5MB. '
+                        . 'Foto tirada por iPhone costuma sair em HEIC, que não serve: '
+                        . 'ao anexar, escolha "Formatos mais compatíveis", ou abra a foto e salve como JPG.');
                     redirect("/eventos/$slug/$token");
                     return;
                 }
@@ -891,8 +974,10 @@ class EventosController {
 
         // Atualiza pessoa (nome; CPF só se não pertencer a outra — pré-checagem do índice único)
         $cpf_gravar = $cpf ? preg_replace('/\D/', '', $cpf) : null;
+        $cpf_de_terceiro = false;
         if ($cpf_gravar && cpf_pertence_a_outra_pessoa($cpf_gravar, (int)$cadastrado['id'])) {
             $cpf_gravar = null; // vinculação será oferecida adiante
+            $cpf_de_terceiro = true;
         }
         // Documento estrangeiro: grava so quando veio preenchido, para nao
         // apagar o que a tesouraria tenha lancado pelo /admin. Quem passou a ter
@@ -1014,7 +1099,30 @@ class EventosController {
         // recusaria o cartao. Mandar a pessoa para a tela de pagamento seria
         // deixa-la tentar e falhar, o que e desgastante e nao leva a nada.
         // A inscricao fica registrada e pendente, e a tesouraria combina.
-        if ($valor > 0 && $cpf === '') {
+        // CPF digitado que pertence a OUTRO cadastro e a fusao recusada: o CPF
+        // nao foi gravado, entao daqui para a frente esta pessoa nao tem CPF —
+        // mas ela nao e estrangeira, e mandá-la para /aguardando faria a tela
+        // afirmar que ela "se identificou com documento estrangeiro", sem avisar
+        // ninguem e sem saida (o formulario reoferece o mesmo match a cada
+        // envio). Ate 31/08/2026 era exatamente isso que acontecia.
+        if ($valor > 0 && $cpf !== '' && $cpf_de_terceiro && $documento === '') {
+            registrar_log('cpf_de_terceiro', (int)$cadastrado['id'],
+                "Inscricao {$inscricao['id']} no evento {$evento['slug']}: o CPF informado ja pertence a"
+                . " outro cadastro e a vinculacao foi recusada — inscricao segue SEM CPF e sem cobranca");
+            flash('error', 'O CPF informado já consta em outro cadastro, e você respondeu que não é seu. '
+                . 'Confira os números: um dígito trocado leva ao cadastro de outra pessoa. '
+                . 'Se o CPF estiver certo, escreva para ' . ORG_EMAIL_CONTATO . ' — a tesouraria resolve.');
+            redirect("/eventos/$slug/$token");
+            return;
+        }
+
+        // Daqui em diante, a pergunta e sobre o CADASTRO e nao sobre o campo:
+        // e o cadastro que a tela de pagamento consulta. Recarrega, porque o
+        // UPDATE acima pode ter gravado o CPF que chegou no POST.
+        $cadastrado = buscar_pessoa_por_token($token) ?: $cadastrado;
+        $tem_cpf = trim((string)($cadastrado['cpf'] ?? '')) !== '';
+
+        if ($valor > 0 && !$tem_cpf) {
             registrar_log('inscricao_sem_cpf', (int)$cadastrado['id'],
                 "Inscricao {$inscricao['id']} no evento {$evento['slug']} registrada sem CPF"
                 . ($documento !== '' ? " ($documento_tipo)" : '') . '; pagamento a combinar com a tesouraria');
@@ -1046,10 +1154,12 @@ class EventosController {
                     . $e->getMessage());
             }
 
+            self::esquecerFormulario($slug, $token);
             redirect("/eventos/$slug/$token/aguardando");
             return;
         }
 
+        self::esquecerFormulario($slug, $token);
         redirect("/eventos/$slug/$token/pagamento");
     }
 

@@ -1051,14 +1051,37 @@ class AdminEventosController extends AdminController {
             return;
         }
 
-        if ($i['status'] === 'pago') {
-            flash('error', 'Inscrição paga não pode ser excluída — o pagamento ficaria sem dono. '
-                . 'Resolva o estorno com o PagBank antes.');
+        // O PAR, e nao so 'pago'. Todo o resto do sistema trata os dois juntos
+        // (marcarInscricaoPaga, enviarConfirmacaoInscricao, excluirPessoa, o
+        // cron); so esta linha usava `=== 'pago'`. Quem tem inscricao isenta
+        // confirmada ja recebeu o comprovante em PDF com QR: apagando a linha,
+        // o /validar dele passa a dizer invalido sem ninguem ter decidido isso.
+        if (in_array($i['status'], ['pago', 'gratuita_confirmada'], true)) {
+            flash('error', 'Inscrição confirmada não pode ser excluída — o pagamento ficaria sem dono '
+                . 'e o comprovante já emitido passaria a não validar. '
+                . 'Resolva o estorno com o PagBank antes, se for o caso.');
             redirect("/admin/eventos/{$i['evento_id']}/inscritos");
             return;
         }
 
+        // Cobranca VIVA numa inscricao pendente: o PIX ou boleto continua
+        // pagavel no PagBank, e apagada a inscricao o webhook nao acha mais
+        // dono para o dinheiro. E o caso Maisa outra vez.
+        //
+        // A `Consolidacao` (Dominio/Consolidacao.php) ja fazia exatamente esta
+        // conferencia, gravando `consolidacao_cobranca_orfa`. Esta acao foi
+        // escrita depois e nao herdou a checagem que estava ao lado.
+        $pedido = db_fetch_one(
+            "SELECT order_id FROM pagbank_pedidos WHERE inscricao_id = ? ORDER BY id DESC LIMIT 1",
+            [(int)$i['id']]
+        );
+        $order = trim((string)($i['pagbank_order_id'] ?? '')) ?: (string)($pedido['order_id'] ?? '');
+
         db_execute("DELETE FROM lembretes_agendados WHERE inscricao_id = ?", [(int)$i['id']]);
+
+        // DELETE antes do unlink: falha no DELETE deixaria registro vivo
+        // apontando para arquivo que nao existe mais.
+        db_execute("DELETE FROM inscricoes WHERE id = ?", [(int)$i['id']]);
 
         // O comprovante de matricula e arquivo em disco, fora do banco.
         if (!empty($i['comprovante_path'])) {
@@ -1066,7 +1089,12 @@ class AdminEventosController extends AdminController {
             if (is_file($arq)) @unlink($arq);
         }
 
-        db_execute("DELETE FROM inscricoes WHERE id = ?", [(int)$i['id']]);
+        if ($order !== '') {
+            registrar_log('inscricao_excluida_com_cobranca', (int)$i['pessoa_id'],
+                "Inscricao {$i['id']} de {$i['nome']} apagada COM cobranca aberta no PagBank"
+                . " order_id=$order — se esse pagamento entrar, o webhook nao vai achar a inscricao."
+                . " Conferir no extrato.");
+        }
 
         // No log com nome e situacao: depois se vai querer saber o que sumiu da
         // lista, e uma linha apagada nao conta a propria historia.

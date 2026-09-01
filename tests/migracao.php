@@ -177,6 +177,62 @@ if (($i['integrity_check'] ?? '') === 'ok') {
     $falhas++;
 }
 
+echo "\n== banco JA versionado, e atrasado: migra sem travar ==\n";
+// O caso de PRODUCAO depois do primeiro deploy: a tabela `configuracoes` ja
+// tem a linha `schema_version`, e ela esta atras da versao do codigo.
+//
+// A leitura dessa linha e o que quase custou caro: um PDOStatement sem
+// closeCursor() deixa um cursor de LEITURA aberto no SQLite, e o primeiro
+// DROP TABLE da migracao volta SQLITE_LOCKED. Como a versao so e gravada no
+// fim, a migracao falharia em toda requisicao, para sempre — e o sintoma
+// apareceria no primeiro acesso apos o deploy, com o site no ar.
+//
+// O teste exige as duas coisas: que rode (nao pule por achar que esta em dia)
+// e que termine (nao trave no meio).
+$vers = banco_temporario('versionado');
+$vers->exec("
+    CREATE TABLE pessoas (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, cpf TEXT,
+                          token TEXT, ativo INTEGER DEFAULT 1, created_at DATETIME);
+    CREATE TABLE emails (id INTEGER PRIMARY KEY AUTOINCREMENT, pessoa_id INTEGER,
+                         email TEXT UNIQUE, principal INTEGER DEFAULT 1);
+    CREATE TABLE filiacoes (id INTEGER PRIMARY KEY AUTOINCREMENT, pessoa_id INTEGER,
+                            ano INTEGER, categoria TEXT, valor INTEGER, data_pagamento TEXT);
+    CREATE TABLE campanhas (ano INTEGER PRIMARY KEY, status TEXT DEFAULT 'aberta');
+    CREATE TABLE configuracoes (chave TEXT PRIMARY KEY, valor TEXT, updated_at DATETIME);
+");
+$vers->exec("INSERT INTO pessoas (nome, cpf, token) VALUES ('Beltrana Ficticia', '00000000191', 'tok-ficticio-2')");
+$vers->exec("INSERT INTO configuracoes (chave, valor) VALUES ('schema_version', '2026-01-01')");
+try {
+    garantir_schema($vers);
+    $v = $vers->query("SELECT valor FROM configuracoes WHERE chave = 'schema_version'")->fetchColumn();
+    if ($v === SCHEMA_VERSION) {
+        echo "  ok     migrou e gravou a versao nova\n";
+    } else {
+        echo "  FALHA  versao gravada: '" . var_export($v, true) . "'\n";
+        $falhas++;
+    }
+    $faltam = array_diff(array_keys($exigidas), tabelas($vers));
+    if (!$faltam) {
+        echo "  ok     estrutura completa\n";
+    } else {
+        echo "  FALHA  faltam tabelas: " . implode(', ', $faltam) . "\n";
+        $falhas++;
+    }
+} catch (Throwable $e) {
+    echo "  FALHA  migracao estourou: " . $e->getMessage() . "\n";
+    $falhas++;
+}
+
+// Em dia nao remigra: a marca igual e o que evita ~93 comandos por requisicao.
+$antes_v = tabelas($vers);
+garantir_schema($vers);
+if ($antes_v === tabelas($vers)) {
+    echo "  ok     em dia, nao mexe\n";
+} else {
+    echo "  FALHA  rodou de novo estando em dia\n";
+    $falhas++;
+}
+
 echo "\n== garantir_coluna() nao mente ==\n";
 $t = banco_temporario('coluna');
 $t->exec("CREATE TABLE alvo (id INTEGER PRIMARY KEY)");

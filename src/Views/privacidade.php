@@ -10,7 +10,12 @@
  * Cada afirmacao aqui corresponde a codigo que existe:
  *
  *   - a lista de campos e a das colunas de `filiacoes` e `inscricoes`;
- *   - PagBank e Brevo sao os dois unicos servicos externos que recebem dado;
+ *   - PagBank e Brevo sao os dois unicos servicos externos que recebem dado, e
+ *     o Brevo recebe o PDF do comprovante junto (com CPF e valor);
+ *   - a tabela `log` guarda acao, data e IP, e esta declarada em "o que e
+ *     coletado" desde 01/09/2026 — IP e dado pessoal;
+ *   - so o login que FALHA e registrado; o painel da organizacao registra todo
+ *     acesso e download, com o email de quem fez;
  *   - o painel da organizacao nao mostra CPF, e mostra valor e total
  *     arrecadado desde 30/08/2026 (ver organizacao_inscritos.php);
  *   - a planilha anual aos coordenadores de nucleo sai SEM CPF (ver o
@@ -34,15 +39,20 @@
         não tem CPF) e email.</li>
         <li>Contato e endereço: telefone, endereço, CEP, cidade,
         estado e país.</li>
-        <li>Dados acadêmicos e profissionais: profissão,
-        formação e instituição.</li>
+        <li>Dados acadêmicos e profissionais: profissão e instituição — e
+        também formação, na filiação anual.</li>
         <li>Comprovante de matrícula, apenas de quem se inscreve
         em categoria de estudante — é o documento que comprova o desconto.</li>
         <li>Nas inscrições em eventos: o nome que você quer no
         crachá e o registro de presença, quando houver.</li>
+        <li>Registro de uso: as ações feitas no sistema, com data, hora e o
+        endereço IP de onde partiram. É o que permite responder depois por que
+        um email saiu, ou quem baixou uma lista.</li>
         <li>Pagamento: valor, forma e data. O sistema
-        não guarda número de cartão: os dados do cartão vão
-        direto para o provedor de pagamento e não passam por aqui.</li>
+        não guarda número de cartão: ele é cifrado no seu navegador, pelo
+        provedor de pagamento, antes de sair da tela. O que passa pelo nosso
+        servidor é esse pacote já cifrado, mais o nome do titular, e os dois são
+        retransmitidos ao provedor sem ficar guardados.</li>
     </ul>
 
     <h3>Por que o CPF é pedido logo na entrada</h3>
@@ -71,6 +81,11 @@
         <li>A coordenação do seu núcleo regional, ao fim de cada
         campanha anual, numa planilha de filiados da região — também
         sem CPF.</li>
+        <li>Quem receber de você um comprovante emitido pelo sistema: o
+        documento traz um código, e a página que o confere mostra seu nome, o CPF
+        parcialmente oculto, o evento, a categoria, o valor e a situação. Serve
+        para um setor de reembolso verificar que o papel é verdadeiro. Só chega
+        lá quem tiver o código impresso no documento.</li>
     </ul>
 
     <h3>Serviços externos</h3>
@@ -78,8 +93,10 @@
     <ul>
         <li>PagBank (PagSeguro) — recebe nome, CPF, email,
         telefone e endereço para emitir a cobrança. É quem processa o pagamento.</li>
-        <li>Brevo — recebe nome e email para entregar as
-        mensagens do sistema.</li>
+        <li>Brevo — entrega as mensagens do sistema, e por isso recebe
+        nome, email e o conteúdo do que é enviado. Isso inclui o comprovante de
+        inscrição em PDF anexado à confirmação de pagamento, que traz CPF,
+        categoria, valor e o código de validação.</li>
     </ul>
     <p>Fora esses dois, os dados não são vendidos, cedidos nem compartilhados
     com ninguém.</p>
@@ -112,8 +129,11 @@
     Hoje esses pedidos são atendidos manualmente pela tesouraria.</p>
 
     <h3>Segurança</h3>
-    <p>O site funciona apenas por HTTPS, o banco de dados fica fora da área
-    servida na web, e todo acesso administrativo exige senha e fica registrado.</p>
+    <p>O site funciona apenas por HTTPS e o banco de dados fica fora da área
+    servida na web. A administração do sistema exige senha, e as tentativas de
+    entrada que falham ficam registradas. O painel da coordenação do evento não
+    usa senha compartilhada: cada pessoa autorizada recebe um link no próprio
+    email, e todo acesso e download dela fica registrado com esse endereço.</p>
 
     <p style="margin-top: 2rem;"><small>Dúvidas sobre este aviso:
     <a href="mailto:<?= e(ORG_EMAIL_CONTATO) ?>"><?= e(ORG_EMAIL_CONTATO) ?></a>.</small></p>

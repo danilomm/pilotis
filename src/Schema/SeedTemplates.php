@@ -312,4 +312,21 @@ function seed_email_templates(PDO $db): void {
     foreach ($templates as $t) {
         $stmt->execute([$t['tipo'], $t['assunto'], $t['html'], $t['descricao'], $t['variaveis']]);
     }
+
+    // `descricao` e `variaveis` sao ATUALIZADAS sempre, e o `html` nunca.
+    //
+    // Sao coisas de natureza diferente, e o INSERT OR IGNORE acima tratava as
+    // tres igual. O `html` e do tesoureiro: editavel pelo /admin, e sobrescrever
+    // o que ele escreveu seria pior do que qualquer defeito. As outras duas sao
+    // DOCUMENTACAO do codigo — a lista que a tela mostra de quais {{variaveis}}
+    // aquele template aceita. Nao ha como edita-las pelo /admin (ver
+    // Campanha/Views/admin/templates.php, que so as exibe), e em banco ja
+    // semeado elas ficavam congeladas na versao do dia em que a linha nasceu:
+    // {{documento}} e {{quando_onde}} passaram a funcionar no comprovante e a
+    // tela continuava sem menciona-los. Documentacao que envelhece em silencio
+    // e pior do que documentacao nenhuma — quem le confia.
+    $meta = $db->prepare("UPDATE email_templates SET descricao = ?, variaveis = ? WHERE tipo = ?");
+    foreach ($templates as $t) {
+        $meta->execute([$t['descricao'], $t['variaveis'], $t['tipo']]);
+    }
 }

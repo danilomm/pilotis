@@ -140,7 +140,13 @@ $extra_head = '<script src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/d
                 });
 
                 if (card.hasErrors) {
-                    alert('Erro nos dados do cartão: ' + JSON.stringify(card.errors));
+                    // A mensagem do SDK do PagBank vem em ingles e por codigo;
+                    // despeja-la com JSON.stringify era a unica saida em
+                    // ingles/jargao do fluxo publico. O detalhe vai para o
+                    // console, para quem for diagnosticar.
+                    console.error('PagBank card.errors:', card.errors);
+                    alert('Não foi possível ler os dados do cartão. Confira o número, '
+                        + 'a validade, o CVV e o nome impresso, e tente de novo.');
                     btn.disabled = false;
                     btn.textContent = 'Pagar <?= e($valor_formatado) ?>';
                     return;
@@ -149,7 +155,9 @@ $extra_head = '<script src="https://assets.pagseguro.com.br/checkout-sdk-js/rc/d
                 document.getElementById('card_encrypted').value = card.encryptedCard;
                 this.submit();
             } catch (err) {
-                alert('Erro ao processar cartão: ' + err.message);
+                console.error('PagBank:', err);
+                alert('Não foi possível processar o cartão agora. Tente de novo em alguns '
+                    + 'minutos, ou use PIX ou boleto.');
                 btn.disabled = false;
                 btn.textContent = 'Pagar <?= e($valor_formatado) ?>';
             }

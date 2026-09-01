@@ -61,12 +61,44 @@ function dispatch(): void {
     // sessao e sem como carregar um token nosso. O webhook tem a propria
     // defesa — nao acredita no corpo, consulta a API do PagBank e processa a
     // resposta dela.
+    // Comparacao exata contra o $uri JA normalizado pelo dispatch() (com rtrim
+    // da barra final): `/webhook/pagbank/` tem de ser o mesmo endereco que
+    // `/webhook/pagbank`, senao o PagBank leva 403 por falta de token.
     $isentas_csrf = ['/webhook/pagbank'];
 
     foreach ($routes as $pattern => $handler) {
         $params = match_route($pattern, $uri);
         if ($params !== false) {
             if ($method === 'POST' && !in_array($uri, $isentas_csrf, true) && !csrf_valido()) {
+                // ANTES de culpar a sessao: um POST maior que o `post_max_size`
+                // do PHP chega com $_POST VAZIO — o token some junto com todo o
+                // resto, e o sintoma e indistinguivel de sessao vencida.
+                //
+                // Ate 31/08/2026 a pessoa que subia uma foto de carteirinha de
+                // 9 MB lia "A pagina expirou por inatividade", recarregava,
+                // preenchia tudo de novo, mandava a mesma foto e lia a mesma
+                // frase. Em laco, com diagnostico falso, e registrado como
+                // `csrf_recusado` — que esta deliberadamente FORA dos tipos
+                // criticos, entao nem no /admin/log aparecia.
+                //
+                // Foto de celular tem 4 a 12 MB, e as tres categorias de
+                // estudante exigem comprovante de matricula.
+                $tamanho = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
+                $limite = tamanho_para_bytes(ini_get('post_max_size'));
+                if (empty($_POST) && $limite > 0 && $tamanho > $limite) {
+                    registrar_log('post_grande_demais', null,
+                        'POST de ' . $tamanho . ' bytes em ' . $uri . ' (limite ' . $limite . ')');
+                    $mb = max(1, (int)floor($limite / 1048576));
+                    flash('error', "O arquivo enviado é grande demais e o envio foi descartado inteiro. "
+                        . "Envie um arquivo de até {$mb} MB — no celular, reduza a foto antes de anexar.");
+                    $volta_grande = $_SERVER['HTTP_REFERER'] ?? '';
+                    $host_grande = parse_url($volta_grande, PHP_URL_HOST);
+                    redirect($host_grande === null || $host_grande === ($_SERVER['HTTP_HOST'] ?? '')
+                        ? (parse_url($volta_grande, PHP_URL_PATH) ?: '/')
+                        : '/');
+                    return;
+                }
+
                 registrar_log('csrf_recusado', null, 'POST sem token valido em ' . $uri);
                 // Sessao vencida e o caso comum e inocente: a pessoa deixou o
                 // formulario aberto por horas. A mensagem trata disso, nao de
