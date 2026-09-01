@@ -220,10 +220,9 @@ class AdminController {
         // e "quantas inscricoes chegaram e quanto entrou", e ela estava a dois
         // cliques.
         //
-        // Publicados E PAUSADOS: rascunho e o tesoureiro montando e nao tem
-        // numero que interesse, mas evento pausado tem de continuar a vista —
-        // e justamente quando alguem precisa lembrar de retomar. Ordenados pelo
-        // que acontece primeiro.
+        // Publicados e ENCERRADOS: rascunho e o tesoureiro montando e nao tem
+        // numero que interesse; encerrado tem, e continua sendo consultado
+        // depois do evento. Ordenados pelo que acontece primeiro.
         $eventos_painel = db_fetch_all("
             SELECT e.id, e.nome, e.slug, e.status, e.data_inicio, e.data_fim, e.prazo_inscricao,
                    (SELECT COUNT(*) FROM inscricoes i WHERE i.evento_id = e.id
@@ -233,7 +232,7 @@ class AdminController {
                    (SELECT COALESCE(SUM(i.valor), 0) FROM inscricoes i WHERE i.evento_id = e.id
                      AND i.status = 'pago') AS arrecadado
             FROM eventos e
-            WHERE e.status IN ('publicado', 'pausado')
+            WHERE e.status IN ('publicado', 'encerrado')
             ORDER BY COALESCE(e.data_inicio, e.prazo_inscricao) ASC, e.id ASC
         ");
 
@@ -352,6 +351,39 @@ class AdminController {
         require SRC_DIR . '/Views/admin/log.php';
         $content = ob_get_clean();
         require SRC_DIR . '/Views/layout.php';
+    }
+
+    /**
+     * Liga e desliga a manutencao do sistema inteiro.
+     *
+     * Fica atras da senha do admin, e nao numa variavel do `.env`: emergencia e
+     * justamente quando nao da para editar arquivo por FTP e esperar.
+     *
+     * NAO e a mesma coisa que encerrar as inscricoes de um evento. Encerrar
+     * mantem a pagina do evento no ar — ela e a unica pagina oficial dele, e a
+     * URL vai impressa no cartaz. Isto aqui para TUDO, e serve a deploy,
+     * migracao e incidente. Nao acontece em condicao normal.
+     */
+    public static function manutencao(): void {
+        self::exigirLogin();
+
+        $ligar = ($_POST['ligar'] ?? '') === '1';
+        db_execute(
+            "INSERT INTO configuracoes (chave, valor, updated_at) VALUES ('manutencao', ?, datetime('now','localtime'))
+             ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, updated_at = excluded.updated_at",
+            [$ligar ? '1' : '0']
+        );
+
+        // No log, e nao so na tela: e a acao mais drastica do sistema, e depois
+        // se vai querer saber quando comecou e quanto tempo durou.
+        registrar_log('manutencao', null, $ligar
+            ? 'Sistema COLOCADO em manutencao pelo admin'
+            : 'Sistema TIRADO de manutencao pelo admin');
+
+        flash('success', $ligar
+            ? 'Site em manutenção. Só o /admin e o webhook do PagBank continuam respondendo.'
+            : 'Site de volta ao ar.');
+        redirect('/admin');
     }
 
     public static function buscar(): void {

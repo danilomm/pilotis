@@ -383,6 +383,32 @@ function contato_partes(?string $contato): array {
 }
 
 /**
+ * O sistema esta em manutencao?
+ *
+ * Chave LIGADA PELO ADMIN, guardada em `configuracoes`. Fica atras da senha do
+ * admin, e nao numa variavel do `.env`, porque emergencia e justamente quando
+ * nao da para editar arquivo por FTP e esperar. Decisao do tesoureiro em
+ * 31/08/2026: *"e so pedir senha pra tirar a pagina do ar"*.
+ *
+ * Isto NAO e a mesma coisa que encerrar as inscricoes de um evento. Encerrar
+ * mantem a pagina do evento no ar — ela e a unica pagina oficial dele e a URL
+ * vai impressa no cartaz. A manutencao para TUDO, e serve a deploy, migracao e
+ * incidente. Nao acontece em condicao normal.
+ */
+function em_manutencao(): bool {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    try {
+        $v = db_fetch_one("SELECT valor FROM configuracoes WHERE chave = 'manutencao'");
+        $cache = ($v['valor'] ?? '') === '1';
+    } catch (Throwable $e) {
+        // Banco fora do ar ja e problema maior; nao e a manutencao que resolve.
+        $cache = false;
+    }
+    return $cache;
+}
+
+/**
  * Modalidade do evento em texto corrido, para o comprovante.
  *
  * NULL ou vazio vale como presencial: e o caso dominante, e os eventos

@@ -34,6 +34,23 @@
     </div>
 
     <?php
+    // A chave de manutencao fica NO ALTO e visivel quando ligada, porque site
+    // fora do ar sem ninguem lembrar e pior do que o problema que a manutencao
+    // ia resolver. Desligada, ela e um link discreto no fim da pagina.
+    ?>
+    <?php if (em_manutencao()): ?>
+        <div style="border: 3px solid #b00; background: #fff3f3; padding: 16px; border-radius: 8px; margin-bottom: 1.5rem;">
+            <strong style="color: #b00;">O site está fora do ar</strong>
+            <p style="margin: .5rem 0;">Quem entra em qualquer página pública vê o aviso de manutenção.
+            Só este painel e o webhook do PagBank continuam respondendo.</p>
+            <form method="POST" action="/admin/manutencao" style="margin: 0;"><?= campo_csrf() ?>
+                <input type="hidden" name="ligar" value="0">
+                <button type="submit">Voltar ao ar</button>
+            </form>
+        </div>
+    <?php endif; ?>
+
+    <?php
     // EVENTOS primeiro. A pergunta do dia, em novembro, e quantas inscricoes
     // chegaram e quanto entrou — e ela estava a dois cliques, atras de um botao
     // no meio dos da campanha. A filiacao continua logo abaixo, inteira.
@@ -74,8 +91,8 @@
                         <td>
                             <a href="/admin/eventos/<?= (int)$ev['id'] ?>"><?= e($ev['nome']) ?></a>
                             <br><small style="color: var(--muted-color);"><?= e($ev['slug']) ?></small>
-                            <?php if (($ev['status'] ?? '') === 'pausado'): ?>
-                                <br><small style="color: #8a4b00;">inscrições pausadas</small>
+                            <?php if (($ev['status'] ?? '') === 'encerrado'): ?>
+                                <br><small style="color: #6c757d;">inscrições encerradas</small>
                             <?php endif; ?>
                         </td>
                         <td><small><?= $ev['data_inicio']
@@ -221,3 +238,19 @@
         </div>
     <?php endif; ?>
 </article>
+
+<?php if (!em_manutencao()): ?>
+    <?php
+    // Discreto e no fim: e a acao mais drastica do sistema e nao se usa em
+    // condicao normal. A confirmacao diz o que acontece, e nao so "tem
+    // certeza?" — quem clica precisa saber que a pagina do evento cai junto.
+    ?>
+    <p style="margin-top: 2rem; text-align: right;">
+        <form method="POST" action="/admin/manutencao" style="display: inline;"
+              onsubmit="return confirm('Tirar o site do ar? Todas as páginas públicas passam a mostrar o aviso de manutenção, inclusive a página do evento. Só este painel continua respondendo.');"><?= campo_csrf() ?>
+            <input type="hidden" name="ligar" value="1">
+            <button type="submit" class="secondary outline"
+                    style="padding: .3rem .8rem; font-size: .8rem;">Tirar o site do ar</button>
+        </form>
+    </p>
+<?php endif; ?>

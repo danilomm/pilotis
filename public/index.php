@@ -150,6 +150,7 @@ post('/admin/login', 'AdminController::login');
 get('/admin/logout', 'AdminController::logout');
 get('/admin/log', 'AdminController::log');
 get('/admin/contatos', 'AdminController::contatos');
+post('/admin/manutencao', 'AdminController::manutencao');
 get('/admin/buscar', 'AdminController::buscar');
 get('/admin/pessoa/{id}', 'AdminPessoasController::pessoa');
 post('/admin/pessoa/{id}', 'AdminPessoasController::salvarPessoa');
@@ -176,4 +177,39 @@ get('/admin/comprovante/{pessoa_id}/{ano}', 'AdminPessoasController::downloadCom
 // Servidos diretamente pelo Apache, nao passa pelo PHP
 
 // Processa a requisicao
+// ---------------------------------------------------------------------------
+// Manutencao: ANTES de qualquer rota.
+//
+// Responde 503, e nao 200 com uma pagina de aviso: 503 diz a buscador e a
+// monitor "estou fora temporariamente", enquanto 200 finge que esta tudo bem —
+// o mesmo defeito que a pagina de erro tinha ate 29/08.
+//
+// Duas excecoes, e nenhuma e conveniencia:
+//
+//   /admin  — sem ela quem ligou a chave se tranca do lado de fora e nao
+//             consegue desliga-la. A manutencao vive no banco justamente para
+//             ser desligada pelo navegador, sem FTP.
+//   /webhook/pagbank — o PagBank tentaria entregar a confirmacao de um
+//             pagamento, levaria 503, e o dinheiro ficaria sem dono ate a
+//             proxima retentativa dele. Dinheiro que entrou tem de ser
+//             registrado mesmo com o site parado.
+// ---------------------------------------------------------------------------
+$rota_atual = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+if (BASE_PATH !== '' && strpos($rota_atual, BASE_PATH) === 0) {
+    $rota_atual = substr($rota_atual, strlen(BASE_PATH)) ?: '/';
+}
+$isento_manutencao = strpos($rota_atual, '/admin') === 0
+                  || $rota_atual === '/webhook/pagbank';
+
+if (!$isento_manutencao && em_manutencao()) {
+    http_response_code(503);
+    header('Retry-After: 1800');
+    $titulo = 'Em manutenção';
+    ob_start();
+    require SRC_DIR . '/Views/manutencao.php';
+    $content = ob_get_clean();
+    require SRC_DIR . '/Views/layout.php';
+    exit;
+}
+
 dispatch();

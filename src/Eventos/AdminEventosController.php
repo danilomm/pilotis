@@ -284,15 +284,18 @@ class AdminEventosController extends AdminController {
     }
 
     /**
-     * Muda status do evento (rascunho / publicado / pausado / encerrado)
+     * Muda status do evento (rascunho / publicado / encerrado)
      *
-     * `pausado` existe porque a pagina do evento NAO PODE SAIR DO AR: ela e a
-     * unica pagina oficial dele, e a URL vai impressa no cartaz. Quando o
-     * tesoureiro precisa de tempo para corrigir um texto ou um defeito, o que
-     * ele quer e parar de RECEBER inscricao — nao apagar o evento da internet.
+     * Sao TRES estados, e nao quatro. Em 31/08/2026 existiu um `pausado` que
+     * fazia exatamente o mesmo que `encerrado` — pagina no ar, entrada fechada,
+     * cobranca ja gerada continua pagavel — e diferia so na frase que exibia.
+     * Dois estados que se comportam igual sao um estado com dois nomes, e mais
+     * um lugar para errar quando alguem precisa decidir rapido. Saiu no mesmo
+     * dia, por decisao do tesoureiro.
      *
-     * `rascunho` some da web (404) e serve so a quem esta montando. `encerrado`
-     * diz que o evento acabou. Nenhum dos dois descreve "volto em dez minutos".
+     * Para parar TUDO — deploy, migracao, incidente — existe a chave
+     * MANUTENCAO no `.env`, que responde 503 no sistema inteiro. E excecao, e
+     * nao acontece em condicao normal.
      */
     public static function eventoStatus(string $id): void {
         self::exigirLogin();
@@ -305,7 +308,7 @@ class AdminEventosController extends AdminController {
         }
 
         $novo = $_POST['status'] ?? '';
-        if (!in_array($novo, ['rascunho', 'publicado', 'pausado', 'encerrado'])) {
+        if (!in_array($novo, ['rascunho', 'publicado', 'encerrado'])) {
             flash('error', 'Status inválido.');
             redirect("/admin/eventos/$id");
             return;
