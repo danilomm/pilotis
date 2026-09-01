@@ -37,7 +37,30 @@
             </form>
         <?php endif; ?>
         <?php if ($evento['status'] === 'publicado'): ?>
+            <?php
+            // Pausar e a acao do dia a dia: achou um erro de texto, um defeito,
+            // e quer parar de RECEBER inscricao enquanto conserta. A pagina
+            // continua no ar — ela e a unica pagina oficial do evento, e a URL
+            // vai impressa no cartaz. Encerrar e a acao definitiva, e por isso
+            // pede confirmacao.
+            ?>
             <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/status" style="margin: 0;"><?= campo_csrf() ?>
+                <input type="hidden" name="status" value="pausado">
+                <button type="submit" class="secondary outline">Pausar inscrições</button>
+            </form>
+            <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/status" style="margin: 0;"
+                  onsubmit="return confirm('Encerrar as inscrições deste evento? Para uma pausa temporária use \'Pausar\'.');"><?= campo_csrf() ?>
+                <input type="hidden" name="status" value="encerrado">
+                <button type="submit" class="secondary">Encerrar inscrições</button>
+            </form>
+        <?php endif; ?>
+        <?php if ($evento['status'] === 'pausado'): ?>
+            <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/status" style="margin: 0;"><?= campo_csrf() ?>
+                <input type="hidden" name="status" value="publicado">
+                <button type="submit">Retomar inscrições</button>
+            </form>
+            <form method="POST" action="/admin/eventos/<?= (int)$evento['id'] ?>/status" style="margin: 0;"
+                  onsubmit="return confirm('Encerrar as inscrições deste evento?');"><?= campo_csrf() ?>
                 <input type="hidden" name="status" value="encerrado">
                 <button type="submit" class="secondary">Encerrar inscrições</button>
             </form>

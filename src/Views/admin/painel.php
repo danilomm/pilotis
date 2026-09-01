@@ -74,6 +74,9 @@
                         <td>
                             <a href="/admin/eventos/<?= (int)$ev['id'] ?>"><?= e($ev['nome']) ?></a>
                             <br><small style="color: var(--muted-color);"><?= e($ev['slug']) ?></small>
+                            <?php if (($ev['status'] ?? '') === 'pausado'): ?>
+                                <br><small style="color: #8a4b00;">inscrições pausadas</small>
+                            <?php endif; ?>
                         </td>
                         <td><small><?= $ev['data_inicio']
                             ? e(data_por_extenso($ev['data_inicio'], $ev['data_fim']))

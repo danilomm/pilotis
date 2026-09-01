@@ -220,10 +220,12 @@ class AdminController {
         // e "quantas inscricoes chegaram e quanto entrou", e ela estava a dois
         // cliques.
         //
-        // So os PUBLICADOS: rascunho e do tesoureiro montando, e nao tem numero
-        // que interesse. Ordenados pelo que acontece primeiro.
+        // Publicados E PAUSADOS: rascunho e o tesoureiro montando e nao tem
+        // numero que interesse, mas evento pausado tem de continuar a vista —
+        // e justamente quando alguem precisa lembrar de retomar. Ordenados pelo
+        // que acontece primeiro.
         $eventos_painel = db_fetch_all("
-            SELECT e.id, e.nome, e.slug, e.data_inicio, e.data_fim, e.prazo_inscricao,
+            SELECT e.id, e.nome, e.slug, e.status, e.data_inicio, e.data_fim, e.prazo_inscricao,
                    (SELECT COUNT(*) FROM inscricoes i WHERE i.evento_id = e.id
                      AND i.status IN ('pago','gratuita_confirmada')) AS confirmadas,
                    (SELECT COUNT(*) FROM inscricoes i WHERE i.evento_id = e.id
@@ -231,7 +233,7 @@ class AdminController {
                    (SELECT COALESCE(SUM(i.valor), 0) FROM inscricoes i WHERE i.evento_id = e.id
                      AND i.status = 'pago') AS arrecadado
             FROM eventos e
-            WHERE e.status = 'publicado'
+            WHERE e.status IN ('publicado', 'pausado')
             ORDER BY COALESCE(e.data_inicio, e.prazo_inscricao) ASC, e.id ASC
         ");
 

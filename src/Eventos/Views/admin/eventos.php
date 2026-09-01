@@ -24,8 +24,8 @@
             <tbody>
                 <?php foreach ($eventos as $ev): ?>
                     <?php
-                        $cores = ['rascunho' => '#856404', 'publicado' => '#155724', 'encerrado' => '#6c757d'];
-                        $fundos = ['rascunho' => '#fff3cd', 'publicado' => '#d4edda', 'encerrado' => '#e9ecef'];
+                        $cores = ['rascunho' => '#856404', 'publicado' => '#155724', 'pausado' => '#8a4b00', 'encerrado' => '#6c757d'];
+                        $fundos = ['rascunho' => '#fff3cd', 'publicado' => '#d4edda', 'pausado' => '#ffe8cc', 'encerrado' => '#e9ecef'];
                         $cor = $cores[$ev['status']] ?? '#333';
                         $fundo = $fundos[$ev['status']] ?? '#eee';
                     ?>

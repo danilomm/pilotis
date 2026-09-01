@@ -283,7 +283,15 @@ class AdminEventosController extends AdminController {
     }
 
     /**
-     * Muda status do evento (rascunho / publicado / encerrado)
+     * Muda status do evento (rascunho / publicado / pausado / encerrado)
+     *
+     * `pausado` existe porque a pagina do evento NAO PODE SAIR DO AR: ela e a
+     * unica pagina oficial dele, e a URL vai impressa no cartaz. Quando o
+     * tesoureiro precisa de tempo para corrigir um texto ou um defeito, o que
+     * ele quer e parar de RECEBER inscricao — nao apagar o evento da internet.
+     *
+     * `rascunho` some da web (404) e serve so a quem esta montando. `encerrado`
+     * diz que o evento acabou. Nenhum dos dois descreve "volto em dez minutos".
      */
     public static function eventoStatus(string $id): void {
         self::exigirLogin();
@@ -296,7 +304,7 @@ class AdminEventosController extends AdminController {
         }
 
         $novo = $_POST['status'] ?? '';
-        if (!in_array($novo, ['rascunho', 'publicado', 'encerrado'])) {
+        if (!in_array($novo, ['rascunho', 'publicado', 'pausado', 'encerrado'])) {
             flash('error', 'Status inválido.');
             redirect("/admin/eventos/$id");
             return;

@@ -116,6 +116,20 @@
         </p>
 
         <p><small>O desconto de filiado depende de anuidade em dia.</small></p>
+    <?php elseif (($evento['status'] ?? '') === 'pausado'): ?>
+        <?php
+        // Pausa: a pagina fica no ar, o conteudo inteiro continua visivel, e so
+        // a entrada de inscricoes para. Quem ja gerou PIX ou boleto continua
+        // pagando pelo link que tem em maos — a cobranca nao e afetada.
+        //
+        // A frase diz que e temporario e nao pede acao nenhuma: quem chega aqui
+        // nao tem o que fazer alem de voltar depois, e mandar escrever para
+        // alguem so geraria email que ninguem consegue responder.
+        ?>
+        <div style="padding: 12px; background: #fff3cd; color: #856404; border-radius: 6px;">
+            As inscrições estão <strong>momentaneamente pausadas</strong> para um ajuste.
+            Volte em alguns minutos — o prazo não muda por causa disso.
+        </div>
     <?php else: ?>
         <div style="padding: 12px; background: #fff3cd; color: #856404; border-radius: 6px;">
             As inscrições para este evento estão encerradas.
