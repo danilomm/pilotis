@@ -140,15 +140,18 @@
             <div>
                 <label for="data_inicio">Início do evento</label>
                 <input type="date" id="data_inicio" name="data_inicio" value="<?= e($evento['data_inicio'] ?? '') ?>">
+                <small class="data-extenso" data-para="data_inicio"></small>
             </div>
             <div>
                 <label for="data_fim">Fim do evento</label>
                 <input type="date" id="data_fim" name="data_fim" value="<?= e($evento['data_fim'] ?? '') ?>">
+                <small class="data-extenso" data-para="data_fim"></small>
                 <small>Vazio para evento de um dia só.</small>
             </div>
             <div>
                 <label for="prazo_inscricao">Prazo de inscrição</label>
                 <input type="date" id="prazo_inscricao" name="prazo_inscricao" value="<?= e($evento['prazo_inscricao'] ?? '') ?>">
+                <small class="data-extenso" data-para="prazo_inscricao"></small>
             </div>
         </div>
 
@@ -238,10 +241,12 @@
                 <label for="organizacao_expira_em">Painel válido até</label>
                 <input type="date" id="organizacao_expira_em" name="organizacao_expira_em"
                        value="<?= e($evento['organizacao_expira_em'] ?? '') ?>">
+                <small class="data-extenso" data-para="organizacao_expira_em"></small>
                 <small>Depois desta data o painel para de abrir. Deixe vazio para não expirar.</small>
 
                 <label for="data_valor_cheio">Início do valor cheio</label>
                 <input type="date" id="data_valor_cheio" name="data_valor_cheio" value="<?= e($evento['data_valor_cheio'] ?? '') ?>">
+                <small class="data-extenso" data-para="data_valor_cheio"></small>
                 <small>A partir desta data vale o "Valor cheio" de cada categoria. Deixe vazio para preço único.</small>
 
         <button type="submit">Salvar dados</button>
@@ -420,3 +425,5 @@
         a todos, que é o que se quer num evento de inscrição gratuita.
     </small>
 </article>
+
+<?php require SRC_DIR . '/Views/_data_extenso.php'; ?>

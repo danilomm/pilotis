@@ -27,14 +27,17 @@
             <div>
                 <label for="data_inicio">Data de início do evento</label>
                 <input type="date" id="data_inicio" name="data_inicio">
+                <small class="data-extenso" data-para="data_inicio"></small>
             </div>
             <div>
                 <label for="data_fim">Data de fim do evento</label>
                 <input type="date" id="data_fim" name="data_fim">
+                <small class="data-extenso" data-para="data_fim"></small>
             </div>
             <div>
                 <label for="prazo_inscricao">Prazo de inscrição *</label>
                 <input type="date" id="prazo_inscricao" name="prazo_inscricao">
+                <small class="data-extenso" data-para="prazo_inscricao"></small>
                 <small>Último dia para se inscrever.</small>
             </div>
         </div>
@@ -42,3 +45,5 @@
         <button type="submit">Criar Rascunho</button>
     </form>
 </article>
+
+<?php require SRC_DIR . '/Views/_data_extenso.php'; ?>

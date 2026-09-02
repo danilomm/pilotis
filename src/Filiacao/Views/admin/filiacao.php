@@ -52,6 +52,7 @@
             <div>
                 <label for="data_pagamento">Data Pagamento</label>
                 <input type="date" id="data_pagamento" name="data_pagamento" value="<?= e(substr($filiacao['data_pagamento'] ?? '', 0, 10)) ?>">
+                <small class="data-extenso" data-para="data_pagamento"></small>
             </div>
             <div>
                 <label for="telefone">Telefone</label>
@@ -128,3 +129,5 @@
         <p><strong>Criado em:</strong> <?= e($filiacao['created_at'] ?? '-') ?></p>
     </details>
 </article>
+
+<?php require SRC_DIR . '/Views/_data_extenso.php'; ?>
