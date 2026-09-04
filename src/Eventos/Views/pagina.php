@@ -76,18 +76,6 @@
 
     <h3>Inscrição</h3>
 
-    <?php
-    // O prazo vem ANTES da tabela, e da mesma funcao das outras duas telas.
-    // Quem chega pelo cartaz le esta pagina e nao passa pela tela de entrada:
-    // sem isto, a unica data a vista seria a virada do valor cheio, dentro da
-    // coluna da direita — que responde "quando muda o preco" e nao "quando
-    // posso me inscrever".
-    $prazo_frase = prazo_inscricao_frase($evento);
-    ?>
-    <?php if ($prazo_frase !== ''): ?>
-        <p style="margin: 0 0 .8rem;"><?= e($prazo_frase) ?></p>
-    <?php endif; ?>
-
     <table>
         <thead><tr><th>Categoria</th><th>Valor</th></tr></thead>
         <tbody>
@@ -118,8 +106,21 @@
     </table>
 
     <?php if ($abertas): ?>
-        <?php if ($evento['prazo_inscricao']): ?>
-            <p><strong>Inscrições até <?= date('d/m/Y', strtotime($evento['prazo_inscricao'])) ?>.</strong></p>
+        <?php
+        // O prazo fica COLADO NO BOTAO, e nao acima da tabela.
+        //
+        // Ficou acima por algumas horas em 04/09/2026 e voltou no mesmo dia: o
+        // lugar dele e onde a pessoa decide clicar, e nao no alto de uma tabela
+        // que ela ainda esta lendo. Em negrito porque e a unica data desta tela
+        // que responde "ate quando posso me inscrever" — as da coluna da direita
+        // respondem "quando muda o preco", que e outra pergunta.
+        //
+        // A frase vem de `prazo_inscricao_frase()`, a mesma da tela de entrada e
+        // do formulario, e diz tambem quando as inscricoes ABREM.
+        $prazo_frase = prazo_inscricao_frase($evento);
+        ?>
+        <?php if ($prazo_frase !== ''): ?>
+            <p><strong><?= e($prazo_frase) ?></strong></p>
         <?php endif; ?>
 
         <p style="margin: 1.5rem 0;">

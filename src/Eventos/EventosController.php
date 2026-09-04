@@ -45,10 +45,23 @@ class EventosController {
             [(int)$evento['id']]
         );
 
-        // Categoria restrita (convidados, isentos) nao entra na tabela publica
-        // de precos: ninguem esta identificado aqui, e anunciar que existe uma
-        // categoria gratuita so convida a tentativa.
-        $categorias = array_values(array_filter($categorias, fn(array $cat) => !categoria_restrita($cat)));
+        // O que a TABELA PUBLICA esconde e a categoria restrita e GRATUITA.
+        //
+        // A regra era esconder toda restrita, e estava larga demais: quem e do
+        // comite cientifico precisa saber que paga R$ 100 antes de entrar, e nao
+        // descobrir dentro do formulario. Preco e informacao de quem vai pagar.
+        //
+        // Isencao nao e. Anunciar "Isento — gratuita" numa pagina publica nao
+        // informa ninguem que tenha direito (essas pessoas ja sabem, e foram
+        // convidadas) e so convida quem nao tem a tentar. Decisao do tesoureiro
+        // em 04/09/2026, ao ver a tabela com a linha "Isento / Gratuita".
+        //
+        // Isto vale SO para esta tela. O formulario monta a lista dele por
+        // pessoa, mais abaixo, e continua mostrando a isento a quem esta nela.
+        $categorias = array_values(array_filter(
+            $categorias,
+            fn(array $cat) => !(categoria_restrita($cat) && (int)$cat['valor'] === 0)
+        ));
         $abertas = evento_inscricoes_abertas($evento);
 
         $titulo = $evento['nome'];
