@@ -75,7 +75,51 @@
                 $principais = $categorias;
                 $secundarias = [];
             }
+
+            // ISENCAO MANDA EM TUDO: quem tem uma categoria restrita e GRATUITA
+            // ve so ela a vista, e o resto vai para o <details>.
+            //
+            // Sem isto, um isento que tambem e filiado adimplente via TRES
+            // opcoes escolhiveis lado a lado — "Professor/Pesquisador filiado
+            // R$ 200", "Estudante de Pos filiado R$ 100" e "Isento". Aconteceu
+            // com o tesoureiro na propria inscricao dele, em 04/09/2026.
+            //
+            // Oferecer cobranca a quem a organizacao decidiu isentar nao e
+            // neutralidade: e convite a errar, e quem erra PAGA. O sistema ja
+            // sabe qual e a categoria dela; a escolha nao deveria estar em pe
+            // de igualdade com as outras.
+            //
+            // As demais nao somem — descem para o <details>, como toda categoria
+            // indisponivel nesta tela, e vao DESABILITADAS junto com ele. Ou
+            // seja: quem e isento nao consegue escolher categoria paga por
+            // aqui. E deliberado, e nao um efeito colateral: a isencao e
+            // decisao da organizacao, e o formulario a cumpre. Isento que
+            // queira pagar assim mesmo fala com a tesouraria — caso raro que
+            // nao justifica deixar a armadilha na tela de todo mundo.
+            //
+            // O servidor ACEITARIA uma categoria paga dele, e essa folga entre
+            // tela e servidor e conhecida: aqui ela fecha para o lado seguro,
+            // que e nao cobrar quem nao deve pagar.
+            $isencao = array_values(array_filter(
+                $principais,
+                fn(array $c) => categoria_restrita($c) && (int)valor_vigente_categoria($c, $evento) === 0
+            ));
+            if ($isencao) {
+                $resto = array_values(array_filter(
+                    $principais,
+                    fn(array $c) => !(categoria_restrita($c) && (int)valor_vigente_categoria($c, $evento) === 0)
+                ));
+                $secundarias = array_merge($resto, $secundarias);
+                $principais = $isencao;
+            }
             ?>
+
+            <?php if (!empty($isencao)): ?>
+                <p style="margin: 0 0 .8rem;"><small style="color: var(--pico-muted-color);">
+                    Sua inscrição é isenta — a organização do evento já a indicou.
+                    Não há nada a pagar.
+                </small></p>
+            <?php endif; ?>
 
             <?php if ($adimplente && $principais !== $categorias): ?>
                 <p style="margin: 0 0 .8rem;"><small style="color: var(--pico-muted-color);">
@@ -109,12 +153,17 @@
 
             <?php if (!empty($secundarias)): ?>
                 <details style="margin-top: .4rem;">
-                    <summary><small><?= $adimplente
-                        ? 'Ver as demais categorias'
-                        : 'Ver as categorias de filiado' ?></small></summary>
+                    <summary><small><?php
+                        if (!empty($isencao))      echo 'Ver as categorias pagas';
+                        elseif ($adimplente)       echo 'Ver as demais categorias';
+                        else                       echo 'Ver as categorias de filiado';
+                    ?></small></summary>
 
                     <p style="margin: .6rem 0;"><small style="color: var(--pico-muted-color);">
-                        <?php if ($adimplente): ?>
+                        <?php if (!empty($isencao)): ?>
+                            Estas são as categorias pagas do evento. Você não precisa de nenhuma
+                            delas: sua inscrição é isenta. Ficam aqui só para constar.
+                        <?php elseif ($adimplente): ?>
                             Estas são as categorias de preço cheio, para quem não é filiado. Como sua anuidade
                             está em dia, seu preço é o de filiado — por isso elas ficam indisponíveis.
                         <?php else: ?>
