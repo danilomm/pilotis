@@ -76,6 +76,18 @@
 
     <h3>Inscrição</h3>
 
+    <?php
+    // O prazo vem ANTES da tabela, e da mesma funcao das outras duas telas.
+    // Quem chega pelo cartaz le esta pagina e nao passa pela tela de entrada:
+    // sem isto, a unica data a vista seria a virada do valor cheio, dentro da
+    // coluna da direita — que responde "quando muda o preco" e nao "quando
+    // posso me inscrever".
+    $prazo_frase = prazo_inscricao_frase($evento);
+    ?>
+    <?php if ($prazo_frase !== ''): ?>
+        <p style="margin: 0 0 .8rem;"><?= e($prazo_frase) ?></p>
+    <?php endif; ?>
+
     <table>
         <thead><tr><th>Categoria</th><th>Valor</th></tr></thead>
         <tbody>
