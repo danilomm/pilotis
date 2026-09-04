@@ -149,6 +149,13 @@
                 <small>Vazio para evento de um dia só.</small>
             </div>
             <div>
+                <label for="data_inicio_inscricao">Abertura das inscrições</label>
+                <input type="date" id="data_inicio_inscricao" name="data_inicio_inscricao"
+                       value="<?= e($evento['data_inicio_inscricao'] ?? '') ?>">
+                <small class="data-extenso" data-para="data_inicio_inscricao"></small>
+                <small>Anúncio, não trava: quem tem o link entra antes. Vazio some da tela.</small>
+            </div>
+            <div>
                 <label for="prazo_inscricao">Prazo de inscrição</label>
                 <input type="date" id="prazo_inscricao" name="prazo_inscricao" value="<?= e($evento['prazo_inscricao'] ?? '') ?>">
                 <small class="data-extenso" data-para="prazo_inscricao"></small>

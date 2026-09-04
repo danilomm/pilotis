@@ -14,7 +14,7 @@
  * Versao do schema que ESTE codigo espera. Trocar sempre que init_extra_tables()
  * mudar (coluna nova, indice novo, view refeita).
  */
-const SCHEMA_VERSION = '2026-09-01';
+const SCHEMA_VERSION = '2026-09-04c';
 
 /**
  * Acrescenta uma coluna SE ela ainda nao existir.
@@ -489,6 +489,32 @@ function init_extra_tables(PDO $db): void {
         error_log("Pilotis: template evento_comprovante migrado para {{documento}}");
     }
 
+    // O botao dos emails quebrava em duas linhas na tela do celular.
+    //
+    // Era um `<a>` inline com padding vertical: o padding nao empurra a linha,
+    // e o fundo verde e pintado por PEDACO de linha. Com o rotulo cabendo numa
+    // linha ninguem via; quebrando em duas, saem dois retangulos deslocados com
+    // o texto por fora. Chegou assim a comissao organizadora do sdrj05 em
+    // 04/09/2026 — foram eles que mandaram a foto.
+    //
+    // A correcao ACRESCENTA ao style e nao reescreve o template: eles sao
+    // editaveis pelo /admin, e sobrescrever o que o tesoureiro escreveu seria
+    // pior que o defeito. Por isso um REPLACE na substring do botao, guardado
+    // por NOT LIKE — quem ja tem `inline-block` fica como esta. Sao 14
+    // templates, dos dois modulos, porque todos nascem do mesmo `$btn`.
+    $st = $db->prepare(
+        "UPDATE email_templates
+            SET html = REPLACE(html,
+                    'text-decoration: none; border-radius: 5px;',
+                    'text-decoration: none; border-radius: 5px; display: inline-block; line-height: 1.35;')
+          WHERE html LIKE '%padding: 15px 30px%'
+            AND html NOT LIKE '%inline-block%'"
+    );
+    $st->execute();
+    if ($st->rowCount() > 0) {
+        error_log("Pilotis: botao de {$st->rowCount()} template(s) de email virou inline-block");
+    }
+
     // Data, local e modalidade no comprovante: as pessoas o usam para pedir
     // dispensa de ponto no trabalho. Acrescenta {{quando_onde}} logo apos a
     // frase de abertura, e so se o trecho anterior estiver intacto.
@@ -553,6 +579,18 @@ function init_extra_tables(PDO $db): void {
     // pode ser de outro nucleo, e fixar a marca no codigo faria sair a errada.
     garantir_coluna($db, 'eventos', 'imagem_organizador', 'TEXT');
     garantir_coluna($db, 'eventos', 'data_valor_cheio', 'DATE');
+
+    // Data em que as inscricoes ABREM. Anuncio, nao trava.
+    //
+    // Decisao do tesoureiro em 04/09/2026, quando a comissao do sdrj05 pediu
+    // para anunciar 07/09: fechar de verdade barraria tambem quem ja tem
+    // cobranca gerada, porque `evento_inscricoes_abertas()` guarda o formulario
+    // E as tres telas de pagamento — duas pessoas estavam no meio do teste com
+    // pagamento real. Entao a coluna so INFORMA, e quem quiser entrar antes
+    // entra.
+    //
+    // Vazia, nada muda: a tela continua dizendo apenas ate quando vai.
+    garantir_coluna($db, 'eventos', 'data_inicio_inscricao', 'DATE');
 
     // Cartaz/banner do evento (arquivo PUBLICO, dentro de assets/img/eventos/)
     garantir_coluna($db, 'eventos', 'imagem_path', 'TEXT');

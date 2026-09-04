@@ -66,9 +66,9 @@
         </form>
     </details>
 
-    <?php if ($evento['prazo_inscricao']): ?>
-        <p style="margin-top: 1.2rem;"><small>Inscrições até
-        <?= date('d/m/Y', strtotime($evento['prazo_inscricao'])) ?>.</small></p>
+    <?php $prazo = prazo_inscricao_frase($evento); ?>
+    <?php if ($prazo !== ''): ?>
+        <p style="margin-top: 1.2rem;"><small><?= e($prazo) ?></small></p>
     <?php endif; ?>
 
     <p><small>O desconto de filiado depende de anuidade em dia.

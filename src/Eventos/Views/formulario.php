@@ -32,6 +32,19 @@
             <legend>Categoria de inscrição *</legend>
 
             <?php
+            // O prazo aparece AQUI, e nao so na tela de entrada: quem chega
+            // pelo link do email nunca passou por ela, e e nesta tela que a
+            // pessoa decide. Mesma frase, mesma funcao — prazo escrito em dois
+            // lugares diverge no dia em que um dos dois muda.
+            $prazo_frase = prazo_inscricao_frase($evento);
+            ?>
+            <?php if ($prazo_frase !== ''): ?>
+                <p style="margin: 0 0 .8rem;"><small style="color: var(--pico-muted-color);">
+                    <?= e($prazo_frase) ?>
+                </small></p>
+            <?php endif; ?>
+
+            <?php
             // Com a adimplencia ja conferida, a lista se divide: o que vale
             // para esta pessoa fica a vista; o resto vai para um <details>.
             // Nada e removido — quem quiser conferir o que existe, abre.

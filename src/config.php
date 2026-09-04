@@ -454,6 +454,28 @@ function em_manutencao(): bool {
 }
 
 /**
+ * "Inscricoes de DD/MM/AAAA a DD/MM/AAAA." — a frase de prazo, num lugar so.
+ *
+ * Existe porque a mesma informacao aparece na tela de ENTRADA e no FORMULARIO,
+ * e prazo escrito em dois lugares diverge no dia em que um dos dois muda.
+ *
+ * A data de abertura e ANUNCIO, nao trava: quem tem o link entra antes dela.
+ * Ver o comentario de `data_inicio_inscricao` na migracao.
+ *
+ * Devolve string vazia quando nao ha data nenhuma — a chamada some da tela em
+ * vez de escrever uma frase pela metade.
+ */
+function prazo_inscricao_frase(array $evento): string {
+    $abre  = $evento['data_inicio_inscricao'] ?? '';
+    $fecha = $evento['prazo_inscricao'] ?? '';
+    $d = fn($iso) => date('d/m/Y', strtotime($iso));
+    if ($abre && $fecha) return 'Inscrições de ' . $d($abre) . ' a ' . $d($fecha) . '.';
+    if ($abre)  return 'Inscrições a partir de ' . $d($abre) . '.';
+    if ($fecha) return 'Inscrições até ' . $d($fecha) . '.';
+    return '';
+}
+
+/**
  * Modalidade do evento em texto corrido, para o comprovante.
  *
  * NULL ou vazio vale como presencial: e o caso dominante, e os eventos

@@ -26,7 +26,15 @@ function seed_email_templates(PDO $db): void {
     $footer_content = ORG_NOME . ($footer_links ? "<br>$footer_links" : '');
     $footer = "<div style='padding: 15px; background-color: " . ORG_COR_PRIMARIA . "; color: white; text-align: center; font-size: 12px;'>$footer_content</div>";
     $wrap = fn($titulo, $body) => "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>" . str_replace('{{titulo}}', $titulo, $header) . "<div style='padding: 20px; background-color: #f9f9f9;'>$body</div>$footer</div>";
-    $btn = fn($texto, $var) => "<p style='text-align: center; margin: 30px 0;'><a href='{{" . $var . "}}' style='background-color: " . ORG_COR_PRIMARIA . "; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;'>$texto</a></p>";
+    // `display: inline-block` NAO e enfeite: sem ele o `<a>` e inline, e em
+    // elemento inline o padding VERTICAL nao empurra a linha nem faz o fundo
+    // envolver o texto. Enquanto o rotulo cabe numa linha isso passa
+    // despercebido; quando ele quebra — tela de celular, rotulo de tres
+    // palavras — o navegador pinta um retangulo verde por PEDACO de linha, os
+    // dois deslocados, com o texto saindo por fora. Foi assim que o
+    // "Preencher minha inscricao" chegou a comissao organizadora em 04/09/2026.
+    // O `line-height` fixa o respiro entre as duas linhas quando ele quebra.
+    $btn = fn($texto, $var) => "<p style='text-align: center; margin: 30px 0;'><a href='{{" . $var . "}}' style='display: inline-block; background-color: " . ORG_COR_PRIMARIA . "; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; line-height: 1.35; text-align: center;'>$texto</a></p>";
 
     $templates = [
         [

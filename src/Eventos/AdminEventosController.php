@@ -245,10 +245,23 @@ class AdminEventosController extends AdminController {
             return;
         }
 
-        db_execute("
+        // O retorno e CONFERIDO, e nao descartado.
+        //
+        // Ate 04/09/2026 faltavam dois valores na lista (`modalidade` e
+        // `url_anais` estavam no SET e nao entre os parametros). O PDO nao
+        // reclama disso: ele desloca tudo, o `WHERE id = ?` recebe um valor
+        // que nao e id nenhum, ZERO linhas mudam — e a tela dizia "Evento
+        // salvo." do mesmo jeito. O tesoureiro editava, via a confirmacao, e
+        // nada tinha acontecido.
+        //
+        // Em SQLite um UPDATE que casa a linha conta 1 mesmo gravando valor
+        // igual ao que ja estava. Entao zero aqui so pode ser WHERE que nao
+        // casou, e isso e defeito — nunca operacao normal.
+        $linhas = db_execute("
             UPDATE eventos SET nome = ?, slug = ?, descricao = ?, conteudo = ?,
                 local = ?, modalidade = ?, url_anais = ?, organizador = ?,
-                data_inicio = ?, data_fim = ?, prazo_inscricao = ?, data_valor_cheio = ?,
+                data_inicio = ?, data_fim = ?, data_inicio_inscricao = ?,
+                prazo_inscricao = ?, data_valor_cheio = ?,
                 email_contato = ?, assinantes = ?, apoiadores = ?,
                 emails_organizacao = ?, organizacao_expira_em = ?,
                 imagem_path = COALESCE(?, imagem_path),
@@ -262,9 +275,12 @@ class AdminEventosController extends AdminController {
             trim($_POST['descricao'] ?? '') ?: null,
             trim($_POST['conteudo'] ?? '') ?: null,
             trim($_POST['local'] ?? '') ?: null,
+            trim($_POST['modalidade'] ?? '') ?: null,
+            trim($_POST['url_anais'] ?? '') ?: null,
             trim($_POST['organizador'] ?? '') ?: null,
             ($_POST['data_inicio'] ?? '') ?: null,
             ($_POST['data_fim'] ?? '') ?: null,
+            ($_POST['data_inicio_inscricao'] ?? '') ?: null,
             ($_POST['prazo_inscricao'] ?? '') ?: null,
             ($_POST['data_valor_cheio'] ?? '') ?: null,
             trim($_POST['email_contato'] ?? '') ?: null,
@@ -278,6 +294,16 @@ class AdminEventosController extends AdminController {
             $programa,
             (int)$id,
         ]);
+
+        if ($linhas === 0) {
+            registrar_log('erro_salvar_evento', null,
+                "UPDATE do evento $id nao afetou nenhuma linha — parametros ou id");
+            flash('error', 'Não foi possível salvar o evento: nada foi gravado. '
+                . 'Nenhuma alteração se perdeu no banco, mas ela também não entrou. '
+                . 'Avise a tesouraria.');
+            redirect("/admin/eventos/$id");
+            return;
+        }
 
         flash('success', 'Evento salvo.');
         redirect("/admin/eventos/$id");
