@@ -22,6 +22,13 @@
  *     procedimento de fim de campanha no CLAUDE.md);
  *   - a lista publica de filiados do Pilotis foi REMOVIDA em 29/08/2026.
  *
+ *   - o email de contato sai do `ORG_EMAIL_CONTATO`, e em 04/09/2026 ele
+ *     mudou: o `tesouraria@docomomobrasil.com` que estava ali desde antes desta
+ *     reforma NAO EXISTE — as mensagens voltavam com "550 5.1.1 User unknown".
+ *     A caixa real e o Gmail da tesouraria. Isto vale versao nova porque este
+ *     texto aponta o canal dos direitos da LGPD, e quem consentiu ate 04/09 leu
+ *     um endereco que nao recebia.
+ *
  * Se algum desses fatos mudar, este texto muda junto — e a versao com ele.
  */
 ?>
