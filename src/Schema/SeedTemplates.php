@@ -316,6 +316,44 @@ function seed_email_templates(PDO $db): void {
             "Gestão 2026-2027</p>",
     ];
 
+    // Carteira de filiacao anual, com os PDFs em anexo.
+    //
+    // Tres variaveis chegam PRONTAS de quem envia, porque template nao tem
+    // condicional — a mesma solucao do {{quando_onde}} do comprovante: a nota
+    // da carteira internacional (vazia para quem nao e dessa faixa) e o fecho,
+    // que para quem e das duas casas diz so "Docomomo". As duas vao pelo
+    // terceiro parametro de carregar_template(), o de HTML.
+    $templates[] = [
+        'tipo' => 'carteirinha',
+        // ORG_SIGLA, e nao ORG_NOME: no email da faixa Internacional+Brasil vao as
+        // DUAS carteiras, e "ao Docomomo Brasil" no assunto descreveria so uma
+        // delas. O corpo continua nomeando cada uma, que e onde a distincao serve.
+        'assunto' => 'Sua carteira de filiação ao ' . ORG_SIGLA . ' {{ano}}',
+        'descricao' => 'Envio anual da carteira de filiação, com os PDFs em anexo',
+        'variaveis' => 'nome, ano, categoria, codigo, host_validacao, link_validacao, nota_internacional (html), fecho (html)',
+        'html' => $wrap('Carteira de filiação {{ano}}',
+            "<p>Olá <strong>{{nome}}</strong>,</p>" .
+            "<p>Enviamos anexa sua carteira de filiação ao " . ORG_NOME . ", em dois arquivos: " .
+            "um para deixar no celular e outro no tamanho de cartão, caso queira imprimir.</p>" .
+            "{{nota_internacional}}" .
+            "<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>" .
+            "<tr><td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Nome:</strong></td><td style='padding: 10px; border-bottom: 1px solid #ddd;'>{{nome}}</td></tr>" .
+            "<tr><td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Categoria:</strong></td><td style='padding: 10px; border-bottom: 1px solid #ddd;'>{{categoria}}</td></tr>" .
+            "<tr><td style='padding: 10px; border-bottom: 1px solid #ddd;'><strong>Ano:</strong></td><td style='padding: 10px; border-bottom: 1px solid #ddd;'>{{ano}}</td></tr>" .
+            "</table>" .
+            "<p>A carteira traz um QR code. Quem o lê chega a uma página do nosso sistema que " .
+            "mostra o seu nome e a situação da sua filiação <strong>naquele momento</strong>, " .
+            "consultada no cadastro. Não aparece quanto você pagou nem por qual meio.</p>" .
+            $btn('Ver como fica a conferência', 'link_validacao') .
+            "<p style='font-size: 13px; color: #555;'>Se preferir digitar em vez de ler o código, " .
+            "o endereço é <strong>{{host_validacao}}</strong> e o seu código é <strong>{{codigo}}</strong>.</p>" .
+            "<p>Se quiser deixar a carteira junto dos cartões do celular: no Android, o Google " .
+            "Wallet adiciona qualquer código pela câmera, em &ldquo;Everything else&rdquo;; no " .
+            "iPhone, a partir do iOS 27, o Wallet cria um passe a partir de um QR.</p>" .
+            "{{fecho}}"
+        ),
+    ];
+
     $stmt = $db->prepare("INSERT OR IGNORE INTO email_templates (tipo, assunto, html, descricao, variaveis) VALUES (?, ?, ?, ?, ?)");
     foreach ($templates as $t) {
         $stmt->execute([$t['tipo'], $t['assunto'], $t['html'], $t['descricao'], $t['variaveis']]);

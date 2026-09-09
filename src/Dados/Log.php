@@ -48,6 +48,13 @@ function tipos_log_criticos(): array {
         'erro_pagbank'               => 'Falha ao falar com o PagBank',
         'cron_campanha_bloqueado'    => 'Envio automatico barrado por trava',
 
+        // 09/09/2026, no primeiro envio das carteiras. `enviarEmail()` devolver
+        // true diz apenas que o Brevo ACEITOU o pedido, e a marca
+        // `carteira_enviada` e gravada com base nisso — entao quem nao recebeu
+        // some da fila e ninguem repara. Foram 5 em 172: caixa cheia, dois
+        // dominios sem MX, um endereco bloqueado e um deferred.
+        'carteira_nao_entregue'      => 'Carteira aceita pelo Brevo mas nao entregue',
+
         // Acrescentados em 30/08/2026. Todos significam que ALGUEM PRECISA
         // FAZER ALGUMA COISA, e nenhum estava na lista — o bloco de pendencias
         // dava a impressao de cobrir, e nao cobria.

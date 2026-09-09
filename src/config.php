@@ -20,6 +20,20 @@ if (file_exists($envPath)) {
         error_log('Pilotis: .env existe mas nao pode ser lido (permissao?): ' . $envPath);
         $lines = [];
     }
+    // Em CLI, uma variavel ja exportada no ambiente GANHA da linha do .env.
+    //
+    // Existe para a carteira de filiado, que precisa assinar com a SECRET_KEY
+    // DO SERVIDOR e apontar a BASE_URL para o dominio real, sem trocar as duas
+    // no .env de trabalho -- onde o DATABASE_PATH e o caminho local e a troca
+    // teria de ser desfeita depois, a mao, toda vez:
+    //
+    //   SECRET_KEY=... BASE_URL=https://... php scripts/gerar_carteirinhas.php
+    //
+    // So em CLI, de proposito. Sob Apache ou FPM o ambiente do processo e do
+    // servidor, nao de quem roda o comando, e uma variavel homonima vinda de la
+    // passaria a mandar no sistema sem ninguem ter pedido.
+    $ambiente_ganha = (PHP_SAPI === 'cli');
+
     foreach ($lines as $line) {
         // Ignora comentários
         if (strpos(trim($line), '#') === 0) continue;
@@ -29,6 +43,7 @@ if (file_exists($envPath)) {
             list($key, $value) = array_map('trim', explode('=', $line, 2));
             // Remove aspas se houver
             $value = trim($value, '"\'');
+            if ($ambiente_ganha && getenv($key) !== false) continue;
             $_ENV[$key] = $value;
             // putenv pode estar desabilitado em hospedagem compartilhada
             if (function_exists('putenv')) {

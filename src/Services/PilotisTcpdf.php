@@ -72,6 +72,56 @@ class PilotisTcpdf extends TCPDF {
     }
 
     /**
+     * Desenha um caminho vetorial cru, vindo de um arquivo `.pdfpath`.
+     *
+     * Existe para a marca da carteira de filiado. A marca em PNG parece bem em
+     * 300 dpi e se desfaz na tela do celular: um cartao de 756 pt de largura
+     * exibido em 390 px reduz a imagem a 0,5x, e o antialias mistura o branco
+     * das letras com o verde do fundo -- a marca sai lavada e a area dela vira
+     * um retangulo mais claro, visivel a olho nu ao lado do "2026", que e
+     * vetor e fica nitido.
+     *
+     * As saidas obvias nao servem aqui: `ImageSVG` do TCPDF exige a extensao
+     * `xml`, `ImageEps` nao entende o EPS que o poppler escreve, e reamostrar
+     * a imagem exigiria GD ou Imagick. Nenhuma das tres existe em toda
+     * instalacao, e o projeto ja evita esse tipo de dependencia (ver o
+     * `XlsxService`, que monta o ZIP a mao para nao depender da extensao
+     * `zip`). Emitir o caminho direto no fluxo de conteudo nao depende de
+     * nada.
+     *
+     * O arquivo traz, na primeira linha, `%% <largura> <altura>` da caixa
+     * original; o resto sao operadores de caminho do PDF em coordenadas dessa
+     * caixa, com a origem no canto superior esquerdo e o y para baixo. A
+     * matriz `cm` abaixo e o que leva isso ao espaco do PDF, onde o y sobe.
+     */
+    public function caminhoVetorial(string $arquivo, float $x, float $y, float $largura, array $rgb): float {
+        $bruto = @file_get_contents($arquivo);
+        if ($bruto === false || strncmp($bruto, '%%', 2) !== 0) {
+            throw new RuntimeException("Caminho vetorial ilegivel: $arquivo");
+        }
+        [$cabecalho, $ops] = explode("\n", $bruto, 2);
+        [, $lo, $ao] = preg_split('/\s+/', trim($cabecalho));
+        $lo = (float)$lo;
+        $ao = (float)$ao;
+        if ($lo <= 0 || $ao <= 0) {
+            throw new RuntimeException("Caixa invalida em $arquivo");
+        }
+
+        $s = $largura / $lo;
+        $k = $this->k;
+
+        $this->_out('q');
+        $this->_out(sprintf('%F %F %F %F %F %F cm',
+            $s * $k, 0.0, 0.0, -$s * $k, $x * $k, ($this->h - $y) * $k));
+        $this->_out(sprintf('%F %F %F rg', $rgb[0] / 255, $rgb[1] / 255, $rgb[2] / 255));
+        $this->_out(trim($ops));
+        $this->_out('f');   // preenchimento par-impar nao: os vazios das letras
+        $this->_out('Q');   // dependem da regra nonzero, que e a do `f`.
+
+        return $largura * $ao / $lo;   // altura ocupada, para quem se pendura nela
+    }
+
+    /**
      * Uma linha so, miuda, com os trechos separados por ponto — mais timbre
      * que rodape. O corpo em tres linhas competia com o texto do documento.
      *

@@ -97,8 +97,17 @@ class ValidacaoController {
 
         $paga = $f['status'] === 'pago';
 
+        // Sem valor pago e sem forma de pagamento, de proposito. Quem le este
+        // codigo esta com a carteira de filiado na mao, na porta de um evento
+        // ou numa secretaria, e a pergunta dele e uma so: esta pessoa esta em
+        // dia? Quanto ela pagou e em quantas vezes nao e da conta de quem
+        // confere, e a pagina e publica -- basta o codigo para abrir.
+        //
+        // O comprovante de INSCRICAO (EVT) continua mostrando valor: aquele
+        // papel serve a prestacao de contas, e e para isso que a pessoa o
+        // apresenta. Sao dois documentos com dois leitores.
         return [
-            'tipo' => 'Declaração de filiação',
+            'tipo' => 'Carteira de filiação',
             'valido' => $paga,
             'pessoa_id' => (int)$f['pessoa_id'],
             'nome' => $f['nome'],
@@ -109,9 +118,6 @@ class ValidacaoController {
             'linhas' => array_filter([
                 'Ano' => (string)$f['ano'],
                 'Categoria' => CATEGORIAS_DISPLAY[$f['categoria']] ?? ($f['categoria'] ?? ''),
-                'Valor' => $paga && $f['valor'] ? formatar_valor((int)$f['valor']) : '',
-                'Pagamento' => $paga && $f['data_pagamento']
-                    ? date('d/m/Y', strtotime($f['data_pagamento'])) : '',
             ]),
         ];
     }
