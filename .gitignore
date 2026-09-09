@@ -52,3 +52,7 @@ filiados/
 *.xlsx
 *.vcf
 links-pagamento-*.txt
+
+# Carteiras de filiado em PDF, uma por pessoa, com o nome no arquivo.
+# Dado pessoal: nunca entra em repositorio nenhum, nem no privado.
+carteiras/
