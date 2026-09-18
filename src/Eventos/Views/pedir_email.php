@@ -1,11 +1,16 @@
 <article>
     <h2><?= e($evento['nome']) ?></h2>
 
-    <div class="alert alert-warning" style="padding: 12px; background: #fff3cd; color: #856404; border-radius: 6px;">
-        Não encontramos esse CPF no cadastro do Docomomo Brasil.
-    </div>
-
-    <p>Sem problema — você pode se inscrever mesmo assim. Informe seu email e
+    <?php
+    // Sem caixa de alerta, de proposito. Ate 18/09/2026 a tela abria com uma
+    // tarja amarela "Nao encontramos esse CPF", e quem nao e filiado — o caso
+    // NORMAL aqui, nao o de erro — lia como recusa e parava ali, sem ver o
+    // campo de email logo abaixo. Uma inscrita escreveu a tesouraria pedindo
+    // para "cadastrar o CPF". A informacao continua na frase, para quem errou
+    // um digito; o tom e o de passo seguinte, nao o de barreira.
+    ?>
+    <p>Não há cadastro com esse CPF no Docomomo Brasil — e não precisa haver:
+    qualquer pessoa pode se inscrever, filiada ou não. Informe seu email e
     enviaremos um link para completar a inscrição.</p>
 
     <p>Se você já foi filiado(a) em anos anteriores, dê preferência ao email do
