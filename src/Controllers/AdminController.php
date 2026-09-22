@@ -399,13 +399,25 @@ class AdminController {
             $where_parts = [];
             $params = [];
             foreach ($palavras as $p) {
-                $where_parts[] = "(p.nome LIKE ? OR busca.email LIKE ? OR REPLACE(REPLACE(IFNULL(p.cpf,''),'.',''),'-','') LIKE ?)";
                 $params[] = "%$p%";
                 $params[] = "%$p%";
                 $digitos = preg_replace('/\D/', '', $p);
                 // So procura por CPF quando ha digito: sem isso, buscar
                 // "clarice" virava LIKE '%%' e trazia a base inteira.
-                $params[] = $digitos !== '' ? "%$digitos%" : "\x00nunca";
+                //
+                // A condicao SAI da consulta, e nao recebe um padrao que "nunca
+                // casa". Ate 22/09/2026 recebia "\x00nunca" — e o SQLite corta o
+                // parametro no caractere nulo, entao o padrao chegava VAZIO e
+                // casava com todo CPF vazio: 1.379 dos 1.647 cadastros. Toda
+                // busca por nome devolvia essa massa em ordem alfabetica, com os
+                // cadastros sem nome na frente, e o corte em 50 escondia quem se
+                // procurava. "marta peixoto" nao achava a Marta Peixoto.
+                if ($digitos !== '') {
+                    $where_parts[] = "(p.nome LIKE ? OR busca.email LIKE ? OR REPLACE(REPLACE(IFNULL(p.cpf,''),'.',''),'-','') LIKE ?)";
+                    $params[] = "%$digitos%";
+                } else {
+                    $where_parts[] = "(p.nome LIKE ? OR busca.email LIKE ?)";
+                }
             }
             $where = implode(' AND ', $where_parts);
 
